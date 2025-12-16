@@ -3,7 +3,8 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getPropertiesByLandlordIdQuery } from "@/queries/properties-queries"
+import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
 import { getBillsByPropertyIdQuery } from "@/queries/bills-queries"
 
 export async function BillsList() {
@@ -23,6 +24,15 @@ export async function BillsList() {
     const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
     if (landlord) {
       const properties = await getPropertiesByLandlordIdQuery(landlord.id)
+      for (const property of properties) {
+        const bills = await getBillsByPropertyIdQuery(property.id)
+        allBills.push(...bills)
+      }
+    }
+  } else if (userProfile.userType === "rental_agent") {
+    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
+    if (rentalAgent) {
+      const properties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
       for (const property of properties) {
         const bills = await getBillsByPropertyIdQuery(property.id)
         allBills.push(...bills)
@@ -61,4 +71,3 @@ export async function BillsList() {
     </div>
   )
 }
-
