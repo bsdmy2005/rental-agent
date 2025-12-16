@@ -12,34 +12,34 @@ import { SectionWrapper } from "./section-wrapper"
 
 const faqs = [
   {
-    question: "What's included in the template?",
+    question: "What is RentPilot AI?",
     answer:
-      "Everything you need to build a production app: Next.js 15 with App Router, TypeScript, Tailwind CSS v4, shadcn/ui components, Clerk authentication, PostgreSQL with Drizzle ORM, and PostHog analytics. All pre-configured and ready to use."
+      "RentPilot AI is an automated rental agent for landlords and agencies. It ingests municipality bills and levy statements, extracts the key charges, and prepares tenant-ready invoices for you."
+  },
+  {
+    question: "Who is this for?",
+    answer:
+      "We designed RentPilot AI for individual property owners and rental agencies who want to remove manual billing admin, reduce errors, and get a clear view of cash flow across properties."
+  },
+  {
+    question: "How does billing and invoicing work?",
+    answer:
+      "You connect your bill sources (email forwarding or manual uploads), configure extraction rules once, and RentPilot AI automatically turns each new bill into tenant invoices with the right splits for rent, water, electricity, and levies."
+  },
+  {
+    question: "Do tenants get access?",
+    answer:
+      "Yes. Tenants can be invited to a portal where they can view invoices, see payment history, and log maintenance issues. You stay in control of which properties and tenants are enabled."
+  },
+  {
+    question: "Is my data and banking information secure?",
+    answer:
+      "We use battle-tested infrastructure and follow best practices for encryption and access control. Bank connections, when enabled, will use regulated open‑banking providers and never expose raw credentials to third parties."
   },
   {
     question: "How do I get started?",
     answer:
-      "Simply clone the repository from GitHub, copy the .env.example to .env.local, add your API keys, run npm install, and you're ready to go. The whole process takes less than 5 minutes."
-  },
-  {
-    question: "Is this really free?",
-    answer:
-      "Yes! This template is 100% free and open source under the MIT license. You can use it for personal projects, commercial applications, or anything else. No hidden costs or premium features."
-  },
-  {
-    question: "Can I customize everything?",
-    answer:
-      "Absolutely! You have full access to all the source code. Modify the components, change the styling, add or remove features - it's your codebase now. The template is designed to be a starting point that you can build upon."
-  },
-  {
-    question: "What about deployment?",
-    answer:
-      "The template works with any hosting provider that supports Next.js. Deploy to Vercel, Netlify, Railway, or any other platform. Database can be hosted on Supabase, Neon, or any PostgreSQL provider."
-  },
-  {
-    question: "How do I get help if I'm stuck?",
-    answer:
-      "Open an issue on GitHub for bugs or feature requests. For general questions, the community is active in discussions. If you need dedicated support, consider becoming a sponsor or reaching out for custom development."
+      "Sign up, complete a short onboarding for your landlord or agency profile, add your first property, and forward a test bill. We’ll guide you through creating your first extraction rule so you can see an end‑to‑end invoice flow."
   }
 ]
 
@@ -48,9 +48,7 @@ export function FAQSection() {
 
   const toggleItem = (question: string) => {
     setOpenItems(prev =>
-      prev.includes(question)
-        ? prev.filter(item => item !== question)
-        : [...prev, question]
+      prev.includes(question) ? prev.filter(item => item !== question) : [...prev, question]
     )
   }
 
@@ -59,7 +57,7 @@ export function FAQSection() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-4xl">
           <motion.h2
-            className="text-foreground text-2xl leading-10 font-bold tracking-tight"
+            className="text-slate-50 text-2xl leading-10 font-bold tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -68,14 +66,14 @@ export function FAQSection() {
             Frequently asked questions
           </motion.h2>
           <motion.p
-            className="text-muted-foreground mt-6 text-base leading-7"
+            className="text-slate-300 mt-6 text-base leading-7"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Everything you need to know about the template. Can't find what
-            you're looking for? Open an issue on GitHub.
+            Answers to the most common questions about RentPilot AI. If you'd like to go deeper,
+            reach out and we'll walk you through a live demo.
           </motion.p>
           <dl className="mt-10 space-y-6">
             {faqs.map((faq, index) => (
@@ -91,7 +89,7 @@ export function FAQSection() {
                   onOpenChange={() => toggleItem(faq.question)}
                 >
                   <CollapsibleTrigger className="flex w-full items-start justify-between text-left">
-                    <span className="text-foreground text-base leading-7 font-semibold">
+                    <span className="text-slate-50 text-base leading-7 font-semibold">
                       {faq.question}
                     </span>
                     <motion.span
@@ -101,15 +99,12 @@ export function FAQSection() {
                       }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Plus
-                        className="text-muted-foreground h-6 w-6"
-                        aria-hidden="true"
-                      />
+                      <Plus className="text-slate-400 h-6 w-6" aria-hidden="true" />
                     </motion.span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 pr-12">
                     <motion.p
-                      className="text-muted-foreground text-base leading-7"
+                      className="text-slate-300 text-base leading-7"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3 }}
@@ -126,3 +121,5 @@ export function FAQSection() {
     </SectionWrapper>
   )
 }
+
+

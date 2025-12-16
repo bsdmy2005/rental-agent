@@ -18,8 +18,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Mckay's App Template",
-  description: "The easiest way to start your next project."
+  title: "RentPilot AI – Automated Rental Agent",
+  description:
+    "RentPilot AI automates rental property admin for landlords and agencies: ingest bills, generate invoices, and manage tenants in one place."
 }
 
 export default function RootLayout({

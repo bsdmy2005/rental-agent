@@ -2,40 +2,38 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Check, CreditCard, Zap } from "lucide-react"
+import { Check, Home, Users } from "lucide-react"
 import { SectionWrapper } from "./section-wrapper"
 
 const pricing = [
   {
-    name: "Pro Monthly",
-    price: "$19",
-    period: "/month",
-    description: "Perfect for growing businesses",
+    name: "Solo Landlord",
+    price: "R0",
+    period: "/launch beta",
+    description: "For owners managing up to 5 properties.",
     features: [
-      "Unlimited projects",
-      "Advanced analytics",
-      "Priority support",
-      "Custom integrations",
-      "API access",
-      "Export data"
+      "Email + manual PDF bill intake",
+      "AI extraction for municipality & levy bills",
+      "Automatic tenant invoices",
+      "Basic payment tracking",
+      "Property & tenant dashboard"
     ],
-    icon: CreditCard,
+    icon: Home,
     highlight: false
   },
   {
-    name: "Pro Yearly",
-    price: "$190",
-    period: "/year",
-    description: "Best value - save $38 per year",
+    name: "Agency",
+    price: "Let’s talk",
+    period: "",
+    description: "For agencies managing portfolios at scale.",
     features: [
-      "Everything in monthly",
-      "2 months free",
-      "Early access to features",
-      "Custom onboarding",
-      "Dedicated account manager",
-      "99.9% uptime SLA"
+      "Unlimited properties & landlords",
+      "Team workspaces & permissions",
+      "Bank integrations for payments & reconciliation",
+      "Priority onboarding & support",
+      "Custom workflows & reporting"
     ],
-    icon: Zap,
+    icon: Users,
     highlight: true
   }
 ]
@@ -46,22 +44,23 @@ export function PricingSection() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <motion.h2
-            className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            Simple, transparent pricing
+            Pricing for modern landlords and agencies
           </motion.h2>
           <motion.p
-            className="text-muted-foreground mt-4 text-lg leading-8"
+            className="text-slate-300 mt-4 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Choose the plan that fits your needs. Cancel anytime.
+            Start in the free launch beta as a solo landlord. Talk to us when you're ready to roll
+            out RentPilot AI across your agency.
           </motion.p>
         </div>
 
@@ -71,8 +70,8 @@ export function PricingSection() {
               key={tier.name}
               className={`relative rounded-3xl p-8 ring-1 ${
                 tier.highlight
-                  ? "bg-primary text-primary-foreground ring-primary"
-                  : "bg-card text-card-foreground ring-border"
+                  ? "bg-gradient-to-br from-brand-primary to-brand-secondary text-white ring-brand-primary"
+                  : "bg-slate-700/50 text-slate-50 ring-slate-600"
               }`}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -90,8 +89,8 @@ export function PricingSection() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: 0.3 }}
                 >
-                  <span className="bg-primary text-primary-foreground inline-flex items-center rounded-full px-4 py-1 text-xs font-semibold">
-                    BEST VALUE
+                  <span className="bg-slate-50 text-slate-900 inline-flex items-center rounded-full px-4 py-1 text-xs font-semibold shadow-sm">
+                    AGENCY READY
                   </span>
                 </motion.div>
               )}
@@ -99,14 +98,12 @@ export function PricingSection() {
               <div className="flex items-center gap-4">
                 <tier.icon
                   className={`h-8 w-8 ${
-                    tier.highlight ? "text-primary-foreground" : "text-primary"
+                    tier.highlight ? "text-white" : "text-brand-primary"
                   }`}
                 />
                 <h3
                   className={`text-lg leading-8 font-semibold ${
-                    tier.highlight
-                      ? "text-primary-foreground"
-                      : "text-foreground"
+                    tier.highlight ? "text-primary-foreground" : "text-foreground"
                   }`}
                 >
                   {tier.name}
@@ -115,9 +112,7 @@ export function PricingSection() {
 
               <p
                 className={`mt-4 text-sm leading-6 ${
-                  tier.highlight
-                    ? "text-primary-foreground/80"
-                    : "text-muted-foreground"
+                  tier.highlight ? "text-primary-foreground/90" : "text-muted-foreground"
                 }`}
               >
                 {tier.description}
@@ -126,38 +121,32 @@ export function PricingSection() {
               <p className="mt-6 flex items-baseline gap-x-1">
                 <span
                   className={`text-4xl font-bold tracking-tight ${
-                    tier.highlight
-                      ? "text-primary-foreground"
-                      : "text-foreground"
+                    tier.highlight ? "text-primary-foreground" : "text-foreground"
                   }`}
                 >
                   {tier.price}
                 </span>
-                <span
-                  className={`text-sm leading-6 font-semibold ${
-                    tier.highlight
-                      ? "text-primary-foreground/80"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {tier.period}
-                </span>
+                {tier.period && (
+                  <span
+                    className={`text-sm leading-6 font-semibold ${
+                      tier.highlight ? "text-primary-foreground/80" : "text-muted-foreground"
+                    }`}
+                  >
+                    {tier.period}
+                  </span>
+                )}
               </p>
 
               <ul
                 className={`mt-8 space-y-3 text-sm leading-6 ${
-                  tier.highlight
-                    ? "text-primary-foreground/80"
-                    : "text-muted-foreground"
+                  tier.highlight ? "text-white/90" : "text-slate-300"
                 }`}
               >
                 {tier.features.map(feature => (
                   <li key={feature} className="flex gap-x-3">
                     <Check
                       className={`h-6 w-5 flex-none ${
-                        tier.highlight
-                          ? "text-primary-foreground"
-                          : "text-primary"
+                        tier.highlight ? "text-white" : "text-brand-primary"
                       }`}
                       aria-hidden="true"
                     />
@@ -169,30 +158,19 @@ export function PricingSection() {
               <Button
                 className={`mt-8 w-full ${
                   tier.highlight
-                    ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                    : ""
+                    ? "bg-white text-slate-900 hover:bg-slate-100"
+                    : "bg-slate-600 text-white hover:bg-slate-500"
                 }`}
-                variant={tier.highlight ? "default" : "outline"}
-                disabled
+                variant={tier.highlight ? "default" : "default"}
               >
-                Coming soon
+                {tier.highlight ? "Talk to sales" : "Join launch beta"}
               </Button>
             </motion.div>
           ))}
         </div>
-
-        <motion.div
-          className="mt-10 text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <p className="text-muted-foreground text-sm">
-            All plans include a 30-day money-back guarantee. No questions asked.
-          </p>
-        </motion.div>
       </div>
     </SectionWrapper>
   )
 }
+
+

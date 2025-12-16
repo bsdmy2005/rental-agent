@@ -19,15 +19,16 @@ import { AppSidebar } from "./app-sidebar"
 
 export default function DashboardClientLayout({
   children,
-  userData
+  userData,
+  userType
 }: {
   children: React.ReactNode
   userData: {
     name: string
     email: string
     avatar: string
-    membership: string
   }
+  userType: "landlord" | "rental_agent" | "tenant" | "admin"
 }) {
   const pathname = usePathname()
 
@@ -138,7 +139,7 @@ export default function DashboardClientLayout({
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar userData={userData} />
+      <AppSidebar userData={userData} userType={userType} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">

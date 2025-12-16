@@ -4,19 +4,16 @@ import { motion } from "framer-motion"
 import { SectionWrapper } from "./section-wrapper"
 
 const stats = [
-  { label: "GitHub Stars", value: "500+" },
-  { label: "Active Projects", value: "1000+" },
-  { label: "Contributors", value: "50+" }
+  { label: "Bills processed in tests", value: "1,000+" },
+  { label: "Properties modelled", value: "100+" },
+  { label: "Countries supported", value: "2" }
 ]
 
-const features = [
-  "Next.js",
-  "TypeScript",
-  "Tailwind CSS",
-  "Clerk",
-  "PostgreSQL",
-  "Drizzle ORM",
-  "PostHog"
+const valuePoints = [
+  "Built for African municipalities & levies first",
+  "Works with single owners and multi‑landlord agencies",
+  "Designed for real‑world bill quirks and edge cases",
+  "Extensible rules for new bill formats over time"
 ]
 
 export function CompaniesSection() {
@@ -30,44 +27,33 @@ export function CompaniesSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
-            Built with the best
+          <h2 className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl">
+            Designed for real rental operations
           </h2>
-          <p className="text-muted-foreground mt-4 text-lg leading-8">
-            Trusted technologies that power thousands of production applications
+          <p className="text-slate-300 mt-4 text-lg leading-8">
+            RentPilot AI focuses on the boring but critical parts of being a landlord or agency:
+            bills in, clear invoices out, and tenants always in the loop.
           </p>
         </motion.div>
 
-        {/* Tech Stack Marquee */}
-        <div className="relative mt-16">
-          <div className="from-background absolute top-0 bottom-0 left-0 z-10 w-20 bg-gradient-to-r to-transparent" />
-          <div className="from-background absolute top-0 right-0 bottom-0 z-10 w-20 bg-gradient-to-l to-transparent" />
-
-          <div className="flex overflow-hidden">
-            <motion.div
-              className="flex gap-8 pr-8"
-              animate={{ x: ["0%", "-100%"] }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear"
-              }}
-            >
-              {[...features, ...features].map((feature, index) => (
-                <div
-                  key={`${feature}-${index}`}
-                  className="bg-muted text-foreground flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold whitespace-nowrap"
-                >
-                  {feature}
-                </div>
-              ))}
-            </motion.div>
-          </div>
+        {/* Why it works */}
+        <div className="mx-auto mt-12 max-w-3xl">
+          <ul className="grid gap-4 text-left sm:grid-cols-2">
+            {valuePoints.map(point => (
+              <li
+                key={point}
+                className="bg-slate-700/50 text-slate-50 flex items-start gap-3 rounded-lg px-4 py-3 text-sm ring-1 ring-slate-600"
+              >
+                <span className="mt-1 h-2 w-2 rounded-full bg-brand-primary" />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Stats */}
         <motion.dl
-          className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-10 text-center sm:mt-20 sm:grid-cols-3 sm:gap-y-16 lg:mx-0 lg:max-w-none"
+          className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-10 text-center sm:mt-16 sm:grid-cols-3 sm:gap-y-16 lg:mx-0 lg:max-w-none"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -82,10 +68,10 @@ export function CompaniesSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
             >
-              <dt className="text-muted-foreground text-base leading-7">
+              <dt className="text-slate-300 text-base leading-7">
                 {stat.label}
               </dt>
-              <dd className="text-foreground order-first text-3xl font-semibold tracking-tight sm:text-5xl">
+              <dd className="text-slate-50 order-first text-3xl font-semibold tracking-tight sm:text-5xl">
                 <motion.span
                   initial={{ opacity: 0, scale: 0.5 }}
                   whileInView={{ opacity: 1, scale: 1 }}

@@ -1,4 +1,6 @@
-import { getCustomerByUserId } from "@/actions/customers"
+"use server"
+
+import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import DashboardClientLayout from "./_components/layout-client"
@@ -14,13 +16,16 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  const customer = await getCustomerByUserId(user.id)
+  const userProfile = await getUserProfileByClerkIdQuery(user.id)
 
-  // Gate dashboard access for pro members only
-  // Store a message to show why they were redirected
-  if (!customer || customer.membership !== "pro") {
-    // Using searchParams to pass a message that can be read by client components
-    redirect("/?redirect=dashboard#pricing")
+  if (!userProfile || !userProfile.isActive) {
+    redirect("/onboarding")
+  }
+
+  // Only allow landlords, rental agents, and admins in the main dashboard
+  // Tenants have their own portal
+  if (userProfile.userType === "tenant") {
+    redirect("/tenant/dashboard")
   }
 
   const userData = {
@@ -29,12 +34,11 @@ export default async function DashboardLayout({
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.username || "User",
     email: user.emailAddresses[0]?.emailAddress || "",
-    avatar: user.imageUrl,
-    membership: customer.membership
+    avatar: user.imageUrl || ""
   }
 
   return (
-    <DashboardClientLayout userData={userData}>
+    <DashboardClientLayout userData={userData} userType={userProfile.userType}>
       {children}
     </DashboardClientLayout>
   )

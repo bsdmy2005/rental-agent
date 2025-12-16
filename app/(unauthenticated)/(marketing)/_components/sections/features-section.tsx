@@ -2,44 +2,51 @@
 
 import { motion } from "framer-motion"
 import {
-  BarChart,
-  Code2,
-  Database,
-  Palette,
-  Shield
+  FileText,
+  Mail,
+  Receipt,
+  CreditCard,
+  Zap,
+  Brain
 } from "lucide-react"
 import { SectionWrapper } from "./section-wrapper"
 
 const features = [
   {
-    name: "Authentication Ready",
+    name: "AI-Powered PDF Processing",
     description:
-      "Clerk authentication pre-configured with protected routes, user management, and session handling.",
-    icon: Shield
+      "Automatically extract data from municipality bills, levy statements, and utility invoices using OpenAI GPT-4 Vision.",
+    icon: Brain
   },
   {
-    name: "Database Setup",
+    name: "Email Integration",
     description:
-      "PostgreSQL with Drizzle ORM configured and ready. Includes migrations and type-safe queries.",
-    icon: Database
+      "Receive bills via email forwarding. Our system automatically processes attachments and extracts relevant information.",
+    icon: Mail
   },
   {
-    name: "Modern UI Components",
+    name: "Automated Invoice Generation",
     description:
-      "Beautiful, accessible components with shadcn/ui. Dark mode support and Tailwind CSS v4.",
-    icon: Palette
+      "Generate tenant invoices automatically from processed bills. Include rental amounts, water, electricity, and levies.",
+    icon: Receipt
   },
   {
-    name: "TypeScript First",
+    name: "Payment Automation",
     description:
-      "Full TypeScript support with strict mode, path aliases, and type safety throughout.",
-    icon: Code2
+      "Execute EFT payments to municipalities and body corporates on behalf of property owners. Track all payments.",
+    icon: CreditCard
   },
   {
-    name: "Analytics Built-in",
+    name: "Payment Reconciliation",
     description:
-      "PostHog analytics integration for tracking user behavior and product metrics.",
-    icon: BarChart
+      "Automatically reconcile tenant payments with bank statements. Match transactions and track outstanding balances.",
+    icon: FileText
+  },
+  {
+    name: "Smart Extraction Rules",
+    description:
+      "Configure custom extraction rules for different bill types. Train the system to recognize your specific invoice formats.",
+    icon: Zap
   }
 ]
 
@@ -58,26 +65,26 @@ export function FeaturesSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            Everything Included
+            Powerful Features
           </motion.h2>
           <motion.p
-            className="text-foreground mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-slate-50 mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Start with a complete foundation
+            Everything you need to automate rental management
           </motion.p>
           <motion.p
-            className="text-muted-foreground mt-6 text-lg leading-8"
+            className="text-slate-300 mt-6 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            No more setup headaches. Clone the repo and start building your
-            product immediately.
+            Replace manual processes with intelligent automation. Save time, reduce errors, and
+            focus on growing your property portfolio.
           </motion.p>
         </div>
 
@@ -110,7 +117,7 @@ export function FeaturesSection() {
                   />
                 </motion.div>
 
-                <dt className="text-foreground mt-4 flex items-center gap-x-3 text-base leading-7 font-semibold">
+                <dt className="text-slate-50 mt-4 flex items-center gap-x-3 text-base leading-7 font-semibold">
                   {feature.name}
                   <motion.div
                     className="from-primary/50 h-px flex-1 bg-gradient-to-r to-transparent"
@@ -122,7 +129,7 @@ export function FeaturesSection() {
                   />
                 </dt>
 
-                <dd className="text-muted-foreground mt-4 flex flex-auto flex-col text-base leading-7">
+                <dd className="text-slate-300 mt-4 flex flex-auto flex-col text-base leading-7">
                   <p className="flex-auto">{feature.description}</p>
                 </dd>
 

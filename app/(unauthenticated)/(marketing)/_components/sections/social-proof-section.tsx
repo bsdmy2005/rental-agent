@@ -6,24 +6,24 @@ import { SectionWrapper } from "./section-wrapper"
 
 const testimonials = [
   {
-    name: "Alex Chen",
-    role: "Indie Hacker",
+    name: "Lerato M.",
+    role: "Johannesburg landlord (4 units)",
     content:
-      "This template saved me weeks of setup time. I went from idea to deployed MVP in just 2 days. The authentication and payment integration alone would have taken me a week to configure properly.",
+      "RentPilot AI turned my messy bill spreadsheet into a clean monthly flow. I forward the municipality email and it does the rest—split bills, tenant invoices, everything.",
     rating: 5
   },
   {
-    name: "Sarah Williams",
-    role: "Startup Founder",
+    name: "Andile K.",
+    role: "Boutique rental agency",
     content:
-      "As a non-technical founder, this template was a godsend. Clean code, great documentation, and everything just works out of the box. My developer was impressed with the code quality.",
+      "We manage properties for multiple owners. The ability to attach rules per property and still see one consolidated view of bills and invoices has been a game changer for our team.",
     rating: 5
   },
   {
-    name: "Mike Johnson",
-    role: "Full Stack Developer",
+    name: "Naomi P.",
+    role: "First‑time landlord",
     content:
-      "I've tried many boilerplates, but this one hits different. Modern stack, best practices, and actually production-ready. It's now my go-to starting point for all client projects.",
+      "I used to dread bill time every month. Now I can see what’s due, what’s billed to tenants, and what’s been paid in one place. It feels like having an admin assistant on autopilot.",
     rating: 5
   }
 ]
@@ -43,13 +43,13 @@ export function SocialProofSection() {
             Testimonials
           </motion.h2>
           <motion.p
-            className="text-foreground mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-slate-50 mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Loved by developers worldwide
+            Loved by landlords and rental teams
           </motion.p>
         </div>
         <div className="mx-auto mt-16 flow-root max-w-2xl sm:mt-20 lg:mx-0 lg:max-w-none">
@@ -57,7 +57,7 @@ export function SocialProofSection() {
             {testimonials.map((testimonial, index) => (
               <motion.div
                 key={testimonial.name}
-                className="bg-card ring-border relative rounded-2xl p-8 shadow-md ring-1"
+                className="bg-slate-700/50 ring-slate-600 relative rounded-2xl p-8 shadow-md ring-1"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -79,12 +79,12 @@ export function SocialProofSection() {
                     />
                   ))}
                 </div>
-                <blockquote className="text-muted-foreground mt-6 text-base leading-7">
+                <blockquote className="text-slate-300 mt-6 text-base leading-7">
                   <p>"{testimonial.content}"</p>
                 </blockquote>
-                <figcaption className="text-foreground mt-6 text-base font-semibold">
+                <figcaption className="text-slate-50 mt-6 text-base font-semibold">
                   <div>{testimonial.name}</div>
-                  <div className="text-muted-foreground mt-1 text-sm">
+                  <div className="text-slate-400 mt-1 text-sm">
                     {testimonial.role}
                   </div>
                 </figcaption>

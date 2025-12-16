@@ -1,6 +1,6 @@
 "use client"
 
-import { Link, Settings2, User, Users } from "lucide-react"
+import { Building2, User } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -12,87 +12,40 @@ import {
 } from "@/components/ui/sidebar"
 import { NavMain } from "../_components/nav-main"
 import { NavUser } from "../_components/nav-user"
-import { TeamSwitcher } from "../_components/team-switcher"
+import { getNavigationForUserType } from "@/lib/navigation-config"
 
 export function AppSidebar({
   userData,
+  userType,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   userData: {
     name: string
     email: string
     avatar: string
-    membership: string
   }
+  userType: "landlord" | "rental_agent" | "tenant" | "admin"
 }) {
+  const navItems = getNavigationForUserType(userType)
+
   const data = {
     user: userData,
     teams: [
       {
-        name: "Personal",
-        logo: User,
-        plan: "Account"
-      },
-      {
-        name: "Team 1",
-        logo: Users,
-        plan: "Team"
-      },
-      {
-        name: "Team 2",
-        logo: Users,
-        plan: "Team"
-      },
-      {
-        name: "Team 3",
-        logo: Users,
-        plan: "Team"
+        name: userType === "landlord" ? "My Properties" : userType === "rental_agent" ? "Managed Properties" : "Account",
+        logo: userType === "admin" ? Building2 : User,
+        plan: userType === "admin" ? "Admin" : "Account"
       }
     ],
-    navMain: [
-      {
-        title: "Nav Item 1",
-        url: "#",
-        icon: Link,
-        items: [
-          {
-            title: "Sub Item 1",
-            url: "/dashboard/nav-item-1"
-          },
-          {
-            title: "Sub Item 2",
-            url: "/dashboard/nav-item-2"
-          }
-        ]
-      },
-      {
-        title: "Nav Item 2",
-        url: "#",
-        icon: Link,
-        items: [
-          {
-            title: "Sub Item 1",
-            url: "/dashboard/nav-item-1"
-          }
-        ]
-      },
-      {
-        title: "Settings",
-        url: "#",
-        icon: Settings2,
-        items: [
-          {
-            title: "General",
-            url: "/dashboard/settings"
-          }
-        ]
-      }
-    ]
+    navMain: navItems
   }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <Building2 className="h-5 w-5" />
+          <span className="font-semibold">Rental Agent AI</span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
