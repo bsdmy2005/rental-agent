@@ -6,9 +6,7 @@ export const userId = "user_2y8Cx5ekKHYstsIdBVAj2ZYB6EV"
 export const customersData: InsertCustomer[] = [
   {
     userId,
-    membership: "pro", // default to pro for testing,
-    stripeCustomerId: "cus_Q324234234234234234234234", // random test value
-    stripeSubscriptionId: "sub_Q324234234234234234234234", // random test value
+    membership: "pro", // default to pro for testing
     createdAt: new Date(),
     updatedAt: new Date()
   }
