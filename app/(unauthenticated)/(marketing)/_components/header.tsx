@@ -71,6 +71,7 @@ export function Header({ userMembership }: HeaderProps) {
             </div>
           </div>
           <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-3">
+          {mounted && (
             <Button
               variant="ghost"
               size="icon"
@@ -84,7 +85,7 @@ export function Header({ userMembership }: HeaderProps) {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-            <SignedOut>
+          )}            <SignedOut>
               <Button
                 variant="outline"
                 asChild
@@ -165,20 +166,23 @@ export function Header({ userMembership }: HeaderProps) {
                 </div>
                 <div className="space-y-3 py-6">
                   <Button
-                    variant="outline"
-                    className="w-full justify-start border-slate-700 text-slate-100 hover:bg-slate-800"
-                    onClick={() => {
-                      setTheme(theme === "dark" ? "light" : "dark")
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    {theme === "dark" ? (
-                      <Sun className="mr-2 h-4 w-4" />
-                    ) : (
-                      <Moon className="mr-2 h-4 w-4" />
-                    )}
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                  </Button>
+                  {mounted && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start border-slate-700 text-slate-100 hover:bg-slate-800"
+                      onClick={() => {
+                        setTheme(theme === "dark" ? "light" : "dark")
+                        setMobileMenuOpen(false)
+                      }}
+                    >
+                      {theme === "dark" ? (
+                        <Sun className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Moon className="mr-2 h-4 w-4" />
+                      )}
+                      {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                    </Button>
+                  )}                  </Button>
                   <SignedOut>
                     <Button
                       variant="outline"

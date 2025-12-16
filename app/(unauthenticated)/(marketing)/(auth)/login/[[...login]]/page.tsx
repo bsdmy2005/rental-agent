@@ -1,105 +1,39 @@
 "use client"
 
-import { SignIn } from "@clerk/nextjs"
-import { dark } from "@clerk/themes"
-import { motion } from "framer-motion"
-import { ArrowRight, Sparkles, Zap, Shield, Rocket } from "lucide-react"
-import { useTheme } from "next-themes"
-import Link from "next/link"
-
-export default function LoginPage() {
-  const { theme } = useTheme()
-
-  return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
-        {/* Left side - Enhanced benefits */}
-        <motion.div
-          className="hidden space-y-8 lg:block"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="space-y-4">
-            <motion.div
-              className="inline-block"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
-                Welcome back!
-              </span>
-            </motion.div>
-            <motion.h1
-              className="text-4xl font-bold tracking-tight lg:text-5xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              Continue building
-              <motion.span
-                className="from-brand-primary to-brand-secondary mt-2 block bg-gradient-to-r bg-clip-text text-transparent"
-                animate={{
-                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
-                }}
-                transition={{
-                  duration: 5,
-                  ease: "linear",
-                  repeat: Infinity
-                }}
-                style={{
-                  backgroundSize: "200% 200%"
-                }}
-              >
-                amazing products
-              </motion.span>
-            </motion.h1>
-            <motion.p
-              className="text-muted-foreground text-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              Pick up right where you left off with your projects.
-            </motion.p>
-          </div>
-
-          {/* Feature grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {[
+import {[
               {
-                icon: Zap,
-                title: "Lightning Fast",
-                desc: "Built for speed",
+                icon: Receipt,
+                title: "AI Processing",
+                desc: "Automated bill extraction",
                 color: "text-yellow-500",
                 bgColor: "bg-yellow-500/10"
               },
               {
                 icon: Shield,
-                title: "Secure Auth",
-                desc: "Enterprise ready",
+                title: "Secure Access",
+                desc: "Bank-grade security",
                 color: "text-blue-500",
                 bgColor: "bg-blue-500/10"
               },
               {
                 icon: Sparkles,
-                title: "Modern Stack",
-                desc: "Latest tech",
+                title: "Smart Invoicing",
+                desc: "Auto-generated invoices",
                 color: "text-purple-500",
                 bgColor: "bg-purple-500/10"
               },
               {
-                icon: Rocket,
-                title: "Ship Faster",
-                desc: "Deploy today",
+                icon: CreditCard,
+                title: "Payment Automation",
+                desc: "EFT execution ready",
                 color: "text-green-500",
                 bgColor: "bg-green-500/10"
               }
+            ]
             ].map((feature, i) => (
               <motion.div
                 key={feature.title}
-                className="bg-card group relative overflow-hidden rounded-lg border p-4 transition-all hover:shadow-lg"
+                className="group relative overflow-hidden rounded-lg border border-slate-700 bg-slate-800 p-4 transition-all hover:shadow-lg"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
@@ -130,15 +64,15 @@ export default function LoginPage() {
                 >
                   <feature.icon className={`h-5 w-5 ${feature.color}`} />
                 </motion.div>
-                <p className="text-sm font-semibold">{feature.title}</p>
-                <p className="text-muted-foreground text-xs">{feature.desc}</p>
+                <p className="text-sm font-semibold text-slate-50">{feature.title}</p>
+                <p className="text-xs text-slate-300">{feature.desc}</p>
               </motion.div>
             ))}
           </div>
 
           {/* Stats */}
           <motion.div
-            className="bg-muted/30 space-y-4 rounded-xl border p-6"
+            className="space-y-4 rounded-xl border border-slate-700 bg-slate-800 p-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.7 }}
@@ -148,29 +82,29 @@ export default function LoginPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">2,000+</p>
-                <p className="text-muted-foreground text-sm">
-                  Active developers
+                <p className="text-2xl font-bold text-slate-50">1,000+</p>
+                <p className="text-sm text-slate-300">
+                  Bills processed
                 </p>
               </div>
-              <div className="border-muted h-12 w-px border-l" />
+              <div className="h-12 w-px border-l border-slate-700" />
               <div>
-                <p className="text-2xl font-bold">50k+</p>
-                <p className="text-muted-foreground text-sm">
-                  Projects created
+                <p className="text-2xl font-bold text-slate-50">100+</p>
+                <p className="text-sm text-slate-300">
+                  Properties managed
                 </p>
               </div>
-              <div className="border-muted h-12 w-px border-l" />
+              <div className="h-12 w-px border-l border-slate-700" />
               <div>
-                <p className="text-2xl font-bold">4.9/5</p>
-                <p className="text-muted-foreground text-sm">Average rating</p>
+                <p className="text-2xl font-bold text-slate-50">10+ Hrs</p>
+                <p className="text-sm text-slate-300">Saved/mo</p>
               </div>
             </div>
           </motion.div>
 
           {/* Trust badge */}
           <motion.div
-            className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20"
+            className="flex items-center gap-3 rounded-lg border border-green-700 bg-green-950/20 p-4"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.9 }}
@@ -187,12 +121,12 @@ export default function LoginPage() {
                 repeatType: "reverse"
               }}
             >
-              <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <Shield className="h-5 w-5 text-green-400" />
             </motion.div>
             <div className="flex-1">
-              <p className="text-sm font-medium">Secure & Trusted</p>
-              <p className="text-muted-foreground text-xs">
-                SOC2 compliant infrastructure
+              <p className="text-sm font-medium text-slate-50">Bank-grade security</p>
+              <p className="text-xs text-slate-300">
+                Encryption for your financial data
               </p>
             </div>
           </motion.div>
@@ -211,10 +145,10 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <h2 className="mb-2 text-2xl font-semibold">
-              Sign in to your account
+            <h2 className="mb-2 text-2xl font-semibold text-slate-50">
+              Sign in to your RentPilot AI account
             </h2>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-slate-300">
               Don't have an account?{" "}
               <motion.span
                 whileHover={{ scale: 1.05 }}
@@ -222,9 +156,9 @@ export default function LoginPage() {
               >
                 <Link
                   href="/signup"
-                  className="text-primary font-medium transition-colors hover:underline"
+                  className="text-brand-primary font-medium transition-colors hover:underline"
                 >
-                  Start building for free
+                  Join the launch beta
                   <ArrowRight className="ml-1 inline h-3 w-3" />
                 </Link>
               </motion.span>
