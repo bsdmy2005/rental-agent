@@ -109,19 +109,17 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
       }
     } catch (processingError) {
       // Update status to error
-      const [errorBill] = await db
+      await db
         .update(billsTable)
         .set({ status: "error" })
         .where(eq(billsTable.id, billId))
-        .returning()
 
       console.error("Error processing bill:", processingError)
       return {
         isSuccess: false,
-        message: "Failed to process bill with AI",
-        data: errorBill
+        message: "Failed to process bill with AI"
       }
-    }
+    }    }
   } catch (error) {
     console.error("Error processing bill:", error)
     return { isSuccess: false, message: "Failed to process bill" }

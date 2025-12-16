@@ -3,7 +3,8 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getPropertiesByLandlordIdQuery } from "@/queries/properties-queries"
+import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
 import { getTenantsByPropertyIdQuery } from "@/queries/tenants-queries"
 
 export async function TenantsList() {
@@ -23,6 +24,15 @@ export async function TenantsList() {
     const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
     if (landlord) {
       const properties = await getPropertiesByLandlordIdQuery(landlord.id)
+      for (const property of properties) {
+        const tenants = await getTenantsByPropertyIdQuery(property.id)
+        allTenants.push(...tenants)
+      }
+    }
+  } else if (userProfile.userType === "rental_agent") {
+    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
+    if (rentalAgent) {
+      const properties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
       for (const property of properties) {
         const tenants = await getTenantsByPropertyIdQuery(property.id)
         allTenants.push(...tenants)
@@ -53,4 +63,3 @@ export async function TenantsList() {
     </div>
   )
 }
-
