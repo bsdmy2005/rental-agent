@@ -123,8 +123,7 @@ $ npm run dev
               "TypeScript",
               "Next.js 15",
               "Tailwind CSS",
-              "Clerk Auth",
-              "Stripe"
+              "Clerk Auth"
             ].map((tech, index) => (
               <motion.span
                 key={tech}

@@ -62,7 +62,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           Everything you need to launch your next big idea with authentication,
-          payments, database, and more - start building today.
+          database, and more - start building today.
         </motion.p>
         <motion.div
           className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6"
