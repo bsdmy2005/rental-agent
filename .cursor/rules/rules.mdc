@@ -20,11 +20,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run clean` - Run both lint:fix and format:write
 
 ### Database
-- `npx drizzle-kit push` - Push schema changes to database
-- `npx drizzle-kit generate` - Generate migration files
-- `npx drizzle-kit migrate` - Run migrations
+- **CRITICAL**: Schema changes should be made in `/db/schema` files, but NEVER automatically pushed to the database
+- The user will manually push database changes using: `npx drizzle-kit push`
+- When making schema changes:
+  1. Update the schema files in `/db/schema`
+  2. Update the schema export in `/db/index.ts` if adding new tables
+  3. DO NOT run `drizzle-kit push` or any database migration commands
+  4. The user will manually push changes when ready
+- `npx drizzle-kit generate` - Generate migration files (user runs manually)
+- `npx drizzle-kit migrate` - Run migrations (user runs manually)
+- `npx drizzle-kit push` - Push schema changes to database (user runs manually)
 - `npx bun db/seed` - Seed database
 - `npx supabase start` - Start local Supabase instance
+- Database connection: Configured via `DATABASE_URL` in `.env.local`, using Drizzle ORM with PostgreSQL
 
 ### Testing
 - `npm run test` - Run all tests (unit + e2e)
@@ -44,23 +52,21 @@ This is a Next.js 15 SaaS template using the App Router with clear separation be
   - `(auth)` - Login and signup flows
 - `/app/(authenticated)` - Protected routes requiring Clerk auth
   - `dashboard` - Main application with account, billing, support sections
-- `/app/api` - API routes including paystack webhook handler
+- `/app/api` - API routes
 
 ### Key Patterns
-- **Server Actions** in `/actions` for data mutations (customers, paystack operations)
+- **Server Actions** in `/actions` for data mutations (customers)
 - **Database Schema** in `/db/schema` using Drizzle ORM with PostgreSQL
 - **UI Components** in `/components/ui` from Shadcn UI library
 - **Authentication** handled by Clerk middleware with protected route groups
-- **Payments** integrated via paystack with webhook handling
 
 ### Data Flow
 1. Authentication state managed by Clerk (`@clerk/nextjs`)
 2. Customer data stored in PostgreSQL via Drizzle ORM
-3. paystack integration for subscription management
-4. Server actions handle all data mutations with proper auth checks
+3. Server actions handle all data mutations with proper auth checks
 
 ### Environment Variables Required
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
-- `paystack_SECRET_KEY` - paystack secret key
-- Database connection handled by Supabase CLI
+- `DATABASE_URL` - PostgreSQL database connection string (required for database connection)
+- Database connection handled via Drizzle ORM with PostgreSQL connection from `DATABASE_URL`

@@ -17,11 +17,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run clean` - Run both lint:fix and format:write
 
 ### Database
-- `npx drizzle-kit push` - Push schema changes to database
-- `npx drizzle-kit generate` - Generate migration files
-- `npx drizzle-kit migrate` - Run migrations
+- **IMPORTANT**: Schema changes should be made in `/db/schema` files, but NEVER automatically pushed to the database
+- The user will manually push database changes using: `npx drizzle-kit push`
+- `npx drizzle-kit generate` - Generate migration files (user runs manually)
+- `npx drizzle-kit migrate` - Run migrations (user runs manually)
+- `npx drizzle-kit push` - Push schema changes to database (user runs manually)
 - `npx bun db/seed` - Seed database
 - `npx supabase start` - Start local Supabase instance
+- Database connection: Configured via `DATABASE_URL` in `.env.local`, using Drizzle ORM with PostgreSQL
 
 ### Testing
 - `npm run test` - Run all tests (unit + e2e)
@@ -57,5 +60,5 @@ This is a Next.js 15 SaaS template using the App Router with clear separation be
 ### Environment Variables Required
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
-- `DATABASE_URL` - PostgreSQL database connection string
-- Database connection handled by Supabase CLI
+- `DATABASE_URL` - PostgreSQL database connection string (required for database connection)
+- Database connection handled via Drizzle ORM with PostgreSQL connection from `DATABASE_URL`

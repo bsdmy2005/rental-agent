@@ -20,18 +20,17 @@ export function SiteBanner() {
           animate={{ y: 0 }}
           exit={{ y: -100 }}
           transition={{ duration: 0.2 }}
-          className="bg-brand-primary text-brand-primary-foreground relative"
+          className="bg-slate-900 text-slate-50 relative"
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="relative flex items-center justify-center py-3">
-              <div className="flex items-center gap-3">
-                <Link
-                  href="https://github.com/mckaywrigley/mckays-app-template"
-                  className="inline-flex items-center text-sm font-semibold underline-offset-2 hover:underline"
-                >
-                  <span className="mr-1">🎉</span> Template V2 is live!{" "}
-                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Link>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+                  Launch beta
+                </span>
+                <span>
+                  RentPilot AI is in active development for early landlords and agencies.
+                </span>
               </div>
               <button
                 onClick={handleDismiss}

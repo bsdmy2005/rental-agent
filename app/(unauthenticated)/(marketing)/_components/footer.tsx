@@ -49,25 +49,25 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-muted/50" aria-labelledby="footer-heading">
+    <footer className="bg-slate-900/50 border-t border-slate-700" aria-labelledby="footer-heading">
       <h2 id="footer-heading" className="sr-only">
         Footer
       </h2>
       <div className="mx-auto max-w-7xl px-6 pt-16 pb-8">
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-8">
-            <Link href="/" className="text-xl font-bold">
-              Company
+            <Link href="/" className="text-xl font-bold text-slate-50">
+              RentPilot AI
             </Link>
-            <p className="text-muted-foreground text-sm leading-6">
-              Your company description here.
+            <p className="text-slate-300 text-sm leading-6">
+              Automated rental agent for landlords and agencies. Process bills, generate invoices, and manage tenants.
             </p>
             <div className="flex space-x-6">
               {socialLinks.map(item => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-slate-300 hover:text-slate-50"
                 >
                   <span className="sr-only">{item.name}</span>
                   <item.icon className="h-5 w-5" />
@@ -78,7 +78,7 @@ export function Footer() {
           <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-foreground text-sm leading-6 font-semibold">
+                <h3 className="text-slate-50 text-sm leading-6 font-semibold">
                   Product
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -86,7 +86,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-foreground text-sm leading-6"
+                        className="text-slate-300 hover:text-slate-50 text-sm leading-6"
                       >
                         {item.name}
                       </Link>
@@ -95,7 +95,7 @@ export function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-foreground text-sm leading-6 font-semibold">
+                <h3 className="text-slate-50 text-sm leading-6 font-semibold">
                   Company
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -103,7 +103,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-foreground text-sm leading-6"
+                        className="text-slate-300 hover:text-slate-50 text-sm leading-6"
                       >
                         {item.name}
                       </Link>
@@ -114,7 +114,7 @@ export function Footer() {
             </div>
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-foreground text-sm leading-6 font-semibold">
+                <h3 className="text-slate-50 text-sm leading-6 font-semibold">
                   Resources
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -122,7 +122,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-foreground text-sm leading-6"
+                        className="text-slate-300 hover:text-slate-50 text-sm leading-6"
                       >
                         {item.name}
                       </Link>
@@ -131,7 +131,7 @@ export function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-foreground text-sm leading-6 font-semibold">
+                <h3 className="text-slate-50 text-sm leading-6 font-semibold">
                   Legal
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -139,7 +139,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-foreground text-sm leading-6"
+                        className="text-slate-300 hover:text-slate-50 text-sm leading-6"
                       >
                         {item.name}
                       </Link>
@@ -150,9 +150,9 @@ export function Footer() {
             </div>
           </div>
         </div>
-        <div className="border-border mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
-          <p className="text-muted-foreground text-xs leading-5">
-            &copy; {new Date().getFullYear()} Company, Inc. All rights reserved.
+        <div className="border-slate-700 mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
+          <p className="text-slate-400 text-xs leading-5">
+            &copy; {new Date().getFullYear()} RentPilot AI. All rights reserved.
           </p>
         </div>
       </div>

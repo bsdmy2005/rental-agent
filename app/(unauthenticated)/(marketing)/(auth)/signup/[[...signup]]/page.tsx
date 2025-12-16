@@ -27,7 +27,7 @@ export default function SignUpPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              Build your next big idea
+              Create your RentPilot AI account
             </motion.h1>
             <motion.p
               className="text-muted-foreground text-lg"
@@ -35,8 +35,8 @@ export default function SignUpPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              Get instant access to a production-ready app template with
-              everything you need to launch quickly.
+              Connect your properties, forward your first bill, and see how RentPilot AI turns it
+              into tenant-ready invoices.
             </motion.p>
           </div>
 
@@ -46,22 +46,22 @@ export default function SignUpPage() {
               {
                 icon: BookOpen,
                 title: "Full Stack Ready",
-                desc: "Complete setup included"
+                desc: "Billing, invoicing, and tenant views built-in"
               },
               {
                 icon: Users,
-                title: "Authentication",
-                desc: "Clerk pre-configured"
+                title: "Secure access",
+                desc: "Clerk authentication configured for owners & tenants"
               },
               {
                 icon: Trophy,
-                title: "Production Ready",
-                desc: "Launch immediately"
+                title: "Operations First",
+                desc: "Built for real rental workflows"
               },
               {
                 icon: Star,
-                title: "Modern Stack",
-                desc: "Next.js 15 + TypeScript"
+                title: "Modern stack",
+                desc: "Next.js 15, TypeScript, Postgres, Drizzle"
               }
             ].map((feature, i) => (
               <motion.div

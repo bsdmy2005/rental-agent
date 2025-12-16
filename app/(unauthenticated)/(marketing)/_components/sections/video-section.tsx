@@ -9,11 +9,11 @@ export function VideoSection() {
   const [isHovered, setIsHovered] = useState(false)
 
   return (
-    <SectionWrapper>
+    <SectionWrapper id="how-it-works">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <motion.h2
-            className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -22,13 +22,14 @@ export function VideoSection() {
             See it in action
           </motion.h2>
           <motion.p
-            className="text-muted-foreground mt-4 text-lg leading-8"
+            className="text-slate-300 mt-4 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Watch how quickly you can go from clone to deployed app
+            Watch how RentPilot AI ingests bills, extracts charges, and prepares
+            tenant invoices in minutes.
           </motion.p>
         </div>
 
@@ -47,26 +48,21 @@ export function VideoSection() {
             {/* Video Preview Background */}
             <div className="from-brand-primary via-brand-secondary to-brand-accent absolute inset-0 bg-gradient-to-br opacity-20" />
 
-            {/* Code Animation */}
+            {/* Flow Animation */}
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div
-                className="text-muted-foreground text-left font-mono text-sm select-none"
+                className="text-muted-foreground text-left text-sm select-none"
                 animate={{
                   opacity: isHovered ? 0.3 : 0.6
                 }}
                 transition={{ duration: 0.3 }}
               >
                 <pre className="overflow-hidden">
-                  <code>{`$ git clone github.com/mckaywrigley/template
-$ cd template
-$ npm install
-$ cp .env.example .env.local
-$ npm run dev
-
-✓ Ready in 3s
-○ Compiling / ...
-✓ Compiled successfully
-✓ Ready at http://localhost:3000`}</code>
+                  <code>{`1. Email received from municipality
+2. PDF bill detected and stored
+3. AI extracts water, electricity, levies
+4. Tenant invoices generated automatically
+5. Payments scheduled for municipality & body corporate`}</code>
                 </pre>
               </motion.div>
             </div>
@@ -92,9 +88,11 @@ $ npm run dev
             <div className="from-foreground absolute right-0 bottom-0 left-0 bg-gradient-to-t to-transparent p-6">
               <div className="text-background flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">Quick Start Demo</h3>
+                  <h3 className="text-lg font-semibold">
+                    Rental Agent Automation Demo
+                  </h3>
                   <p className="text-background/80 mt-1 text-sm">
-                    From clone to deploy in minutes
+                    From raw bills to ready-to-send invoices in a single flow
                   </p>
                 </div>
                 <div className="flex gap-4 text-sm">
@@ -110,38 +108,6 @@ $ npm run dev
               </div>
             </div>
           </div>
-
-          {/* Feature badges */}
-          <motion.div
-            className="mt-8 flex flex-wrap justify-center gap-3"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            {[
-              "TypeScript",
-              "Next.js 15",
-              "Tailwind CSS",
-              "Clerk Auth"
-            ].map((tech, index) => (
-              <motion.span
-                key={tech}
-                className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-4 py-2 text-sm font-medium"
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{
-                  duration: 0.3,
-                  delay: 0.5 + index * 0.05,
-                  type: "spring",
-                  stiffness: 200
-                }}
-              >
-                {tech}
-              </motion.span>
-            ))}
-          </motion.div>
         </motion.div>
       </div>
     </SectionWrapper>

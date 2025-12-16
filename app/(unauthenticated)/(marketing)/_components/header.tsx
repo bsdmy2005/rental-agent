@@ -22,28 +22,31 @@ export function Header({ userMembership }: HeaderProps) {
   }, [])
 
   const navigation = [
-    { name: "About", href: "/about" },
-    { name: "Features", href: "/features" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Contact", href: "/contact" }
+    { name: "Product", href: "#features" },
+    { name: "How it works", href: "#how-it-works" },
+    { name: "Pricing", href: "#pricing" },
+    { name: "FAQ", href: "#faq" }
   ]
 
   return (
     <>
-      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
+      <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800/95 sticky top-0 z-50 w-full border-b border-slate-700/50 text-slate-50 backdrop-blur">
         <nav
           className="mx-auto flex max-w-7xl items-center justify-between p-4 lg:px-8"
           aria-label="Global"
         >
-          <div className="flex lg:flex-1">
-            <Link href="/" className="-m-1.5 p-1.5">
-              <span className="text-xl font-bold">Mckay's App Template</span>
+          <div className="flex items-center gap-2 lg:flex-1">
+            <Link href="/" className="-m-1.5 flex items-center gap-2 p-1.5">
+              <span className="bg-brand-primary/10 text-brand-primary flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">
+                RP
+              </span>
+              <span className="text-xl font-semibold tracking-tight">RentPilot AI</span>
             </Link>
           </div>
           <div className="flex lg:hidden">
             <button
               type="button"
-              className="text-muted-foreground -m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
+              className="text-slate-200 -m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <span className="sr-only">Open main menu</span>
@@ -54,21 +57,24 @@ export function Header({ userMembership }: HeaderProps) {
               )}
             </button>
           </div>
-          <div className="hidden lg:flex lg:gap-x-12">
-            {navigation.map(item => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-foreground hover:text-muted-foreground text-sm leading-6 font-semibold"
-              >
-                {item.name}
-              </Link>
-            ))}
+          <div className="hidden lg:flex lg:items-center lg:gap-x-8">
+            <div className="bg-slate-700/40 ring-slate-600/80 flex items-center gap-x-4 rounded-full px-4 py-1.5 text-sm font-medium ring-1">
+              {navigation.map(item => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-slate-200 hover:text-white transition-colors"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           </div>
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-3">
             <Button
               variant="ghost"
               size="icon"
+              className="text-slate-200 hover:bg-slate-800/70"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
             >
@@ -79,20 +85,30 @@ export function Header({ userMembership }: HeaderProps) {
               )}
             </Button>
             <SignedOut>
-              <Button variant="ghost" asChild>
+              <Button
+                variant="outline"
+                asChild
+                className="border-slate-700 bg-transparent text-slate-100 hover:bg-slate-800/60"
+              >
                 <Link href="/login">Log in</Link>
               </Button>
-              <Button asChild>
-                <Link href="/signup">Sign up</Link>
+              <Button className="bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover">
+                <Link href="/signup" className="flex items-center gap-1">
+                  <Sparkles className="h-4 w-4" />
+                  Get started
+                </Link>
               </Button>
             </SignedOut>
             <SignedIn>
               {userMembership === "pro" ? (
-                <Button asChild>
+                <Button className="bg-slate-100 text-slate-900 hover:bg-white" asChild>
                   <Link href="/dashboard">Dashboard</Link>
                 </Button>
               ) : (
-                <Button asChild className="gap-2">
+                <Button
+                  asChild
+                  className="bg-slate-100 text-slate-900 hover:bg-white gap-2"
+                >
                   <Link href="/#pricing">
                     <Sparkles className="h-4 w-4" />
                     Upgrade
@@ -110,23 +126,23 @@ export function Header({ userMembership }: HeaderProps) {
         <>
           {/* Backdrop */}
           <div
-            className="bg-foreground/20 fixed inset-0 z-[60] backdrop-blur-sm lg:hidden"
+            className="bg-black/40 fixed inset-0 z-[60] backdrop-blur-sm lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
 
           {/* Menu panel */}
-          <div className="bg-background sm:ring-border fixed inset-y-0 right-0 z-[70] w-full overflow-y-auto px-6 py-6 shadow-2xl sm:max-w-sm sm:ring-1 lg:hidden">
+          <div className="bg-slate-800 sm:ring-border fixed inset-y-0 right-0 z-[70] w-full overflow-y-auto px-6 py-6 shadow-2xl sm:max-w-sm sm:ring-1 lg:hidden">
             <div className="flex items-center justify-between">
               <Link
                 href="/"
                 className="-m-1.5 p-1.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="text-xl font-bold">Takeoff</span>
+                <span className="text-xl font-semibold tracking-tight">RentPilot AI</span>
               </Link>
               <button
                 type="button"
-                className="text-muted-foreground -m-2.5 rounded-md p-2.5"
+                className="text-slate-200 -m-2.5 rounded-md p-2.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <span className="sr-only">Close menu</span>
@@ -134,13 +150,13 @@ export function Header({ userMembership }: HeaderProps) {
               </button>
             </div>
             <div className="mt-6 flow-root">
-              <div className="divide-border -my-6 divide-y">
+              <div className="divide-slate-700 -my-6 divide-y">
                 <div className="space-y-2 py-6">
                   {navigation.map(item => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-foreground hover:bg-accent hover:text-accent-foreground -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
+                      className="text-slate-100 hover:bg-slate-800 hover:text-white -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.name}
@@ -150,7 +166,7 @@ export function Header({ userMembership }: HeaderProps) {
                 <div className="space-y-3 py-6">
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
+                    className="w-full justify-start border-slate-700 text-slate-100 hover:bg-slate-800"
                     onClick={() => {
                       setTheme(theme === "dark" ? "light" : "dark")
                       setMobileMenuOpen(false)
@@ -164,7 +180,11 @@ export function Header({ userMembership }: HeaderProps) {
                     {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </Button>
                   <SignedOut>
-                    <Button variant="outline" className="w-full" asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-slate-700 text-slate-100 hover:bg-slate-800"
+                      asChild
+                    >
                       <Link
                         href="/login"
                         onClick={() => setMobileMenuOpen(false)}
@@ -172,18 +192,24 @@ export function Header({ userMembership }: HeaderProps) {
                         Log in
                       </Link>
                     </Button>
-                    <Button className="w-full" asChild>
+                    <Button
+                      className="w-full bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover"
+                      asChild
+                    >
                       <Link
                         href="/signup"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        Sign up
+                        Get started
                       </Link>
                     </Button>
                   </SignedOut>
                   <SignedIn>
                     {userMembership === "pro" ? (
-                      <Button className="w-full" asChild>
+                      <Button
+                        className="w-full bg-slate-100 text-slate-900 hover:bg-white"
+                        asChild
+                      >
                         <Link
                           href="/dashboard"
                           onClick={() => setMobileMenuOpen(false)}
@@ -192,7 +218,10 @@ export function Header({ userMembership }: HeaderProps) {
                         </Link>
                       </Button>
                     ) : (
-                      <Button className="w-full gap-2" asChild>
+                      <Button
+                        className="w-full bg-slate-100 text-slate-900 hover:bg-white gap-2"
+                        asChild
+                      >
                         <Link
                           href="/#pricing"
                           onClick={() => setMobileMenuOpen(false)}
@@ -215,3 +244,5 @@ export function Header({ userMembership }: HeaderProps) {
     </>
   )
 }
+
+

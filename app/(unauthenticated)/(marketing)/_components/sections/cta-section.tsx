@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { ArrowRight, Github } from "lucide-react"
+import { ArrowRight, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { SectionWrapper } from "./section-wrapper"
 
@@ -11,23 +11,23 @@ export function CTASection() {
     <SectionWrapper>
       <div className="mx-auto max-w-2xl text-center">
         <motion.h2
-          className="text-3xl font-bold tracking-tight sm:text-4xl"
+          className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          Ready to build something amazing?
+          Ready to retire your rental agent?
         </motion.h2>
         <motion.p
-          className="mx-auto mt-6 max-w-xl text-lg leading-8"
+          className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-300"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          Stop wasting time on boilerplate. Clone this template and start
-          shipping your product today.
+          RentPilot AI automates billing, invoices, and tenant admin so you can
+          focus on growing your portfolio instead of chasing paperwork.
         </motion.p>
         <motion.div
           className="mt-10 flex items-center justify-center gap-x-6"
@@ -41,12 +41,9 @@ export function CTASection() {
             className="bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover"
             asChild
           >
-            <Link
-              href="https://github.com/mckaywrigley/mckays-app-template"
-              target="_blank"
-            >
-              <Github className="mr-2 h-4 w-4" />
-              Clone Template
+            <Link href="/signup">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Start automating
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -56,8 +53,8 @@ export function CTASection() {
             className="text-brand-primary hover:text-brand-primary-hover"
             asChild
           >
-            <Link href="#features">
-              View features <span aria-hidden="true">→</span>
+            <Link href="#pricing">
+              View pricing <span aria-hidden="true">→</span>
             </Link>
           </Button>
         </motion.div>
@@ -71,9 +68,9 @@ export function CTASection() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           {[
-            { label: "Time to First Deploy", value: "< 5 min" },
-            { label: "Production Ready", value: "100%" },
-            { label: "License", value: "MIT" }
+            { label: "Admin Time Saved", value: "10+ hrs/mo" },
+            { label: "Manual Errors Reduced", value: "90%" },
+            { label: "Properties Supported", value: "1 → 100+" }
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -82,7 +79,7 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
             >
-              <dt className="text-muted-foreground text-sm font-medium">
+              <dt className="text-slate-300 text-sm font-medium">
                 {stat.label}
               </dt>
               <dd className="from-brand-primary to-brand-secondary mt-2 bg-gradient-to-r bg-clip-text text-2xl font-bold text-transparent">
