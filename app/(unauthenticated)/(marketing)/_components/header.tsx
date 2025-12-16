@@ -165,7 +165,6 @@ export function Header({ userMembership }: HeaderProps) {
                   ))}
                 </div>
                 <div className="space-y-3 py-6">
-                  <Button
                   {mounted && (
                     <Button
                       variant="outline"
@@ -182,9 +181,7 @@ export function Header({ userMembership }: HeaderProps) {
                       )}
                       {theme === "dark" ? "Light Mode" : "Dark Mode"}
                     </Button>
-                  )}                  </Button>
-                  <SignedOut>
-                    <Button
+                  )}                    <Button
                       variant="outline"
                       className="w-full border-slate-700 text-slate-100 hover:bg-slate-800"
                       asChild
