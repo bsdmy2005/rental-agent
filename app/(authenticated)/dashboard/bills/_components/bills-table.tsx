@@ -23,7 +23,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BillActions } from "./bill-actions"
-import { FileText, DollarSign, Filter, X } from "lucide-react"
+import { FileText, DollarSign, Filter, X, ExternalLink, Settings, FileIcon, Eye } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import type { SelectExtractionRule } from "@/db/schema"
 
 interface Bill {
   id: string
@@ -37,7 +39,84 @@ interface Bill {
   billingMonth: number | null
   invoiceExtractionData: unknown
   paymentExtractionData: unknown
+  fileUrl: string
+  invoiceRule: SelectExtractionRule | null
+  paymentRule: SelectExtractionRule | null
+  legacyRule: SelectExtractionRule | null
   createdAt: Date
+}
+
+// Helper to parse period string from extracted data
+function parsePeriodFromExtractedData(
+  invoiceData: unknown,
+  paymentData: unknown
+): { billingYear: number; billingMonth: number } | null {
+  // Try to get period from invoice data
+  if (invoiceData && typeof invoiceData === "object" && "period" in invoiceData) {
+    const period = (invoiceData as { period?: string }).period
+    if (period && typeof period === "string") {
+      const parsed = parsePeriodString(period)
+      if (parsed) return parsed
+    }
+  }
+
+  // Try to get period from payment data
+  if (paymentData && typeof paymentData === "object" && "period" in paymentData) {
+    const period = (paymentData as { period?: string }).period
+    if (period && typeof period === "string") {
+      const parsed = parsePeriodString(period)
+      if (parsed) return parsed
+    }
+  }
+
+  return null
+}
+
+// Helper to parse period string
+function parsePeriodString(period: string): { billingYear: number; billingMonth: number } | null {
+  const trimmed = period.trim()
+  const monthNames = [
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december"
+  ]
+  const monthAbbrevs = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
+  const lowerPeriod = trimmed.toLowerCase()
+  
+  // Try "March 2025" or "Mar 2025" format
+  for (let i = 0; i < monthNames.length; i++) {
+    if (lowerPeriod.includes(monthNames[i]) || lowerPeriod.includes(monthAbbrevs[i])) {
+      const yearMatch = trimmed.match(/\b(20\d{2})\b/)
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1], 10)
+        if (year >= 2020 && year <= 2100) {
+          return { billingYear: year, billingMonth: i + 1 }
+        }
+      }
+    }
+  }
+
+  // Try "2025-03" or "2025/03" format
+  const yyyyMmMatch = trimmed.match(/(20\d{2})[-/](\d{1,2})/)
+  if (yyyyMmMatch) {
+    const year = parseInt(yyyyMmMatch[1], 10)
+    const month = parseInt(yyyyMmMatch[2], 10)
+    if (year >= 2020 && year <= 2100 && month >= 1 && month <= 12) {
+      return { billingYear: year, billingMonth: month }
+    }
+  }
+
+  // Try "03/2025" or "03-2025" format
+  const mmYyyyMatch = trimmed.match(/(\d{1,2})[-/](20\d{2})/)
+  if (mmYyyyMatch) {
+    const month = parseInt(mmYyyyMatch[1], 10)
+    const year = parseInt(mmYyyyMatch[2], 10)
+    if (year >= 2020 && year <= 2100 && month >= 1 && month <= 12) {
+      return { billingYear: year, billingMonth: month }
+    }
+  }
+
+  return null
 }
 
 interface BillsTableProps {
@@ -56,6 +135,7 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
 
   // Format billing period helper
   const formatBillingPeriod = (bill: Bill) => {
+    // First, try to use billingYear and billingMonth if they're set
     if (bill.billingYear && bill.billingMonth) {
       const monthNames = [
         "Jan",
@@ -73,6 +153,31 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
       ]
       return `${monthNames[bill.billingMonth - 1]} ${bill.billingYear}`
     }
+    
+    // Fallback: Parse period from extracted JSON data
+    const parsedPeriod = parsePeriodFromExtractedData(
+      bill.invoiceExtractionData,
+      bill.paymentExtractionData
+    )
+    
+    if (parsedPeriod) {
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ]
+      return `${monthNames[parsedPeriod.billingMonth - 1]} ${parsedPeriod.billingYear}`
+    }
+    
     return null
   }
 
@@ -348,30 +453,78 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                   <TableHead className="min-w-[100px]">Period</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
                   <TableHead className="min-w-[100px]">Source</TableHead>
+                  <TableHead className="min-w-[150px]">Extraction Rule</TableHead>
                   <TableHead className="min-w-[120px]">Extracted Data</TableHead>
                   <TableHead className="min-w-[120px]">Uploaded</TableHead>
-                  <TableHead className="min-w-[100px] text-right">Actions</TableHead>
+                  <TableHead className="min-w-[120px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredBills.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No bills match the selected filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredBills.map((bill) => {
                     const billingPeriod = formatBillingPeriod(bill)
+                    const rules = [
+                      bill.invoiceRule,
+                      bill.paymentRule,
+                      bill.legacyRule
+                    ].filter((r): r is SelectExtractionRule => r !== null)
+                    
+                    // Deduplicate rules by ID
+                    const uniqueRules = Array.from(
+                      new Map(rules.map(r => [r.id, r])).values()
+                    )
+                    
                     return (
                       <TableRow key={bill.id}>
                         <TableCell className="font-medium">
-                          <Link
-                            href={`/dashboard/bills/${bill.id}`}
-                            className="text-primary hover:underline"
-                          >
-                            {bill.fileName}
-                          </Link>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{bill.fileName}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {bill.fileUrl && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <a
+                                      href={bill.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="Open PDF file"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </a>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Open PDF file in new tab</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Link
+                                    href={`/dashboard/bills/${bill.id}`}
+                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="View bill details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>View bill details and extracted data</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>{bill.propertyName}</TableCell>
                         <TableCell>
@@ -406,6 +559,50 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                           <Badge variant="outline" className="text-xs">
                             {bill.source === "email" ? "Email" : "Manual"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {uniqueRules.length > 0 ? (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {uniqueRules.map((rule) => (
+                                <Tooltip key={rule.id}>
+                                  <TooltipTrigger asChild>
+                                    <Link
+                                      href={`/dashboard/rules/${rule.id}`}
+                                      className="inline-flex items-center"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                      >
+                                        <Settings className="mr-1 h-3 w-3" />
+                                        {rule.name}
+                                      </Badge>
+                                    </Link>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold">{rule.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {rule.extractForInvoice && rule.extractForPayment
+                                          ? "Invoice & Payment"
+                                          : rule.extractForInvoice
+                                            ? "Invoice"
+                                            : rule.extractForPayment
+                                              ? "Payment"
+                                              : "Legacy"}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground capitalize">
+                                        {rule.billType} • {rule.channel === "email_forward" ? "Email" : rule.channel === "agentic" ? "Agentic" : "Manual"}
+                                      </p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">No rule</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 flex-wrap">

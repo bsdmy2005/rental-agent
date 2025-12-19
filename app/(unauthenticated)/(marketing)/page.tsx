@@ -9,7 +9,7 @@ import { VideoSection } from "./_components/sections/video-section"
 
 export default function MarketingPage() {
   return (
-    <main className="min-h-screen bg-[#EFF6FF] dark:bg-[#1F2937]">
+    <main className="min-h-screen bg-white dark:bg-[#1F2937]">
       <HeroSection />
       <CompaniesSection />
       <VideoSection />

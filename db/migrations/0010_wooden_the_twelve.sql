@@ -1,0 +1,1 @@
+ALTER TABLE "billing_schedules" ADD COLUMN "next_expected_date" timestamp;

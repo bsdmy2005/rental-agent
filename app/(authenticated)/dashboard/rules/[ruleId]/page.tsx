@@ -75,7 +75,11 @@ export default async function RuleDetailPage({
                 {rule.billType}
               </Badge>
               <Badge variant="outline" className="text-xs">
-                {rule.channel === "email_forward" ? "Email Forward" : "Manual Upload"}
+                {rule.channel === "email_forward"
+                  ? "Email Forward"
+                  : rule.channel === "agentic"
+                    ? "Agentic"
+                    : "Manual Upload"}
               </Badge>
             </div>
           </div>

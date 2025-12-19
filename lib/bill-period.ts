@@ -18,11 +18,18 @@ export function inferBillingPeriod(
 ): { billingYear: number; billingMonth: number } | null {
   // Try to extract from period field (most common)
   const period = invoiceData?.period || paymentData?.period
-  if (period) {
+  console.log(`[Bill Period] Checking period field: "${period}" (type: ${typeof period})`)
+  if (period && typeof period === "string" && period.trim() !== "") {
+    console.log(`[Bill Period] Attempting to parse period string: "${period}"`)
     const parsed = parsePeriodString(period)
     if (parsed) {
+      console.log(`[Bill Period] ✓ Successfully parsed period: ${parsed.billingYear}-${parsed.billingMonth}`)
       return parsed
+    } else {
+      console.log(`[Bill Period] ✗ Failed to parse period string: "${period}"`)
     }
+  } else {
+    console.log(`[Bill Period] No valid period field found (invoice: ${invoiceData?.period}, payment: ${paymentData?.period})`)
   }
 
   // Try to extract from dueDate in payment data

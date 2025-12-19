@@ -17,7 +17,7 @@ export function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          Ready to retire your rental agent?
+          Simplify, Optimize, Leverage AI
         </motion.h2>
         <motion.p
           className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600 dark:text-gray-300"
@@ -26,8 +26,8 @@ export function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          RentPilot AI automates billing, invoices, and tenant admin so you can
-          focus on growing your portfolio instead of chasing paperwork.
+          Transform your rental investment management with AI-driven automation. From day-to-day operations 
+          to tax filing and portfolio optimization—let intelligent agents handle it all while you focus on growth.
         </motion.p>
         <motion.div
           className="mt-10 flex items-center justify-center gap-x-6"

@@ -7,53 +7,86 @@ import {
   Receipt,
   CreditCard,
   Zap,
-  Brain
+  Brain,
+  TrendingUp,
+  Calculator,
+  AlertCircle,
+  BarChart3,
+  Shield,
+  Sparkles
 } from "lucide-react"
 import { SectionWrapper } from "./section-wrapper"
 
 const features = [
   {
-    name: "AI-Powered PDF Processing",
+    name: "AI-Powered Document Processing",
     description:
-      "Automatically extract data from municipality bills, levy statements, and utility invoices using OpenAI GPT-4 Vision.",
-    icon: Brain
+      "Automatically extract data from bills, receipts, and invoices using advanced AI. Process municipality bills, levy statements, and utility invoices with intelligent recognition.",
+    icon: Brain,
+    status: "available"
   },
   {
-    name: "Email Integration",
+    name: "Automated Invoice & Payment Management",
     description:
-      "Receive bills via email forwarding. Our system automatically processes attachments and extracts relevant information.",
-    icon: Mail
+      "Generate tenant invoices automatically and execute payments to municipalities and body corporates. Full payment tracking and reconciliation.",
+    icon: CreditCard,
+    status: "available"
   },
   {
-    name: "Automated Invoice Generation",
+    name: "Intelligent Expense Tracking",
     description:
-      "Generate tenant invoices automatically from processed bills. Include rental amounts, water, electricity, and levies.",
-    icon: Receipt
+      "Automatically categorize expenses, track tax-deductible items, and maintain organized records for seamless tax filing. Coming soon: Direct tax authority integration.",
+    icon: Calculator,
+    status: "coming-soon"
   },
   {
-    name: "Payment Automation",
+    name: "AI-Driven Late Payment Follow-Ups",
     description:
-      "Execute EFT payments to municipalities and body corporates on behalf of property owners. Track all payments.",
-    icon: CreditCard
+      "Intelligent agents automatically follow up on late payments, send reminders, and track delinquencies. Reduce manual work and improve collection rates.",
+    icon: AlertCircle,
+    status: "coming-soon"
   },
   {
-    name: "Payment Reconciliation",
+    name: "Portfolio Performance Analytics",
     description:
-      "Automatically reconcile tenant payments with bank statements. Match transactions and track outstanding balances.",
-    icon: FileText
+      "Track ROI, NOI, cash flow, and other key metrics across your entire portfolio. AI-powered insights help optimize your investment strategy.",
+    icon: TrendingUp,
+    status: "coming-soon"
   },
   {
-    name: "Smart Extraction Rules",
+    name: "Cost Optimization Intelligence",
     description:
-      "Configure custom extraction rules for different bill types. Train the system to recognize your specific invoice formats.",
-    icon: Zap
+      "AI analyzes your expenses, identifies optimization opportunities, and provides recommendations to reduce costs and maximize profitability.",
+    icon: BarChart3,
+    status: "coming-soon"
+  },
+  {
+    name: "Automated Tax Filing",
+    description:
+      "Generate tax reports automatically, pre-fill tax forms, and submit directly to tax authorities. Never miss a deadline with AI-powered compliance monitoring.",
+    icon: Shield,
+    status: "coming-soon"
+  },
+  {
+    name: "Smart Property Discovery",
+    description:
+      "AI agents actively search for investment opportunities matching your criteria. Analyze properties, calculate returns, and streamline acquisition workflows.",
+    icon: Sparkles,
+    status: "coming-soon"
+  },
+  {
+    name: "Email & Document Integration",
+    description:
+      "Receive bills via email forwarding. Our system automatically processes attachments, extracts information, and organizes documents intelligently.",
+    icon: Mail,
+    status: "available"
   }
 ]
 
 export function FeaturesSection() {
   return (
     <SectionWrapper className="relative" id="features">
-      <div className="bg-[radial-gradient(45%_45%_at_50%_50%,theme(colors.brand-primary/20),transparent)] absolute inset-0 -z-10 opacity-20 dark:opacity-40" />
+      <div className="bg-[radial-gradient(45%_45%_at_50%_50%,theme(colors.brand-primary/20),transparent)] absolute inset-0 -z-10 opacity-0 dark:opacity-40" />
 
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
@@ -83,8 +116,8 @@ export function FeaturesSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Replace manual processes with intelligent automation. Save time, reduce errors, and
-            focus on growing your property portfolio.
+            From day-to-day operations to portfolio optimization—AI agents handle everything. 
+            Simplify workflows, optimize costs, and leverage intelligent automation to grow your rental investment portfolio.
           </motion.p>
         </div>
 
@@ -118,7 +151,14 @@ export function FeaturesSection() {
                 </motion.div>
 
                 <dt className="text-gray-900 dark:text-white mt-4 flex items-center gap-x-3 text-base leading-7 font-semibold">
-                  {feature.name}
+                  <span className="flex items-center gap-2">
+                    {feature.name}
+                    {feature.status === "coming-soon" && (
+                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                        Coming Soon
+                      </span>
+                    )}
+                  </span>
                   <motion.div
                     className="from-[#1E40AF]/50 h-px flex-1 bg-gradient-to-r to-transparent dark:from-[#3B82F6]/50"
                     initial={{ scaleX: 0 }}

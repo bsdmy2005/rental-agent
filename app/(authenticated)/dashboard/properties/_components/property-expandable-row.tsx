@@ -5,15 +5,21 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2, X, Check, ChevronDown, ChevronRight, Users } from "lucide-react"
+import { Pencil, Trash2, X, Check, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, ExternalLink } from "lucide-react"
 import { PropertyWithDetails } from "@/queries/properties-queries"
 import { SelectTenant } from "@/db/schema"
 import { updatePropertyAction, deletePropertyAction } from "@/actions/properties-actions"
 import { updateTenantAction, deleteTenantAction } from "@/actions/tenants-actions"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+
+interface PropertyWithLateCount extends PropertyWithDetails {
+  lateScheduleCount?: number
+}
 
 interface PropertyExpandableRowProps {
-  property: PropertyWithDetails
+  property: PropertyWithLateCount
 }
 
 interface TenantRowProps {
@@ -403,12 +409,24 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
                 <ChevronRight className="h-4 w-4" />
               )}
             </button>
-            <span className="font-medium">{property.name}</span>
+            <Link
+              href={`/dashboard/properties/${property.id}`}
+              className="font-medium hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {property.name}
+            </Link>
             {property.tenants.length > 0 && (
               <span className="text-muted-foreground text-xs flex items-center gap-1">
                 <Users className="h-3 w-3" />
                 {property.tenants.length}
               </span>
+            )}
+            {property.lateScheduleCount !== undefined && property.lateScheduleCount > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs">
+                <AlertCircle className="mr-1 h-3 w-3" />
+                {property.lateScheduleCount} late schedule{property.lateScheduleCount !== 1 ? "s" : ""}
+              </Badge>
             )}
           </div>
         </td>
@@ -421,9 +439,32 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
             <Button
               variant="ghost"
               size="icon"
+              asChild
+              className="h-8 w-8"
+              title="View Property Details"
+            >
+              <Link href={`/dashboard/properties/${property.id}`}>
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              className="h-8 w-8"
+              title="Manage Billing Schedules"
+            >
+              <Link href={`/dashboard/properties/${property.id}/billing-setup`}>
+                <Calendar className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsEditing(true)}
               disabled={loading}
               className="h-8 w-8"
+              title="Edit Property"
             >
               <Pencil className="h-4 w-4" />
             </Button>
@@ -433,6 +474,7 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
               onClick={handleDelete}
               disabled={loading}
               className="h-8 w-8 text-destructive hover:text-destructive"
+              title="Delete Property"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

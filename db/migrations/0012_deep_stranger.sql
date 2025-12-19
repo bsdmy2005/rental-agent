@@ -1,0 +1,1 @@
+ALTER TABLE "extraction_rules" ADD COLUMN "email_processing_instruction" text;

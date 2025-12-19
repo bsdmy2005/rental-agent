@@ -20,7 +20,7 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          Automate Your
+          AI-Driven
           <motion.span
             className="from-[#1E40AF] to-[#3B82F6] block bg-gradient-to-r bg-clip-text pb-2 leading-tight text-transparent dark:from-[#3B82F6] dark:to-[#60A5FA]"
             animate={{
@@ -35,7 +35,7 @@ export function HeroSection() {
               backgroundSize: "200% 200%"
             }}
           >
-            Rental Property Management
+            Rental Investment Management
           </motion.span>
         </motion.h1>
         <motion.p
@@ -44,9 +44,31 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          Replace your rental agent with AI-powered automation. Process bills, generate invoices,
-          execute payments, and manage tenants - all in one platform.
+          Simplify, optimize, and leverage AI to streamline rental investment management end-to-end. 
+          From day-to-day operations to cost optimization, tax filing, late payment follow-ups, and 
+          delinquency management—all driven by intelligent AI agents.
         </motion.p>
+        <motion.div
+          className="mx-auto mt-6 max-w-2xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+        >
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-semibold text-gray-600 dark:text-gray-300">
+            <span className="flex items-center gap-2">
+              <span className="text-brand-primary">✓</span>
+              Simplify
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-brand-primary">✓</span>
+              Optimize
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-brand-primary">✓</span>
+              Leverage AI
+            </span>
+          </div>
+        </motion.div>
         <motion.div
           className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6"
           initial={{ opacity: 0, y: 20 }}
@@ -91,7 +113,7 @@ export function HeroSection() {
               variant="outline"
               size="lg"
               asChild
-              className="group w-full border-2 border-white/20 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-100 dark:hover:bg-gray-700/50 sm:w-auto"
+              className="group w-full border-2 border-gray-300 bg-white text-gray-900 backdrop-blur-sm hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-100 dark:hover:bg-gray-700/50 sm:w-auto"
             >
               <Link href="/login">
                 Sign In
@@ -107,7 +129,7 @@ export function HeroSection() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.6 }}
         >
-          {["AI-Powered Processing", "Automated Invoicing", "Payment Automation"].map(
+          {["End-to-End Automation", "AI-Powered Intelligence", "Portfolio Optimization"].map(
             (text, i) => (
               <motion.div
                 key={text}

@@ -3,8 +3,12 @@
 import { PropertyWithDetails } from "@/queries/properties-queries"
 import { PropertyExpandableRow } from "./property-expandable-row"
 
+interface PropertyWithLateCount extends PropertyWithDetails {
+  lateScheduleCount?: number
+}
+
 interface PropertiesListClientProps {
-  properties: PropertyWithDetails[]
+  properties: PropertyWithLateCount[]
 }
 
 export function PropertiesListClient({ properties }: PropertiesListClientProps) {

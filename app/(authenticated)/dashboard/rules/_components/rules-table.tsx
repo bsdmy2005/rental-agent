@@ -3,10 +3,13 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getExtractionRulesByUserProfileIdQuery } from "@/queries/extraction-rules-queries"
-import { getPropertyByIdQuery } from "@/queries/properties-queries"
+import { getPropertyByIdQuery, getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
+import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import Link from "next/link"
-import { FileText, DollarSign, ArrowRight, Settings } from "lucide-react"
+import { FileText, DollarSign, ArrowRight, Settings, Sparkles } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -18,6 +21,30 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RuleActions } from "./rule-actions"
+import { isRuleReferencedBySchedulesQuery } from "@/queries/extraction-rules-queries"
+
+async function RuleActionsWrapper({
+  ruleId,
+  ruleName,
+  userProfileId,
+  properties
+}: {
+  ruleId: string
+  ruleName: string
+  userProfileId: string
+  properties: Array<{ id: string; name: string }>
+}) {
+  const isReferenced = await isRuleReferencedBySchedulesQuery(ruleId)
+  return (
+    <RuleActions
+      ruleId={ruleId}
+      ruleName={ruleName}
+      isReferenced={isReferenced}
+      userProfileId={userProfileId}
+      properties={properties}
+    />
+  )
+}
 
 export async function RulesTable() {
   const user = await currentUser()
@@ -60,12 +87,28 @@ export async function RulesTable() {
 
   // Fetch property names
   const propertyIds = Array.from(rulesByProperty.keys())
-  const properties = await Promise.all(
+  const propertiesForMap = await Promise.all(
     propertyIds.map((id) => getPropertyByIdQuery(id))
   )
   const propertyMap = new Map(
-    properties.map((p, i) => [propertyIds[i], p?.name || "Unknown Property"])
+    propertiesForMap.map((p, i) => [propertyIds[i], p?.name || "Unknown Property"])
   )
+
+  // Fetch all properties for the duplicate dialog
+  let allProperties: Array<{ id: string; name: string }> = []
+  if (userProfile.userType === "landlord") {
+    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
+    if (landlord) {
+      const landlordProperties = await getPropertiesByLandlordIdQuery(landlord.id)
+      allProperties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
+    }
+  } else if (userProfile.userType === "rental_agent") {
+    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
+    if (rentalAgent) {
+      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
+      allProperties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -120,9 +163,28 @@ export async function RulesTable() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {rule.channel === "email_forward" ? "Email Forward" : "Manual Upload"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {rule.channel === "email_forward"
+                              ? "Email Forward"
+                              : rule.channel === "agentic"
+                                ? "Agentic"
+                                : "Manual Upload"}
+                          </Badge>
+                          {rule.channel === "email_forward" && rule.emailProcessingInstruction && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="secondary" className="text-xs cursor-help">
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  AI Processing
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>This rule has custom email processing instructions for intelligent link handling.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -133,7 +195,12 @@ export async function RulesTable() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <RuleActions ruleId={rule.id} ruleName={rule.name} />
+                        <RuleActionsWrapper
+                          ruleId={rule.id}
+                          ruleName={rule.name}
+                          userProfileId={userProfile.id}
+                          properties={allProperties}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

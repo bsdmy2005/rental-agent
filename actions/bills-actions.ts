@@ -220,11 +220,26 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
       let inferredPeriod: { billingYear: number; billingMonth: number } | null = null
       if (!updatedBill.billingYear || !updatedBill.billingMonth) {
         const { inferBillingPeriod } = await import("@/lib/bill-period")
+        
+        // Log period extraction for debugging
+        console.log("[Bill Processing] Attempting to infer billing period...")
+        console.log("[Bill Processing] Invoice data period:", invoiceData?.period)
+        console.log("[Bill Processing] Payment data period:", paymentData?.period)
+        console.log("[Bill Processing] File name:", updatedBill.fileName)
+        
         inferredPeriod = inferBillingPeriod(
           invoiceData || null,
           paymentData || null,
           updatedBill.fileName
         )
+        
+        if (inferredPeriod) {
+          console.log(`[Bill Processing] ✓ Inferred billing period: ${inferredPeriod.billingYear}-${inferredPeriod.billingMonth}`)
+        } else {
+          console.log("[Bill Processing] ⚠ Could not infer billing period from extracted data")
+        }
+      } else {
+        console.log(`[Bill Processing] Billing period already set: ${updatedBill.billingYear}-${updatedBill.billingMonth}`)
       }
 
       // Update bill with extracted data and track which rules were used
@@ -239,6 +254,9 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
       if (inferredPeriod && (!updatedBill.billingYear || !updatedBill.billingMonth)) {
         updateData.billingYear = inferredPeriod.billingYear
         updateData.billingMonth = inferredPeriod.billingMonth
+        console.log(`[Bill Processing] ✓ Setting billing period: ${updateData.billingYear}-${updateData.billingMonth}`)
+      } else if (!inferredPeriod && (!updatedBill.billingYear || !updatedBill.billingMonth)) {
+        console.log("[Bill Processing] ⚠ No billing period inferred and none set by user")
       }
 
       if (invoiceData) {
@@ -272,6 +290,35 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
 
       if (!processedBill) {
         return { isSuccess: false, message: "Failed to update bill after processing" }
+      }
+
+      // NEW: Check for matching billing schedule and link bill (non-breaking)
+      // This integration is optional - bills work fine without schedules
+      try {
+        if (processedBill.billingYear && processedBill.billingMonth) {
+          const { findMatchingScheduleForBill, markBillAsFulfillingSchedule } = await import(
+            "@/lib/billing-schedule-compliance"
+          )
+
+          const matchingSchedule = await findMatchingScheduleForBill(
+            processedBill.propertyId,
+            processedBill.billType,
+            processedBill.billingYear,
+            processedBill.billingMonth
+          )
+
+          if (matchingSchedule) {
+            await markBillAsFulfillingSchedule(
+              processedBill.id,
+              matchingSchedule.id,
+              processedBill.billingYear,
+              processedBill.billingMonth
+            )
+          }
+        }
+      } catch (scheduleError) {
+        // Log error but don't fail bill processing
+        console.error("Schedule integration error (non-critical):", scheduleError)
       }
 
       // Create variable costs from invoice extraction data (if property is postpaid)

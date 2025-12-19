@@ -68,6 +68,7 @@ export function EditRuleBuilderWrapper({
     channel: rule.channel,
     emailFilterFrom: (rule.emailFilter as { from?: string } | null)?.from || "",
     emailFilterSubject: (rule.emailFilter as { subject?: string } | null)?.subject || "",
+    emailProcessingInstruction: rule.emailProcessingInstruction || "",
     invoiceFieldMappings: rule.invoiceExtractionConfig
       ? convertConfigToMappings(rule.invoiceExtractionConfig as Record<string, unknown>)
       : [],
