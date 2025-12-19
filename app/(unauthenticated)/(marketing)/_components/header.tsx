@@ -30,7 +30,7 @@ export function Header({ userMembership }: HeaderProps) {
 
   return (
     <>
-      <header className="bg-gradient-to-r from-[#1F2937] via-[#374151] to-[#1F2937]/95 sticky top-0 z-50 w-full border-b border-gray-700/50 text-white backdrop-blur dark:from-[#111827] dark:via-[#1F2937] dark:to-[#111827]/95">
+      <header className="bg-white sticky top-0 z-50 w-full border-b border-gray-200 text-gray-900 backdrop-blur-sm dark:bg-gradient-to-r dark:from-[#111827] dark:via-[#1F2937] dark:to-[#111827]/95 dark:border-gray-700/50 dark:text-white">
         <nav
           className="mx-auto flex max-w-7xl items-center justify-between p-4 lg:px-8"
           aria-label="Global"
@@ -46,7 +46,7 @@ export function Header({ userMembership }: HeaderProps) {
           <div className="flex lg:hidden">
             <button
               type="button"
-              className="text-gray-200 dark:text-gray-300 -m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
+              className="text-gray-700 dark:text-gray-300 -m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <span className="sr-only">Open main menu</span>
@@ -58,12 +58,12 @@ export function Header({ userMembership }: HeaderProps) {
             </button>
           </div>
           <div className="hidden lg:flex lg:items-center lg:gap-x-8">
-            <div className="bg-gray-700/40 ring-gray-600/80 flex items-center gap-x-4 rounded-full px-4 py-1.5 text-sm font-medium ring-1 dark:bg-gray-800/40 dark:ring-gray-700/80">
+            <div className="bg-gray-100 ring-gray-200 flex items-center gap-x-4 rounded-full px-4 py-1.5 text-sm font-medium ring-1 dark:bg-gray-800/40 dark:ring-gray-700/80">
               {navigation.map(item => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="text-gray-200 hover:text-white transition-colors dark:text-gray-300 dark:hover:text-white"
+                  className="text-gray-700 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:text-white"
                 >
                   {item.name}
                 </Link>
@@ -75,7 +75,7 @@ export function Header({ userMembership }: HeaderProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="text-gray-200 hover:bg-gray-800/70 dark:text-gray-300 dark:hover:bg-gray-700/70"
+              className="text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/70"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
             >
@@ -90,7 +90,7 @@ export function Header({ userMembership }: HeaderProps) {
               <Button
                 variant="outline"
                 asChild
-                className="border-gray-700 bg-transparent text-gray-100 hover:bg-gray-800/60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700/60"
+                className="border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700/60"
               >
                 <Link href="/login">Log in</Link>
               </Button>
@@ -102,14 +102,14 @@ export function Header({ userMembership }: HeaderProps) {
               </Button>
             </SignedOut>
             <SignedIn>
-              {userMembership === "pro" ? (
-                <Button className="bg-white text-gray-900 hover:bg-gray-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white" asChild>
-                  <Link href="/dashboard">Dashboard</Link>
-                </Button>
-              ) : (
+              <Button className="bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white" asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              {userMembership !== "pro" && (
                 <Button
                   asChild
-                  className="bg-white text-gray-900 hover:bg-gray-50 gap-2 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+                  variant="outline"
+                  className="border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 gap-2 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700/60"
                 >
                   <Link href="/#pricing">
                     <Sparkles className="h-4 w-4" />
@@ -133,7 +133,7 @@ export function Header({ userMembership }: HeaderProps) {
           />
 
           {/* Menu panel */}
-          <div className="bg-[#1F2937] sm:ring-border fixed inset-y-0 right-0 z-[70] w-full overflow-y-auto px-6 py-6 shadow-2xl sm:max-w-sm sm:ring-1 dark:bg-gray-900 lg:hidden">
+          <div className="bg-white sm:ring-border fixed inset-y-0 right-0 z-[70] w-full overflow-y-auto px-6 py-6 shadow-2xl sm:max-w-sm sm:ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700 lg:hidden">
             <div className="flex items-center justify-between">
               <Link
                 href="/"
@@ -144,7 +144,7 @@ export function Header({ userMembership }: HeaderProps) {
               </Link>
               <button
                 type="button"
-                className="text-gray-200 dark:text-gray-300 -m-2.5 rounded-md p-2.5"
+                className="text-gray-700 dark:text-gray-300 -m-2.5 rounded-md p-2.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <span className="sr-only">Close menu</span>
@@ -158,7 +158,7 @@ export function Header({ userMembership }: HeaderProps) {
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-gray-100 hover:bg-gray-800 hover:text-white dark:text-gray-200 dark:hover:bg-gray-700 -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
+                      className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-700 -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.name}
@@ -169,7 +169,7 @@ export function Header({ userMembership }: HeaderProps) {
                   {mounted && (
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-gray-700 text-gray-100 hover:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="w-full justify-start border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                       onClick={() => {
                         setTheme(theme === "dark" ? "light" : "dark")
                         setMobileMenuOpen(false)
@@ -186,7 +186,7 @@ export function Header({ userMembership }: HeaderProps) {
                   <SignedOut>
                     <Button
                       variant="outline"
-                      className="w-full border-gray-700 text-gray-100 hover:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                       asChild
                     >
                       <Link
@@ -209,19 +209,18 @@ export function Header({ userMembership }: HeaderProps) {
                     </Button>
                   </SignedOut>
                   <SignedIn>
-                    {userMembership === "pro" ? (
-                      <Button
-                        className="w-full bg-white text-gray-900 hover:bg-gray-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
-                        asChild
+                    <Button
+                      className="w-full bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+                      asChild
+                    >
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
                       >
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Dashboard
-                        </Link>
-                      </Button>
-                    ) : (
+                        Dashboard
+                      </Link>
+                    </Button>
+                    {userMembership !== "pro" && (
                       <Button
                         className="w-full bg-slate-100 text-slate-900 hover:bg-white gap-2"
                         asChild

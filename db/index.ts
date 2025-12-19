@@ -12,7 +12,9 @@ import {
   billsTable,
   extractionRulesTable,
   ruleSamplesTable,
-  emailProcessorsTable
+  emailProcessorsTable,
+  billingSchedulesTable,
+  billingScheduleStatusTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -34,7 +36,9 @@ const dbSchema = {
   bills: billsTable,
   extractionRules: extractionRulesTable,
   ruleSamples: ruleSamplesTable,
-  emailProcessors: emailProcessorsTable
+  emailProcessors: emailProcessorsTable,
+  billingSchedules: billingSchedulesTable,
+  billingScheduleStatus: billingScheduleStatusTable
   // relations
 }
 

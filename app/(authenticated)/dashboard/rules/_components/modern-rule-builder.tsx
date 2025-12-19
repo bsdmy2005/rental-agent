@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { createExtractionRuleAction, updateExtractionRuleAction } from "@/actions/extraction-rules-actions"
 import { toast } from "sonner"
 import { FieldMappingBuilder, type FieldMapping } from "./field-mapping-builder"
-import { Info, CheckCircle2, FileText, Settings, Mail } from "lucide-react"
+import { Info, CheckCircle2, FileText, Settings, Mail, Receipt, CreditCard } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 interface ModernRuleBuilderProps {
@@ -35,6 +35,7 @@ interface ModernRuleBuilderProps {
     channel: string
     emailFilterFrom: string
     emailFilterSubject: string
+    emailProcessingInstruction: string
     invoiceFieldMappings: FieldMapping[]
     paymentFieldMappings: FieldMapping[]
     invoiceInstruction: string
@@ -62,6 +63,7 @@ export function ModernRuleBuilder({
       channel: "",
       emailFilterFrom: "",
       emailFilterSubject: "",
+      emailProcessingInstruction: "",
       invoiceFieldMappings: [] as FieldMapping[],
       paymentFieldMappings: [] as FieldMapping[],
       invoiceInstruction: "",
@@ -69,7 +71,7 @@ export function ModernRuleBuilder({
     }
   )
 
-  // Reset to step 3 if channel changes and we're on step 4
+  // Reset to step 3 if channel changes and we're on step 4 (email forward only)
   useEffect(() => {
     if (currentStep === 4 && formData.channel !== "email_forward") {
       setCurrentStep(3)
@@ -252,12 +254,13 @@ export function ModernRuleBuilder({
         extractForInvoice: formData.extractForInvoice,
         extractForPayment: formData.extractForPayment,
         billType: formData.billType as "municipality" | "levy" | "utility" | "other",
-        channel: formData.channel as "email_forward" | "manual_upload",
+        channel: formData.channel as "email_forward" | "manual_upload" | "agentic",
         emailFilter: emailFilter as Record<string, unknown> | undefined,
         invoiceExtractionConfig: invoiceExtractionConfig,
         paymentExtractionConfig: paymentExtractionConfig,
         invoiceInstruction: formData.invoiceInstruction || undefined,
-        paymentInstruction: formData.paymentInstruction || undefined
+        paymentInstruction: formData.paymentInstruction || undefined,
+        emailProcessingInstruction: formData.emailProcessingInstruction || undefined
       }
 
       const result = initialRule
@@ -490,11 +493,24 @@ export function ModernRuleBuilder({
                 <SelectContent>
                   <SelectItem value="email_forward">Email Forward (automatic)</SelectItem>
                   <SelectItem value="manual_upload">Manual Upload (you upload PDFs)</SelectItem>
+                  <SelectItem value="agentic">Agentic (automated bot)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">
                 Choose how bills will be received. Email forwarding allows automatic processing when bills arrive via email.
+                Agentic mode uses automated bots to log into accounts and download documents (coming soon).
               </p>
+              {formData.channel === "agentic" && (
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/20">
+                  <p className="text-yellow-900 text-sm font-medium dark:text-yellow-200">
+                    Agentic Mode (Coming Soon)
+                  </p>
+                  <p className="text-yellow-800 text-xs mt-1 dark:text-yellow-300">
+                    This feature will allow automated bots to log into accounts, download bills, and process them automatically.
+                    Configuration options for agentic workflows will be available in a future update.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">
@@ -621,7 +637,16 @@ export function ModernRuleBuilder({
           </CardHeader>
           <CardContent className="space-y-8">
             {formData.extractForInvoice && (
-              <div className="space-y-4">
+              <div className="space-y-4 rounded-lg border-2 border-green-500/50 bg-green-50/30 p-6 dark:border-green-500/30 dark:bg-green-950/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Receipt className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <h3 className="text-lg font-semibold text-green-900 dark:text-green-100">
+                    Invoice Extraction
+                  </h3>
+                  <Badge className="bg-green-600 text-white dark:bg-green-700">
+                    Tenant Charges
+                  </Badge>
+                </div>
                 <div>
                   <Label htmlFor="invoice-instruction" className="mb-2">
                     Custom Extraction Instructions (Optional)
@@ -631,7 +656,7 @@ export function ModernRuleBuilder({
                     value={formData.invoiceInstruction}
                     onChange={(e) => setFormData({ ...formData, invoiceInstruction: e.target.value })}
                     placeholder="Provide specific instructions for extracting invoice data. For example: 'Extract water charges only if they exceed R500. Ignore any sewerage charges. Look for charges in the 'Charges' section.'"
-                    className="min-h-[100px]"
+                    className="min-h-[100px] border-green-300 dark:border-green-800"
                   />
                   <p className="text-sm text-muted-foreground mt-1">
                     Add custom context to improve extraction accuracy. If left empty, default instructions will be used.
@@ -649,7 +674,16 @@ export function ModernRuleBuilder({
             )}
 
             {formData.extractForPayment && (
-              <div className="space-y-4">
+              <div className="space-y-4 rounded-lg border-2 border-purple-500/50 bg-purple-50/30 p-6 dark:border-purple-500/30 dark:bg-purple-950/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+                    Payment Extraction
+                  </h3>
+                  <Badge className="bg-purple-600 text-white dark:bg-purple-700">
+                    Landlord Payables
+                  </Badge>
+                </div>
                 <div>
                   <Label htmlFor="payment-instruction" className="mb-2">
                     Custom Extraction Instructions (Optional)
@@ -659,7 +693,7 @@ export function ModernRuleBuilder({
                     value={formData.paymentInstruction}
                     onChange={(e) => setFormData({ ...formData, paymentInstruction: e.target.value })}
                     placeholder="Provide specific instructions for extracting payment data. For example: 'Extract only levies from the body corporate. Look for beneficiary account numbers starting with '62'. Include payment references from the 'Payment Details' section.'"
-                    className="min-h-[100px]"
+                    className="min-h-[100px] border-purple-300 dark:border-purple-800"
                   />
                   <p className="text-sm text-muted-foreground mt-1">
                     Add custom context to improve extraction accuracy. If left empty, default instructions will be used.
@@ -736,10 +770,26 @@ export function ModernRuleBuilder({
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="emailProcessingInstruction" className="text-sm font-medium">
+                Email Processing Instructions (Optional)
+              </Label>
+              <Textarea
+                id="emailProcessingInstruction"
+                value={formData.emailProcessingInstruction}
+                onChange={(e) => setFormData({ ...formData, emailProcessingInstruction: e.target.value })}
+                placeholder="Example: 'If multiple files are found, select the one with 'statement' or 'invoice' in the filename. Download from links that contain 'bills' in the URL path.'"
+                className="min-h-[100px]"
+              />
+              <p className="text-muted-foreground text-xs">
+                Provide custom instructions for AI to guide email processing decisions. This helps when documents are embedded as links rather than attachments, or when multiple files exist. Leave empty to use default behavior.
+              </p>
+            </div>
+
             <div className="rounded-md bg-muted p-4">
               <p className="text-muted-foreground text-xs">
                 <strong>Tip:</strong> Email filters help ensure bills are processed by the correct rule. If you receive
-                bills from multiple sources, use these filters to route them automatically.
+                bills from multiple sources, use these filters to route them automatically. Email processing instructions help the AI intelligently handle documents embedded as links or select relevant files when multiple options exist.
               </p>
             </div>
 

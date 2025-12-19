@@ -101,7 +101,7 @@ export function RuleBuilder({ userProfileId, properties, onSuccess }: RuleBuilde
         extractForInvoice: formData.extractForInvoice,
         extractForPayment: formData.extractForPayment,
         billType: formData.billType as "municipality" | "levy" | "utility" | "other",
-        channel: formData.channel as "email_forward" | "manual_upload",
+        channel: formData.channel as "email_forward" | "manual_upload" | "agentic",
         emailFilter: emailFilter as Record<string, unknown> | undefined,
         invoiceExtractionConfig: invoiceExtractionConfig,
         paymentExtractionConfig: paymentExtractionConfig,
@@ -240,9 +240,21 @@ export function RuleBuilder({ userProfileId, properties, onSuccess }: RuleBuilde
           <SelectContent>
             <SelectItem value="email_forward">Email Forward</SelectItem>
             <SelectItem value="manual_upload">Manual Upload</SelectItem>
+            <SelectItem value="agentic">Agentic (automated bot)</SelectItem>
           </SelectContent>
         </Select>
       </div>
+      {formData.channel === "agentic" && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/20">
+          <p className="text-yellow-900 text-sm font-medium dark:text-yellow-200">
+            Agentic Mode (Coming Soon)
+          </p>
+          <p className="text-yellow-800 text-xs mt-1 dark:text-yellow-300">
+            This feature will allow automated bots to log into accounts, download bills, and process them automatically.
+            Configuration options for agentic workflows will be available in a future update.
+          </p>
+        </div>
+      )}
       {formData.channel === "email_forward" && (
         <>
           <div>

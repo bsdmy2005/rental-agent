@@ -106,23 +106,6 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-base font-medium">
-              Property Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="name"
-              required
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="Auto-generated from address or enter manually"
-              className="h-11"
-            />
-            <p className="text-muted-foreground text-xs">
-              Name will be auto-generated from address fields, but you can edit it
-            </p>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="streetAddress" className="text-base font-medium">
               Street Address <span className="text-destructive">*</span>
             </Label>
@@ -224,6 +207,23 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
             />
             <p className="text-muted-foreground text-xs">
               Optional: Specify the type of property
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-base font-medium">
+              Property Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="name"
+              required
+              value={formData.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Auto-generated from address or enter manually"
+              className="h-11"
+            />
+            <p className="text-muted-foreground text-xs">
+              Name will be auto-generated from address fields, but you can edit it
             </p>
           </div>
 

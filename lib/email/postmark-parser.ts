@@ -35,16 +35,21 @@ export interface ParsedAttachment {
 }
 
 /**
- * Parse Postmark webhook payload and extract PDF attachments
+ * Parse Postmark webhook payload and extract PDF attachments and links
  */
-export function parsePostmarkWebhook(payload: PostmarkWebhookPayload): {
+export async function parsePostmarkWebhook(
+  payload: PostmarkWebhookPayload,
+  emailProcessingInstruction?: string
+): Promise<{
   messageId: string
   from: string
   to: string
   subject?: string
   receivedAt: Date
   pdfAttachments: ParsedAttachment[]
-} {
+  pdfLinks: string[]
+  pdfLinksWithLabels?: Array<{ url: string; label?: string }>
+}> {
   console.log("[Email Parser] Parsing Postmark webhook payload...")
   const pdfAttachments: ParsedAttachment[] = []
 
@@ -111,6 +116,61 @@ export function parsePostmarkWebhook(payload: PostmarkWebhookPayload): {
     }
   } else {
     console.log("[Email Parser] No attachments found in email")
+  }
+
+  // Always try to extract links from email body (even if attachments exist)
+  // This handles cases where documents are embedded as links
+  let pdfLinks: Array<{ url: string; label?: string }> = []
+  console.log("[Email Parser] Extracting links from email body...")
+  try {
+    const { extractLinksFromEmail } = await import("./link-extractor")
+    
+    // Extract links from HTML body
+    if (payload.HtmlBody) {
+      const htmlLinks = extractLinksFromEmail(payload.HtmlBody, true)
+      pdfLinks.push(...htmlLinks)
+      console.log(`[Email Parser]   Found ${htmlLinks.length} PDF link(s) in HTML body`)
+    }
+    
+    // Extract links from text body
+    if (payload.TextBody) {
+      const textLinks = extractLinksFromEmail(payload.TextBody, false)
+      // Deduplicate by URL
+      const existingUrls = new Set(pdfLinks.map(l => l.url))
+      const newLinks = textLinks.filter(link => !existingUrls.has(link.url))
+      pdfLinks.push(...newLinks)
+      console.log(`[Email Parser]   Found ${textLinks.length} PDF link(s) in text body (${newLinks.length} new)`)
+    }
+    
+    // If we have links but no attachments, use AI to analyze
+    if (pdfLinks.length > 0 && pdfAttachments.length === 0 && emailProcessingInstruction) {
+      console.log("[Email Parser]   Using AI to analyze and validate links...")
+      try {
+        const { analyzeEmailForDocuments } = await import("./email-analyzer")
+        const analysis = await analyzeEmailForDocuments(payload, emailProcessingInstruction)
+        
+        if (analysis.source === "links" || analysis.source === "both") {
+          // Use AI-validated links - convert back to PDFLink format
+          const validatedUrls = Array.isArray(analysis.links) ? analysis.links : [analysis.links]
+          pdfLinks = pdfLinks.filter(link => validatedUrls.includes(link.url))
+          console.log(`[Email Parser] ✓ AI validated ${pdfLinks.length} PDF link(s)`)
+        }
+      } catch (error) {
+        console.warn("[Email Parser] ⚠ AI analysis failed, using extracted links:", error)
+        // Continue with extracted links
+      }
+    }
+    
+    if (pdfLinks.length > 0) {
+      console.log(`[Email Parser] ✓ Total PDF links found: ${pdfLinks.length}`)
+      pdfLinks.forEach((link, idx) => {
+        const labelInfo = link.label ? ` (label: "${link.label}")` : ""
+        console.log(`[Email Parser]   Link ${idx + 1}: ${link.url.substring(0, 100)}...${labelInfo}`)
+      })
+    }
+  } catch (error) {
+    console.error("[Email Parser] ✗ Failed to extract links from email:", error)
+    // Continue without links - attachments might still be processed
   }
 
   // Handle recipient email extraction
@@ -230,7 +290,9 @@ export function parsePostmarkWebhook(payload: PostmarkWebhookPayload): {
     to: recipientEmail,
     subject: payload.Subject,
     receivedAt,
-    pdfAttachments
+    pdfAttachments,
+    pdfLinks: pdfLinks.map(link => link.url), // Return URLs for backward compatibility
+    pdfLinksWithLabels: pdfLinks // Include labels for filename extraction
   }
 
   console.log("[Email Parser] Parsed email data:", {
@@ -239,7 +301,8 @@ export function parsePostmarkWebhook(payload: PostmarkWebhookPayload): {
     to: parsed.to || "(missing)",
     subject: parsed.subject || "(no subject)",
     receivedAt: parsed.receivedAt.toISOString(),
-    pdfCount: parsed.pdfAttachments.length
+    pdfAttachmentsCount: parsed.pdfAttachments.length,
+    pdfLinksCount: parsed.pdfLinks.length
   })
 
   return parsed

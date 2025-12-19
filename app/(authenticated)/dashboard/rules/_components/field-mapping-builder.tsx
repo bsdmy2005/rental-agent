@@ -117,30 +117,43 @@ export function FieldMappingBuilder({
     }
   }
 
+  const borderColor = type === "invoice" 
+    ? "border-green-500 dark:border-green-600" 
+    : "border-purple-500 dark:border-purple-600"
+  const bgColor = type === "invoice"
+    ? "bg-green-50/50 dark:bg-green-950/20"
+    : "bg-purple-50/50 dark:bg-purple-950/20"
+  const headerColor = type === "invoice"
+    ? "text-green-900 dark:text-green-100"
+    : "text-purple-900 dark:text-purple-100"
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-sm">
-            {type === "invoice" ? "Invoice Field Mappings" : "Payment Field Mappings"}
-          </h3>
-          <p className="text-muted-foreground text-xs mt-1">
-            {type === "invoice"
-              ? "Tell the system what to look for when extracting tenant-chargeable items (water, electricity, etc.)"
-              : "Tell the system what to look for when extracting landlord-payable items (levies, fees, etc.)"}
-          </p>
+      <div className={`rounded-lg border-2 ${borderColor} ${bgColor} p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className={`font-bold text-base ${headerColor}`}>
+              {type === "invoice" ? "Invoice Field Mappings" : "Payment Field Mappings"}
+            </h3>
+            <p className="text-muted-foreground text-xs mt-1">
+              {type === "invoice"
+                ? "Tell the system what to look for when extracting tenant-chargeable items (water, electricity, etc.)"
+                : "Tell the system what to look for when extracting landlord-payable items (levies, fees, etc.)"}
+            </p>
+          </div>
+          {!showAddField && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddField(true)}
+              className={type === "invoice" ? "border-green-600 text-green-700 hover:bg-green-100 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-950" : "border-purple-600 text-purple-700 hover:bg-purple-100 dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-950"}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Field
+            </Button>
+          )}
         </div>
-        {!showAddField && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddField(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Field
-          </Button>
-        )}
       </div>
 
       {showAddField && (
@@ -200,8 +213,8 @@ export function FieldMappingBuilder({
           const newPattern = newPatterns[mapping.id] || ""
 
           return (
-            <Card key={mapping.id}>
-              <CardHeader className="pb-3">
+            <Card key={mapping.id} className={`border-2 ${borderColor} ${bgColor}`}>
+              <CardHeader className={`pb-3 ${bgColor}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{fieldType?.icon || "📄"}</span>

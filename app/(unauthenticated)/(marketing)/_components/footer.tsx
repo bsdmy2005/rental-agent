@@ -49,17 +49,17 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-[#1F2937] border-t border-gray-700 dark:bg-gray-900" aria-labelledby="footer-heading">
+    <footer className="bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700" aria-labelledby="footer-heading">
       <h2 id="footer-heading" className="sr-only">
         Footer
       </h2>
       <div className="mx-auto max-w-7xl px-6 pt-16 pb-8">
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-8">
-            <Link href="/" className="text-xl font-bold text-white dark:text-gray-100">
+            <Link href="/" className="text-xl font-bold text-gray-900 dark:text-gray-100">
               RentPilot AI
             </Link>
-            <p className="text-gray-300 dark:text-gray-400 text-sm leading-6">
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-6">
               Automated rental agent for landlords and agencies. Process bills, generate invoices, and manage tenants.
             </p>
             <div className="flex space-x-6">
@@ -67,7 +67,7 @@ export function Footer() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="text-gray-300 hover:text-white dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <span className="sr-only">{item.name}</span>
                   <item.icon className="h-5 w-5" />
@@ -78,7 +78,7 @@ export function Footer() {
           <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-white dark:text-gray-100 text-sm leading-6 font-semibold">
+                <h3 className="text-gray-900 dark:text-gray-100 text-sm leading-6 font-semibold">
                   Product
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -86,7 +86,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-gray-300 hover:text-white text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
+                        className="text-gray-600 hover:text-gray-900 text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         {item.name}
                       </Link>
@@ -95,7 +95,7 @@ export function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-white dark:text-gray-100 text-sm leading-6 font-semibold">
+                <h3 className="text-gray-900 dark:text-gray-100 text-sm leading-6 font-semibold">
                   Company
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -103,7 +103,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-gray-300 hover:text-white text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
+                        className="text-gray-600 hover:text-gray-900 text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         {item.name}
                       </Link>
@@ -114,7 +114,7 @@ export function Footer() {
             </div>
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-white dark:text-gray-100 text-sm leading-6 font-semibold">
+                <h3 className="text-gray-900 dark:text-gray-100 text-sm leading-6 font-semibold">
                   Resources
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -122,7 +122,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-gray-300 hover:text-white text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
+                        className="text-gray-600 hover:text-gray-900 text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         {item.name}
                       </Link>
@@ -131,7 +131,7 @@ export function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-white dark:text-gray-100 text-sm leading-6 font-semibold">
+                <h3 className="text-gray-900 dark:text-gray-100 text-sm leading-6 font-semibold">
                   Legal
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
@@ -139,7 +139,7 @@ export function Footer() {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="text-gray-300 hover:text-white text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
+                        className="text-gray-600 hover:text-gray-900 text-sm leading-6 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         {item.name}
                       </Link>
@@ -150,8 +150,8 @@ export function Footer() {
             </div>
           </div>
         </div>
-        <div className="border-gray-700 mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
-          <p className="text-gray-400 dark:text-gray-500 text-xs leading-5">
+        <div className="border-gray-200 dark:border-gray-700 mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
+          <p className="text-gray-500 dark:text-gray-500 text-xs leading-5">
             &copy; {new Date().getFullYear()} RentPilot AI. All rights reserved.
           </p>
         </div>

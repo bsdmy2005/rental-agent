@@ -9,7 +9,8 @@ import {
   Wrench,
   CreditCard,
   MessageSquare,
-  UserCog
+  UserCog,
+  Calendar
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -105,6 +106,11 @@ export function getNavigationForUserType(
           ]
         },
         {
+          title: "Billing Schedules",
+          url: "/dashboard/billing-schedules",
+          icon: Calendar
+        },
+        {
           title: "Settings",
           url: "/dashboard/settings",
           icon: Settings,
@@ -172,6 +178,11 @@ export function getNavigationForUserType(
               url: "/dashboard/rules/add"
             }
           ]
+        },
+        {
+          title: "Billing Schedules",
+          url: "/dashboard/billing-schedules",
+          icon: Calendar
         },
         {
           title: "Settings",

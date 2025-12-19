@@ -68,7 +68,12 @@ export async function ExtractionRulesList() {
                   )}
                 </div>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {rule.propertyName} • {rule.billType} • {rule.channel === "email_forward" ? "Email Forward" : "Manual Upload"}
+                  {rule.propertyName} • {rule.billType} •{" "}
+                  {rule.channel === "email_forward"
+                    ? "Email Forward"
+                    : rule.channel === "agentic"
+                      ? "Agentic"
+                      : "Manual Upload"}
                 </p>
               </div>
               <div className="flex items-center gap-2">

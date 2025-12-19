@@ -12,34 +12,44 @@ import { SectionWrapper } from "./section-wrapper"
 
 const faqs = [
   {
-    question: "What is RentPilot AI?",
+    question: "What is Rental Agent AI?",
     answer:
-      "RentPilot AI is an automated rental agent for landlords and agencies. It ingests municipality bills and levy statements, extracts the key charges, and prepares tenant-ready invoices for you."
+      "Rental Agent AI is an AI-driven rental investment management platform that simplifies, optimizes, and leverages AI to streamline property management end-to-end. From day-to-day operations to cost optimization, tax filing, late payment follow-ups, and delinquency management—all powered by intelligent AI agents."
   },
   {
     question: "Who is this for?",
     answer:
-      "We designed RentPilot AI for individual property owners and rental agencies who want to remove manual billing admin, reduce errors, and get a clear view of cash flow across properties."
+      "We designed Rental Agent AI for property investors, landlords, and rental agencies who want to automate their entire rental investment workflow. Whether you manage one property or a large portfolio, our AI agents handle the complexity so you can focus on growth and optimization."
   },
   {
-    question: "How does billing and invoicing work?",
+    question: "What features are currently available?",
     answer:
-      "You connect your bill sources (email forwarding or manual uploads), configure extraction rules once, and RentPilot AI automatically turns each new bill into tenant invoices with the right splits for rent, water, electricity, and levies."
+      "Currently available: AI-powered document processing, automated invoice generation, payment automation, payment reconciliation, and email integration. Coming soon: Intelligent expense tracking, AI-driven late payment follow-ups, portfolio performance analytics, cost optimization intelligence, automated tax filing, and smart property discovery."
   },
   {
-    question: "Do tenants get access?",
+    question: "How does the AI automation work?",
     answer:
-      "Yes. Tenants can be invited to a portal where they can view invoices, see payment history, and log maintenance issues. You stay in control of which properties and tenants are enabled."
+      "Our AI agents automatically process bills, extract data, generate invoices, execute payments, track expenses, and manage compliance. You configure extraction rules once, and the system handles everything—from bill processing to tax preparation. Intelligent agents also proactively follow up on late payments and identify optimization opportunities."
   },
   {
-    question: "Is my data and banking information secure?",
+    question: "Will this help with tax filing?",
     answer:
-      "We use battle-tested infrastructure and follow best practices for encryption and access control. Bank connections, when enabled, will use regulated open‑banking providers and never expose raw credentials to third parties."
+      "Yes! Coming soon, our platform will automatically track and categorize expenses, identify tax-deductible items, generate tax reports, and even submit directly to tax authorities. You'll have organized records and automated compliance monitoring, making tax season stress-free."
+  },
+  {
+    question: "How does cost optimization work?",
+    answer:
+      "Our AI analyzes your expenses across properties, identifies patterns, and provides recommendations to reduce costs. It tracks operating expenses, compares against benchmarks, and suggests optimization opportunities—helping you maximize profitability across your portfolio."
+  },
+  {
+    question: "Is my data secure?",
+    answer:
+      "Absolutely. We use enterprise-grade security infrastructure with encryption at rest and in transit. Bank connections use regulated open-banking providers, and we follow best practices for access control and data protection. Your financial data is never exposed to third parties."
   },
   {
     question: "How do I get started?",
     answer:
-      "Sign up, complete a short onboarding for your landlord or agency profile, add your first property, and forward a test bill. We’ll guide you through creating your first extraction rule so you can see an end‑to‑end invoice flow."
+      "Sign up, complete onboarding for your landlord or agency profile, add your first property, and configure billing schedules. Forward a test bill or upload manually, and we'll guide you through creating extraction rules. You'll see end-to-end automation in action immediately."
   }
 ]
 

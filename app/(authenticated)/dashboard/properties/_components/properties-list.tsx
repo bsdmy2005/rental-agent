@@ -5,6 +5,7 @@ import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
 import { getPropertiesWithTenantsByLandlordIdQuery, getPropertiesWithTenantsByRentalAgentIdQuery, type PropertyWithDetails } from "@/queries/properties-queries"
 import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
+import { getScheduleStatusForPropertyAction } from "@/actions/billing-schedule-status-actions"
 import { PropertiesListClient } from "./properties-list-client"
 
 export async function PropertiesList() {
@@ -32,6 +33,30 @@ export async function PropertiesList() {
     }
   }
 
-  return <PropertiesListClient properties={properties} />
+  // Get late schedule counts for each property
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  const propertiesWithLateCounts = await Promise.all(
+    properties.map(async (property) => {
+      const statusesResult = await getScheduleStatusForPropertyAction(
+        property.id,
+        currentYear,
+        currentMonth
+      )
+      const statuses = statusesResult.isSuccess ? statusesResult.data : []
+      const lateCount = statuses.filter(
+        (s) => s.status === "late" || s.status === "missed"
+      ).length
+
+      return {
+        ...property,
+        lateScheduleCount: lateCount
+      }
+    })
+  )
+
+  return <PropertiesListClient properties={propertiesWithLateCounts} />
 }
 

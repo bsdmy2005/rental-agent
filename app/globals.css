@@ -141,8 +141,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply bg-white dark:bg-[#1F2937];
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white dark:bg-[#1F2937] text-foreground;
     font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }

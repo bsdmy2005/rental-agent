@@ -1,0 +1,2 @@
+CREATE TYPE "public"."schedule_source" AS ENUM('manual_upload', 'email', 'agentic');--> statement-breakpoint
+ALTER TABLE "billing_schedules" ADD COLUMN "source" "schedule_source" DEFAULT 'manual_upload' NOT NULL;

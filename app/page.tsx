@@ -19,7 +19,7 @@ export default async function HomePage() {
     <>
       <SiteBanner />
       <HeaderWrapper />
-      <main className="min-h-screen bg-slate-800 text-slate-50">
+      <main className="min-h-screen bg-white text-gray-900 dark:bg-slate-800 dark:text-slate-50">
         <HeroSection />
         <CompaniesSection />
         <VideoSection />

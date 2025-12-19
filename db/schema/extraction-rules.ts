@@ -36,6 +36,7 @@ export const extractionRulesTable = pgTable("extraction_rules", {
   // Custom instructions/prompts for extraction (optional, falls back to defaults if not provided)
   invoiceInstruction: text("invoice_instruction"), // Custom instruction for invoice extraction
   paymentInstruction: text("payment_instruction"), // Custom instruction for payment extraction
+  emailProcessingInstruction: text("email_processing_instruction"), // Custom instruction for AI to guide email processing (attachments vs links, file selection)
   isActive: boolean("is_active").default(true).notNull(),
   version: integer("version").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

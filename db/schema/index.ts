@@ -13,4 +13,6 @@ export * from "./customers"
 export * from "./fixed-costs"
 export * from "./variable-costs"
 export * from "./variable-cost-allocations"
+export * from "./billing-schedules"
+export * from "./billing-schedule-status"
 

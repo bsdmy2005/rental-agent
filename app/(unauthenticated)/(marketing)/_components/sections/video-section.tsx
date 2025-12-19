@@ -41,17 +41,17 @@ export function VideoSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div
-            className="group bg-foreground relative aspect-video cursor-pointer overflow-hidden rounded-2xl"
+            className="group bg-white dark:bg-foreground relative aspect-video cursor-pointer overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
             {/* Video Preview Background */}
-            <div className="from-brand-primary via-brand-secondary to-brand-accent absolute inset-0 bg-gradient-to-br opacity-20" />
+            <div className="from-brand-primary via-brand-secondary to-brand-accent absolute inset-0 bg-gradient-to-br opacity-0 dark:opacity-20" />
 
             {/* Flow Animation */}
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div
-                className="text-muted-foreground text-left text-sm select-none"
+                className="text-gray-400 dark:text-muted-foreground text-left text-sm select-none"
                 animate={{
                   opacity: isHovered ? 0.3 : 0.6
                 }}
@@ -75,7 +75,7 @@ export function VideoSection() {
               transition={{ duration: 0.3 }}
             >
               <motion.button
-                className="bg-background/90 text-foreground flex h-20 w-20 items-center justify-center rounded-full shadow-2xl backdrop-blur-sm"
+                className="bg-white/90 text-gray-900 dark:bg-background/90 dark:text-foreground flex h-20 w-20 items-center justify-center rounded-full shadow-2xl backdrop-blur-sm"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -85,13 +85,13 @@ export function VideoSection() {
             </motion.div>
 
             {/* Video Stats */}
-            <div className="from-foreground absolute right-0 bottom-0 left-0 bg-gradient-to-t to-transparent p-6">
-              <div className="text-background flex items-center justify-between">
+            <div className="from-gray-900 dark:from-foreground absolute right-0 bottom-0 left-0 bg-gradient-to-t to-transparent p-6">
+              <div className="text-white dark:text-background flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">
                     Rental Agent Automation Demo
                   </h3>
-                  <p className="text-background/80 mt-1 text-sm">
+                  <p className="text-white/80 dark:text-background/80 mt-1 text-sm">
                     From raw bills to ready-to-send invoices in a single flow
                   </p>
                 </div>

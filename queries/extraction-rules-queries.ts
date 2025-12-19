@@ -76,3 +76,18 @@ export async function getActiveExtractionRulesQuery(
   return rules
 }
 
+/**
+ * Check if an extraction rule is referenced by any billing schedules
+ */
+export async function isRuleReferencedBySchedulesQuery(ruleId: string): Promise<boolean> {
+  const { billingSchedulesTable } = await import("@/db/schema")
+  const { eq } = await import("drizzle-orm")
+  
+  const schedules = await db.query.billingSchedules.findMany({
+    where: eq(billingSchedulesTable.extractionRuleId, ruleId),
+    columns: { id: true }
+  })
+
+  return schedules.length > 0
+}
+

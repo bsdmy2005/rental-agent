@@ -3,6 +3,7 @@
 import { db } from "@/db"
 import {
   extractionRulesTable,
+  billingSchedulesTable,
   type InsertExtractionRule,
   type SelectExtractionRule
 } from "@/db/schema"
@@ -56,8 +57,42 @@ export async function updateExtractionRuleAction(
   }
 }
 
+export async function checkRuleReferencedAction(ruleId: string): Promise<ActionState<boolean>> {
+  try {
+    // Check if rule is referenced by any billing schedules
+    const schedules = await db.query.billingSchedules.findMany({
+      where: eq(billingSchedulesTable.extractionRuleId, ruleId),
+      columns: { id: true, isActive: true }
+    })
+
+    const isReferenced = schedules.length > 0
+    const activeSchedules = schedules.filter((s) => s.isActive).length
+
+    return {
+      isSuccess: true,
+      message: isReferenced
+        ? `This rule is referenced by ${schedules.length} billing schedule${schedules.length !== 1 ? "s" : ""} (${activeSchedules} active)`
+        : "Rule is not referenced",
+      data: isReferenced
+    }
+  } catch (error) {
+    console.error("Error checking rule references:", error)
+    return { isSuccess: false, message: "Failed to check rule references", data: false }
+  }
+}
+
 export async function deleteExtractionRuleAction(ruleId: string): Promise<ActionState<void>> {
   try {
+    // First check if rule is referenced by billing schedules
+    const referenceCheck = await checkRuleReferencedAction(ruleId)
+    
+    if (referenceCheck.isSuccess && referenceCheck.data) {
+      return {
+        isSuccess: false,
+        message: "Cannot delete this rule because it is referenced by one or more billing schedules. Please remove or update the billing schedules first."
+      }
+    }
+
     await db.delete(extractionRulesTable).where(eq(extractionRulesTable.id, ruleId))
 
     return {
@@ -65,8 +100,17 @@ export async function deleteExtractionRuleAction(ruleId: string): Promise<Action
       message: "Extraction rule deleted successfully",
       data: undefined
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting extraction rule:", error)
+    
+    // Check if it's a foreign key constraint error
+    if (error?.code === "23503" || error?.cause?.code === "23503") {
+      return {
+        isSuccess: false,
+        message: "Cannot delete this rule because it is referenced by one or more billing schedules. Please remove or update the billing schedules first."
+      }
+    }
+    
     return { isSuccess: false, message: "Failed to delete extraction rule" }
   }
 }
