@@ -5,7 +5,8 @@ import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
 import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
 import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
-import { getTenantsByPropertyIdQuery } from "@/queries/tenants-queries"
+import { getTenantsByPropertyIdQuery, getTenantsWithPropertyQuery, type TenantWithProperty } from "@/queries/tenants-queries"
+import { TenantsListClient } from "./tenants-list-client"
 
 export async function TenantsList() {
   const user = await currentUser()
@@ -18,15 +19,17 @@ export async function TenantsList() {
     return <div>User profile not found</div>
   }
 
-  let allTenants = []
+  const allTenantIds: string[] = []
+  const propertyMap = new Map<string, { id: string; name: string }>()
 
   if (userProfile.userType === "landlord") {
     const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
     if (landlord) {
       const properties = await getPropertiesByLandlordIdQuery(landlord.id)
       for (const property of properties) {
+        propertyMap.set(property.id, { id: property.id, name: property.name })
         const tenants = await getTenantsByPropertyIdQuery(property.id)
-        allTenants.push(...tenants)
+        allTenantIds.push(...tenants.map((t) => t.id))
       }
     }
   } else if (userProfile.userType === "rental_agent") {
@@ -34,32 +37,14 @@ export async function TenantsList() {
     if (rentalAgent) {
       const properties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
       for (const property of properties) {
+        propertyMap.set(property.id, { id: property.id, name: property.name })
         const tenants = await getTenantsByPropertyIdQuery(property.id)
-        allTenants.push(...tenants)
+        allTenantIds.push(...tenants.map((t) => t.id))
       }
     }
   }
 
-  if (allTenants.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-muted-foreground">No tenants found.</p>
-        <p className="text-muted-foreground text-sm">Add tenants to your properties to get started.</p>
-      </div>
-    )
-  }
+  const tenantsWithProperty = await getTenantsWithPropertyQuery(allTenantIds)
 
-  return (
-    <div className="rounded-md border">
-      <div className="divide-y">
-        {allTenants.map((tenant) => (
-          <div key={tenant.id} className="p-4">
-            <h3 className="font-semibold">{tenant.name}</h3>
-            {tenant.email && <p className="text-muted-foreground text-sm">{tenant.email}</p>}
-            {tenant.phone && <p className="text-muted-foreground text-sm">{tenant.phone}</p>}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  return <TenantsListClient tenants={tenantsWithProperty} />
 }

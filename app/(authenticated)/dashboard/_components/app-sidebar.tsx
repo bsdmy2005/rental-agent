@@ -23,6 +23,7 @@ export function AppSidebar({
     name: string
     email: string
     avatar: string
+    membership: string
   }
   userType: "landlord" | "rental_agent" | "tenant" | "admin"
 }) {

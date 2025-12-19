@@ -22,7 +22,7 @@ export function HeroSection() {
         >
           Automate Your
           <motion.span
-            className="from-brand-primary to-brand-secondary block bg-gradient-to-r bg-clip-text pb-2 leading-tight text-transparent"
+            className="from-[#1E40AF] to-[#3B82F6] block bg-gradient-to-r bg-clip-text pb-2 leading-tight text-transparent dark:from-[#3B82F6] dark:to-[#60A5FA]"
             animate={{
               backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
             }}
@@ -39,7 +39,7 @@ export function HeroSection() {
           </motion.span>
         </motion.h1>
         <motion.p
-          className="mx-auto mt-4 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-slate-200"
+          className="mx-auto mt-4 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 text-gray-700 dark:text-gray-200"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -61,7 +61,7 @@ export function HeroSection() {
             <Button
               size="lg"
               asChild
-              className="group relative w-full overflow-hidden sm:w-auto"
+              className="group relative w-full overflow-hidden bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover sm:w-auto"
             >
               <Link href="/signup">
                 <motion.span
@@ -91,7 +91,7 @@ export function HeroSection() {
               variant="outline"
               size="lg"
               asChild
-              className="group w-full sm:w-auto"
+              className="group w-full border-2 border-white/20 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-100 dark:hover:bg-gray-700/50 sm:w-auto"
             >
               <Link href="/login">
                 Sign In
@@ -129,7 +129,7 @@ export function HeroSection() {
                 >
                   ✓
                 </motion.span>
-                <span className="text-slate-200">{text}</span>
+                <span className="text-gray-700 dark:text-gray-200">{text}</span>
               </motion.div>
             )
           )}

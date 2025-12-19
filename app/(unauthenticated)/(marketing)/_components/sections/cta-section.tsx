@@ -11,7 +11,7 @@ export function CTASection() {
     <SectionWrapper>
       <div className="mx-auto max-w-2xl text-center">
         <motion.h2
-          className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
+          className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight sm:text-4xl"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -20,7 +20,7 @@ export function CTASection() {
           Ready to retire your rental agent?
         </motion.h2>
         <motion.p
-          className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-300"
+          className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600 dark:text-gray-300"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -38,7 +38,7 @@ export function CTASection() {
         >
           <Button
             size="lg"
-            className="bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover"
+            className="bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary-hover dark:bg-brand-primary dark:text-brand-primary-foreground dark:hover:bg-brand-primary-hover"
             asChild
           >
             <Link href="/signup">
@@ -50,7 +50,7 @@ export function CTASection() {
           <Button
             size="lg"
             variant="link"
-            className="text-brand-primary hover:text-brand-primary-hover"
+            className="text-brand-primary hover:text-brand-primary-hover dark:text-brand-primary dark:hover:text-brand-primary-hover"
             asChild
           >
             <Link href="#pricing">
@@ -79,10 +79,10 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
             >
-              <dt className="text-slate-300 text-sm font-medium">
+              <dt className="text-gray-600 dark:text-gray-300 text-sm font-medium">
                 {stat.label}
               </dt>
-              <dd className="from-brand-primary to-brand-secondary mt-2 bg-gradient-to-r bg-clip-text text-2xl font-bold text-transparent">
+              <dd className="from-[#1E40AF] to-[#3B82F6] mt-2 bg-gradient-to-r bg-clip-text text-2xl font-bold text-transparent dark:from-[#3B82F6] dark:to-[#60A5FA]">
                 {stat.value}
               </dd>
             </motion.div>

@@ -3,43 +3,41 @@
 import { Suspense } from "react"
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
-import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getPropertiesByLandlordIdQuery } from "@/queries/properties-queries"
 import { BillsList } from "./_components/bills-list"
 import { BillsListSkeleton } from "./_components/bills-list-skeleton"
-import { BillUploadWrapper } from "./_components/bill-upload-wrapper"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Plus } from "lucide-react"
 
 export default async function BillsPage() {
   const user = await currentUser()
   const userProfile = user ? await getUserProfileByClerkIdQuery(user.id) : null
 
-  let properties: Array<{ id: string; name: string }> = []
-  if (userProfile?.userType === "landlord") {
-    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
-    if (landlord) {
-      const landlordProperties = await getPropertiesByLandlordIdQuery(landlord.id)
-      properties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Bills</h1>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        {properties.length > 0 && (
-          <div>
-            <h2 className="mb-4 text-xl font-semibold">Upload Bill</h2>
-            <BillUploadWrapper properties={properties} />
-          </div>
-        )}
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Your Bills</h2>
-          <Suspense fallback={<BillsListSkeleton />}>
-            <BillsList />
-          </Suspense>
+          <h1 className="text-3xl font-bold">Bills</h1>
+          <p className="text-muted-foreground mt-2">
+            View all bills that have been uploaded or received via email across your properties.
+          </p>
         </div>
+
+        {userProfile && (
+          <Button asChild>
+            <Link href="/dashboard/bills/upload">
+              <Plus className="mr-2 h-4 w-4" />
+              Upload Bills
+            </Link>
+          </Button>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-4 text-xl font-semibold">Uploaded Bills</h2>
+        <Suspense fallback={<BillsListSkeleton />}>
+          <BillsList />
+        </Suspense>
       </div>
     </div>
   )

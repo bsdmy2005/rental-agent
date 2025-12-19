@@ -44,7 +44,7 @@ export function PricingSection() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <motion.h2
-            className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -53,7 +53,7 @@ export function PricingSection() {
             Pricing for modern landlords and agencies
           </motion.h2>
           <motion.p
-            className="text-slate-300 mt-4 text-lg leading-8"
+            className="text-gray-600 dark:text-gray-300 mt-4 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -70,8 +70,8 @@ export function PricingSection() {
               key={tier.name}
               className={`relative rounded-3xl p-8 ring-1 ${
                 tier.highlight
-                  ? "bg-gradient-to-br from-brand-primary to-brand-secondary text-white ring-brand-primary"
-                  : "bg-slate-700/50 text-slate-50 ring-slate-600"
+                  ? "bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] text-white ring-[#1E40AF] dark:from-[#3B82F6] dark:to-[#60A5FA]"
+                  : "bg-white text-gray-900 ring-gray-200 dark:bg-gray-800 dark:text-white dark:ring-gray-700"
               }`}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -89,7 +89,7 @@ export function PricingSection() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: 0.3 }}
                 >
-                  <span className="bg-slate-50 text-slate-900 inline-flex items-center rounded-full px-4 py-1 text-xs font-semibold shadow-sm">
+                  <span className="bg-white text-gray-900 inline-flex items-center rounded-full px-4 py-1 text-xs font-semibold shadow-sm dark:bg-gray-100">
                     AGENCY READY
                   </span>
                 </motion.div>
@@ -139,7 +139,7 @@ export function PricingSection() {
 
               <ul
                 className={`mt-8 space-y-3 text-sm leading-6 ${
-                  tier.highlight ? "text-white/90" : "text-slate-300"
+                  tier.highlight ? "text-white/90" : "text-gray-600 dark:text-gray-300"
                 }`}
               >
                 {tier.features.map(feature => (
@@ -158,8 +158,8 @@ export function PricingSection() {
               <Button
                 className={`mt-8 w-full ${
                   tier.highlight
-                    ? "bg-white text-slate-900 hover:bg-slate-100"
-                    : "bg-slate-600 text-white hover:bg-slate-500"
+                    ? "bg-white text-gray-900 hover:bg-gray-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+                    : "bg-[#1E40AF] text-white hover:bg-[#1E3A8A] dark:bg-[#3B82F6] dark:hover:bg-[#2563EB]"
                 }`}
                 variant={tier.highlight ? "default" : "default"}
               >

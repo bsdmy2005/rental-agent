@@ -20,12 +20,12 @@ export function SiteBanner() {
           animate={{ y: 0 }}
           exit={{ y: -100 }}
           transition={{ duration: 0.2 }}
-          className="bg-slate-900 text-slate-50 relative"
+          className="bg-[#1F2937] text-white relative dark:bg-gray-900"
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="relative flex items-center justify-center py-3">
               <div className="flex items-center gap-3 text-sm">
-                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+                <span className="rounded-full bg-gray-800 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide dark:bg-gray-700">
                   Launch beta
                 </span>
                 <span>

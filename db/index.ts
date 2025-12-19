@@ -11,6 +11,7 @@ import {
   tenantsTable,
   billsTable,
   extractionRulesTable,
+  ruleSamplesTable,
   emailProcessorsTable
 } from "./schema"
 
@@ -32,6 +33,7 @@ const dbSchema = {
   tenants: tenantsTable,
   bills: billsTable,
   extractionRules: extractionRulesTable,
+  ruleSamples: ruleSamplesTable,
   emailProcessors: emailProcessorsTable
   // relations
 }

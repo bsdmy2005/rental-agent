@@ -1,5 +1,6 @@
 "use server"
 
+import { getCustomerByUserId } from "@/actions/customers"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
@@ -28,13 +29,17 @@ export default async function DashboardLayout({
     redirect("/tenant/dashboard")
   }
 
+  const customer = await getCustomerByUserId(user.id)
+  const membership = customer?.membership ?? "free"
+
   const userData = {
     name:
       user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.username || "User",
     email: user.emailAddresses[0]?.emailAddress || "",
-    avatar: user.imageUrl || ""
+    avatar: user.imageUrl || "",
+    membership
   }
 
   return (

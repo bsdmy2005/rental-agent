@@ -1,0 +1,17 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E40AF"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with gradient -->
+  <rect width="32" height="32" rx="6" fill="url(#gradient)"/>
+  
+  <!-- House/Building icon - simplified for small size, made more visible -->
+  <path d="M16 7L6 14V26H12V19H20V26H26V14L16 7Z" fill="white" fill-opacity="1"/>
+  
+  <!-- Door/Entry point - made more visible -->
+  <rect x="13" y="19" width="6" height="7" fill="#1E40AF" fill-opacity="0.5"/>
+</svg>
+

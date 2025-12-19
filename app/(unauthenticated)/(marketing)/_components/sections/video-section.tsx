@@ -13,7 +13,7 @@ export function VideoSection() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <motion.h2
-            className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -22,7 +22,7 @@ export function VideoSection() {
             See it in action
           </motion.h2>
           <motion.p
-            className="text-slate-300 mt-4 text-lg leading-8"
+            className="text-gray-600 dark:text-gray-300 mt-4 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

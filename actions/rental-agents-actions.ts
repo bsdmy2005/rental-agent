@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm"
 
 export async function createRentalAgentAction(
   userProfileId: string,
-  agentData: InsertRentalAgent
+  agentData: Omit<InsertRentalAgent, "userProfileId">
 ): Promise<ActionState<SelectRentalAgent>> {
   try {
     const [newRentalAgent] = await db

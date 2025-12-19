@@ -1,6 +1,48 @@
 "use client"
 
-import {[
+import { SignIn } from "@clerk/nextjs"
+import { dark } from "@clerk/themes"
+import { Receipt, Shield, Sparkles, CreditCard, ArrowRight } from "lucide-react"
+import { useTheme } from "next-themes"
+import Link from "next/link"
+import { motion } from "framer-motion"
+
+export default function SignInPage() {
+  const { theme } = useTheme()
+
+  return (
+    <div className="container mx-auto px-4 py-16">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        {/* Left side - Features */}
+        <motion.div
+          className="hidden space-y-8 lg:block"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="space-y-4">
+            <motion.h1
+              className="text-4xl font-bold tracking-tight text-slate-50"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Welcome back to RentPilot AI
+            </motion.h1>
+            <motion.p
+              className="text-lg text-slate-300"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              Sign in to manage your properties, process bills, and automate your rental
+              operations.
+            </motion.p>
+          </div>
+
+          {/* Feature grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
               {
                 icon: Receipt,
                 title: "AI Processing",
@@ -29,7 +71,6 @@ import {[
                 color: "text-green-500",
                 bgColor: "bg-green-500/10"
               }
-            ]
             ].map((feature, i) => (
               <motion.div
                 key={feature.title}
@@ -83,16 +124,12 @@ import {[
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-slate-50">1,000+</p>
-                <p className="text-sm text-slate-300">
-                  Bills processed
-                </p>
+                <p className="text-sm text-slate-300">Bills processed</p>
               </div>
               <div className="h-12 w-px border-l border-slate-700" />
               <div>
                 <p className="text-2xl font-bold text-slate-50">100+</p>
-                <p className="text-sm text-slate-300">
-                  Properties managed
-                </p>
+                <p className="text-sm text-slate-300">Properties managed</p>
               </div>
               <div className="h-12 w-px border-l border-slate-700" />
               <div>
@@ -125,9 +162,7 @@ import {[
             </motion.div>
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-50">Bank-grade security</p>
-              <p className="text-xs text-slate-300">
-                Encryption for your financial data
-              </p>
+              <p className="text-xs text-slate-300">Encryption for your financial data</p>
             </div>
           </motion.div>
         </motion.div>
@@ -150,10 +185,7 @@ import {[
             </h2>
             <p className="text-sm text-slate-300">
               Don't have an account?{" "}
-              <motion.span
-                whileHover={{ scale: 1.05 }}
-                className="inline-block"
-              >
+              <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
                 <Link
                   href="/signup"
                   className="text-brand-primary font-medium transition-colors hover:underline"

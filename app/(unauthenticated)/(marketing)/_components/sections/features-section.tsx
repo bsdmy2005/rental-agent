@@ -68,7 +68,7 @@ export function FeaturesSection() {
             Powerful Features
           </motion.h2>
           <motion.p
-            className="text-slate-50 mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-gray-900 dark:text-white mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -77,7 +77,7 @@ export function FeaturesSection() {
             Everything you need to automate rental management
           </motion.p>
           <motion.p
-            className="text-slate-300 mt-6 text-lg leading-8"
+            className="text-gray-600 dark:text-gray-300 mt-6 text-lg leading-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -117,10 +117,10 @@ export function FeaturesSection() {
                   />
                 </motion.div>
 
-                <dt className="text-slate-50 mt-4 flex items-center gap-x-3 text-base leading-7 font-semibold">
+                <dt className="text-gray-900 dark:text-white mt-4 flex items-center gap-x-3 text-base leading-7 font-semibold">
                   {feature.name}
                   <motion.div
-                    className="from-primary/50 h-px flex-1 bg-gradient-to-r to-transparent"
+                    className="from-[#1E40AF]/50 h-px flex-1 bg-gradient-to-r to-transparent dark:from-[#3B82F6]/50"
                     initial={{ scaleX: 0 }}
                     whileInView={{ scaleX: 1 }}
                     viewport={{ once: true }}
@@ -129,7 +129,7 @@ export function FeaturesSection() {
                   />
                 </dt>
 
-                <dd className="text-slate-300 mt-4 flex flex-auto flex-col text-base leading-7">
+                <dd className="text-gray-600 dark:text-gray-300 mt-4 flex flex-auto flex-col text-base leading-7">
                   <p className="flex-auto">{feature.description}</p>
                 </dd>
 

@@ -3,6 +3,8 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getExtractionRulesByUserProfileIdQuery } from "@/queries/extraction-rules-queries"
+import { getPropertyByIdQuery } from "@/queries/properties-queries"
+import { Badge } from "@/components/ui/badge"
 
 export async function ExtractionRulesList() {
   const user = await currentUser()
@@ -16,6 +18,17 @@ export async function ExtractionRulesList() {
   }
 
   const rules = await getExtractionRulesByUserProfileIdQuery(userProfile.id)
+
+  // Fetch property names for each rule
+  const rulesWithProperties = await Promise.all(
+    rules.map(async (rule) => {
+      const property = rule.propertyId ? await getPropertyByIdQuery(rule.propertyId) : null
+      return {
+        ...rule,
+        propertyName: property?.name || "Unknown Property"
+      }
+    })
+  )
 
   if (rules.length === 0) {
     return (
@@ -31,22 +44,41 @@ export async function ExtractionRulesList() {
   return (
     <div className="rounded-md border">
       <div className="divide-y">
-        {rules.map((rule) => (
+        {rulesWithProperties.map((rule) => (
           <div key={rule.id} className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">{rule.name}</h3>
-                <p className="text-muted-foreground text-sm">
-                  {rule.billType} • {rule.channel}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold">{rule.name}</h3>
+                  <Badge
+                    variant={rule.isActive ? "default" : "secondary"}
+                    className="text-xs"
+                  >
+                    {rule.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                  {rule.extractForInvoice && (
+                    <Badge variant="outline" className="text-xs">
+                      Invoice
+                    </Badge>
+                  )}
+                  {rule.extractForPayment && (
+                    <Badge variant="outline" className="text-xs">
+                      Payment
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {rule.propertyName} • {rule.billType} • {rule.channel === "email_forward" ? "Email Forward" : "Manual Upload"}
                 </p>
               </div>
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  rule.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {rule.isActive ? "Active" : "Inactive"}
-              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/dashboard/rules/${rule.id}`}
+                  className="text-primary hover:underline text-sm font-medium"
+                >
+                  Test Rule
+                </a>
+              </div>
             </div>
           </div>
         ))}
