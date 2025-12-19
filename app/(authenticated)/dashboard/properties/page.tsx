@@ -1,42 +1,33 @@
 "use server"
 
 import { Suspense } from "react"
-import { currentUser } from "@clerk/nextjs/server"
-import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
-import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 import { PropertiesList } from "./_components/properties-list"
 import { PropertiesListSkeleton } from "./_components/properties-list-skeleton"
-import { PropertyForm } from "./_components/property-form"
 
 export default async function PropertiesPage() {
-  const user = await currentUser()
-  const userProfile = user ? await getUserProfileByClerkIdQuery(user.id) : null
-
-  let landlordId: string | null = null
-  if (userProfile?.userType === "landlord") {
-    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
-    landlordId = landlord?.id || null
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Properties</h1>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        {landlordId && (
-          <div>
-            <h2 className="mb-4 text-xl font-semibold">Add New Property</h2>
-            <PropertyForm landlordId={landlordId} />
-          </div>
-        )}
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Your Properties</h2>
-          <Suspense fallback={<PropertiesListSkeleton />}>
-            <PropertiesList />
-          </Suspense>
+          <h1 className="text-3xl font-bold">View Properties</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Manage and edit your properties
+          </p>
         </div>
+        <Button asChild>
+          <Link href="/dashboard/properties/add">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Property
+          </Link>
+        </Button>
       </div>
+
+      <Suspense fallback={<PropertiesListSkeleton />}>
+        <PropertiesList />
+      </Suspense>
     </div>
   )
 }

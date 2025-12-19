@@ -2,8 +2,17 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"])
+const isPublicApiRoute = createRouteMatcher([
+  "/api/webhooks(.*)", // Webhook routes don't need auth
+  "/api/test(.*)" // Test routes don't need auth
+])
 
 export default clerkMiddleware(async (auth, req) => {
+  // Skip auth for public API routes (webhooks, test endpoints)
+  if (isPublicApiRoute(req)) {
+    return NextResponse.next()
+  }
+
   const { userId, redirectToSignIn } = await auth()
 
   if (!userId && isProtectedRoute(req)) {

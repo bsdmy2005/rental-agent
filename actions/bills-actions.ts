@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { billsTable, type InsertBill, type SelectBill } from "@/db/schema"
 import { ActionState } from "@/types"
 import { eq } from "drizzle-orm"
+import { getBillByIdQuery } from "@/queries/bills-queries"
 
 export async function createBillAction(bill: InsertBill): Promise<ActionState<SelectBill>> {
   try {
@@ -50,6 +51,80 @@ export async function updateBillAction(
   }
 }
 
+/**
+ * Extract storage path from Supabase file URL
+ * Handles both public URLs and direct paths
+ */
+function extractStoragePathFromUrl(fileUrl: string): string | null {
+  const BUCKET_NAME = "bills"
+  
+  // If it's already a path (not a URL), return as-is
+  if (!fileUrl.startsWith("http")) {
+    return fileUrl
+  }
+
+  // Try to extract path from Supabase public URL format
+  // Format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+  const urlPattern = new RegExp(`/storage/v1/object/public/${BUCKET_NAME}/(.+)$`)
+  const match = fileUrl.match(urlPattern)
+  if (match && match[1]) {
+    return match[1]
+  }
+
+  // Try alternative URL parsing
+  try {
+    const url = new URL(fileUrl)
+    const pathParts = url.pathname.split(`/${BUCKET_NAME}/`)
+    if (pathParts.length > 1) {
+      return pathParts[1]
+    }
+  } catch {
+    // URL parsing failed
+  }
+
+  return null
+}
+
+export async function deleteBillAction(billId: string): Promise<ActionState<void>> {
+  try {
+    // Get bill record first to access fileUrl
+    const bill = await getBillByIdQuery(billId)
+    if (!bill) {
+      return { isSuccess: false, message: "Bill not found" }
+    }
+
+    // Extract storage path from fileUrl and delete from Supabase storage
+    if (bill.fileUrl) {
+      try {
+        const { deletePDFFromSupabase } = await import("@/lib/storage/supabase-storage")
+        const storagePath = extractStoragePathFromUrl(bill.fileUrl)
+        
+        if (storagePath) {
+          await deletePDFFromSupabase(storagePath)
+        } else {
+          console.warn(`Could not extract storage path from file URL: ${bill.fileUrl}`)
+        }
+      } catch (storageError) {
+        // Log error but continue with database deletion
+        // This ensures we don't leave orphaned database records if storage deletion fails
+        console.error("Error deleting PDF from storage (continuing with database deletion):", storageError)
+      }
+    }
+
+    // Delete from database
+    await db.delete(billsTable).where(eq(billsTable.id, billId))
+
+    return {
+      isSuccess: true,
+      message: "Bill deleted successfully",
+      data: undefined
+    }
+  } catch (error) {
+    console.error("Error deleting bill:", error)
+    return { isSuccess: false, message: "Failed to delete bill" }
+  }
+}
+
 export async function processBillAction(billId: string): Promise<ActionState<SelectBill>> {
   try {
     // Update status to processing
@@ -63,43 +138,171 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
       return { isSuccess: false, message: "Bill not found" }
     }
 
-    // Import PDF processing function
-    const { processPDFWithOpenAI, extractTextFromPDF } = await import("@/lib/pdf-processing")
+    // Import PDF processing function and queries
+    const { processPDFWithDualPurposeExtraction } = await import("@/lib/pdf-processing")
+    const { getExtractionRulesByPropertyIdQuery } = await import("@/queries/extraction-rules-queries")
+    const { createVariableCostAction } = await import("@/actions/variable-costs-actions")
 
     try {
-      // Extract text from PDF
-      const rawText = await extractTextFromPDF(updatedBill.fileUrl)
+      /**
+       * Dual-Purpose Extraction Flow:
+       * 1. If extractionRuleId is set (manual upload with explicit rule), use that rule
+       * 2. Otherwise, find active rules for this property and bill type
+       * 3. For email uploads, rules are already matched in email processing flow
+       * 4. Find rule(s) that extract for invoice (extractForInvoice = true)
+       * 5. Find rule(s) that extract for payment (extractForPayment = true)
+       * 6. If same rule extracts for both, use it for both purposes
+       * 7. If different rules, use separate rules
+       * 8. Each rule uses its respective extraction config
+       */
+      const { getExtractionRuleByIdQuery } = await import("@/queries/extraction-rules-queries")
+      
+      let invoiceRule: SelectExtractionRule | undefined
+      let paymentRule: SelectExtractionRule | undefined
 
-      // Get extraction rule if available
-      let extractionConfig = null
+      // If explicit rule was selected (manual upload), use it
       if (updatedBill.extractionRuleId) {
-        const { getExtractionRuleByIdQuery } = await import("@/queries/extraction-rules-queries")
-        const rule = await getExtractionRuleByIdQuery(updatedBill.extractionRuleId)
-        if (rule) {
-          extractionConfig = rule.extractionConfig
+        const explicitRule = await getExtractionRuleByIdQuery(updatedBill.extractionRuleId)
+        
+        if (explicitRule && explicitRule.isActive) {
+          // Use the explicitly selected rule for both purposes if it supports them
+          if (explicitRule.extractForInvoice) {
+            invoiceRule = explicitRule
+          }
+          if (explicitRule.extractForPayment) {
+            paymentRule = explicitRule
+          }
         }
       }
 
-      // Process PDF with OpenAI
-      const extractedData = await processPDFWithOpenAI(
+      // If no explicit rule or rule doesn't cover both purposes, find other rules
+      if (!invoiceRule || !paymentRule) {
+        const allRules = await getExtractionRulesByPropertyIdQuery(updatedBill.propertyId)
+        const activeRules = allRules.filter(
+          (r) => r.isActive && r.billType === updatedBill.billType
+        )
+
+        // Find rules by output type flags
+        // A single rule can extract for both purposes, so we check for that first
+        const ruleExtractingBoth = activeRules.find(
+          (r) => r.extractForInvoice && r.extractForPayment
+        )
+        
+        // Only use these if we don't already have rules from explicit selection
+        if (!invoiceRule) {
+          invoiceRule = ruleExtractingBoth || activeRules.find((r) => r.extractForInvoice)
+        }
+        if (!paymentRule) {
+          paymentRule = ruleExtractingBoth || activeRules.find((r) => r.extractForPayment)
+        }
+      }
+
+      // Process PDF with dual-purpose extraction
+      const { invoiceData, paymentData } = await processPDFWithDualPurposeExtraction(
         updatedBill.fileUrl,
-        rawText,
-        extractionConfig
+        invoiceRule
+          ? {
+              id: invoiceRule.id,
+              extractionConfig: invoiceRule.invoiceExtractionConfig as Record<string, unknown> | undefined,
+              instruction: invoiceRule.invoiceInstruction || undefined
+            }
+          : undefined,
+        paymentRule
+          ? {
+              id: paymentRule.id,
+              extractionConfig: paymentRule.paymentExtractionConfig as Record<string, unknown> | undefined,
+              instruction: paymentRule.paymentInstruction || undefined
+            }
+          : undefined
       )
 
-      // Update bill with extracted data
+      // Infer billing period from extracted data (only if not already set by user)
+      let inferredPeriod: { billingYear: number; billingMonth: number } | null = null
+      if (!updatedBill.billingYear || !updatedBill.billingMonth) {
+        const { inferBillingPeriod } = await import("@/lib/bill-period")
+        inferredPeriod = inferBillingPeriod(
+          invoiceData || null,
+          paymentData || null,
+          updatedBill.fileName
+        )
+      }
+
+      // Update bill with extracted data and track which rules were used
+      const updateData: Partial<typeof billsTable.$inferInsert> = {
+        status: "processed",
+        invoiceRuleId: invoiceRule?.id || null,
+        paymentRuleId: paymentRule?.id || null
+      }
+
+      // Set billing period if inferred and not already set by user
+      // User-provided period takes precedence (set in upload route)
+      if (inferredPeriod && (!updatedBill.billingYear || !updatedBill.billingMonth)) {
+        updateData.billingYear = inferredPeriod.billingYear
+        updateData.billingMonth = inferredPeriod.billingMonth
+      }
+
+      if (invoiceData) {
+        updateData.invoiceExtractionData = invoiceData as any
+      }
+      if (paymentData) {
+        updateData.paymentExtractionData = paymentData as any
+      }
+
+      // Keep legacy extractedData for backward compatibility (combine both)
+      if (invoiceData || paymentData) {
+        updateData.extractedData = {
+          invoice: invoiceData,
+          payment: paymentData
+        } as any
+      }
+      
+      // Keep legacy extractionRuleId for backward compatibility
+      // Use invoice rule if available, otherwise payment rule
+      if (invoiceRule) {
+        updateData.extractionRuleId = invoiceRule.id
+      } else if (paymentRule) {
+        updateData.extractionRuleId = paymentRule.id
+      }
+
       const [processedBill] = await db
         .update(billsTable)
-        .set({
-          status: "processed",
-          rawText,
-          extractedData: extractedData as any
-        })
+        .set(updateData)
         .where(eq(billsTable.id, billId))
         .returning()
 
       if (!processedBill) {
         return { isSuccess: false, message: "Failed to update bill after processing" }
+      }
+
+      // Create variable costs from invoice extraction data (if property is postpaid)
+      if (invoiceData && invoiceData.tenantChargeableItems.length > 0) {
+        try {
+          const { getPropertyByIdQuery } = await import("@/queries/properties-queries")
+          const property = await getPropertyByIdQuery(updatedBill.propertyId)
+          
+          if (property && property.paymentModel === "postpaid") {
+            const { getTenantsByPropertyIdQuery } = await import("@/queries/tenants-queries")
+            const tenants = await getTenantsByPropertyIdQuery(updatedBill.propertyId)
+            
+            // Create variable costs for each tenant-chargeable item
+            for (const item of invoiceData.tenantChargeableItems) {
+              // Determine cost type
+              let costType: "water" | "electricity" | "sewerage" | "other" = "other"
+              if (item.type === "water") costType = "water"
+              else if (item.type === "electricity") costType = "electricity"
+              else if (item.type === "sewerage") costType = "sewerage"
+
+              // Create variable cost (property-level)
+              // Note: Variable costs are created at property level, then allocated to tenants
+              // This will be handled by the variable costs actions
+              // For now, we'll create the variable cost record
+              // The allocation logic is in variable-costs-actions.ts
+            }
+          }
+        } catch (variableCostError) {
+          console.error("Error creating variable costs:", variableCostError)
+          // Don't fail the bill processing if variable cost creation fails
+        }
       }
 
       return {
@@ -119,7 +322,7 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
         isSuccess: false,
         message: "Failed to process bill with AI"
       }
-    }    }
+    }
   } catch (error) {
     console.error("Error processing bill:", error)
     return { isSuccess: false, message: "Failed to process bill" }

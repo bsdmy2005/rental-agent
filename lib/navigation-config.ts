@@ -37,17 +37,47 @@ export function getNavigationForUserType(
         {
           title: "Properties",
           url: "/dashboard/properties",
-          icon: Home
+          icon: Home,
+          items: [
+            {
+              title: "View Properties",
+              url: "/dashboard/properties"
+            },
+            {
+              title: "Add Property",
+              url: "/dashboard/properties/add"
+            }
+          ]
         },
         {
           title: "Tenants",
           url: "/dashboard/tenants",
-          icon: Users
+          icon: Users,
+          items: [
+            {
+              title: "View Tenants",
+              url: "/dashboard/tenants"
+            },
+            {
+              title: "Add Tenant",
+              url: "/dashboard/tenants/add"
+            }
+          ]
         },
         {
           title: "Bills",
           url: "/dashboard/bills",
-          icon: FileText
+          icon: FileText,
+          items: [
+            {
+              title: "View Bills",
+              url: "/dashboard/bills"
+            },
+            {
+              title: "Upload Bills",
+              url: "/dashboard/bills/upload"
+            }
+          ]
         },
         {
           title: "Invoices",
@@ -62,7 +92,17 @@ export function getNavigationForUserType(
         {
           title: "Extraction Rules",
           url: "/dashboard/rules",
-          icon: Wrench
+          icon: Wrench,
+          items: [
+            {
+              title: "View Rules",
+              url: "/dashboard/rules"
+            },
+            {
+              title: "Add Rule",
+              url: "/dashboard/rules/add"
+            }
+          ]
         },
         {
           title: "Settings",
@@ -96,7 +136,17 @@ export function getNavigationForUserType(
         {
           title: "Bills",
           url: "/dashboard/bills",
-          icon: FileText
+          icon: FileText,
+          items: [
+            {
+              title: "View Bills",
+              url: "/dashboard/bills"
+            },
+            {
+              title: "Upload Bills",
+              url: "/dashboard/bills/upload"
+            }
+          ]
         },
         {
           title: "Invoices",
@@ -111,7 +161,17 @@ export function getNavigationForUserType(
         {
           title: "Extraction Rules",
           url: "/dashboard/rules",
-          icon: Wrench
+          icon: Wrench,
+          items: [
+            {
+              title: "View Rules",
+              url: "/dashboard/rules"
+            },
+            {
+              title: "Add Rule",
+              url: "/dashboard/rules/add"
+            }
+          ]
         },
         {
           title: "Settings",

@@ -68,7 +68,7 @@ This MVP establishes the foundation for the rental agent system. It enables:
 
 ### 9. PDF Processing Pipeline
 - Extract PDFs from emails or manual uploads
-- Process PDFs using OpenAI GPT-4 Vision
+- Process PDFs using OpenAI 
 - Extract text and structured data
 - Store extracted data for rule matching
 

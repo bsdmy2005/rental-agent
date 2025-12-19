@@ -29,8 +29,6 @@ export async function getPropertiesByLandlordIdQuery(
   return properties
 }
 
-import { inArray } from "drizzle-orm"
-
 export async function getPropertiesByRentalAgentIdQuery(
   rentalAgentId: string
 ): Promise<SelectProperty[]> {
@@ -78,5 +76,49 @@ export async function getPropertyWithDetailsQuery(
     ...property,
     tenants
   }
+}
+
+export async function getPropertiesWithTenantsByLandlordIdQuery(
+  landlordId: string
+): Promise<PropertyWithDetails[]> {
+  const properties = await getPropertiesByLandlordIdQuery(landlordId)
+  
+  const propertiesWithTenants = await Promise.all(
+    properties.map(async (property) => {
+      const tenants = await db
+        .select()
+        .from(tenantsTable)
+        .where(eq(tenantsTable.propertyId, property.id))
+      
+      return {
+        ...property,
+        tenants
+      }
+    })
+  )
+  
+  return propertiesWithTenants
+}
+
+export async function getPropertiesWithTenantsByRentalAgentIdQuery(
+  rentalAgentId: string
+): Promise<PropertyWithDetails[]> {
+  const properties = await getPropertiesByRentalAgentIdQuery(rentalAgentId)
+  
+  const propertiesWithTenants = await Promise.all(
+    properties.map(async (property) => {
+      const tenants = await db
+        .select()
+        .from(tenantsTable)
+        .where(eq(tenantsTable.propertyId, property.id))
+      
+      return {
+        ...property,
+        tenants
+      }
+    })
+  )
+  
+  return propertiesWithTenants
 }
 

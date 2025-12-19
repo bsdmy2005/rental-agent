@@ -57,12 +57,13 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #1E40AF; /* navy-700 - darker navy */
+  --primary-foreground: #FFFFFF; /* white */
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground-dark: #9CA3AF; /* gray-400 for better dark mode visibility */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -83,13 +84,14 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   
-  /* Brand Colors */
-  --brand-primary: oklch(0.522 0.223 262.881); /* indigo-600 */
-  --brand-primary-hover: oklch(0.475 0.196 264.798); /* indigo-700 */
-  --brand-primary-foreground: oklch(1 0 0);
-  --brand-secondary: oklch(0.531 0.255 286.623); /* purple-600 */
-  --brand-secondary-hover: oklch(0.474 0.215 286.03); /* purple-700 */
-  --brand-accent: oklch(0.661 0.238 351.367); /* pink-600 */
+  /* Brand Colors - New Palette */
+  --brand-primary: #1E40AF; /* navy-700 - darker navy */
+  --brand-primary-hover: #1E3A8A; /* navy-800 - even darker navy */
+  --brand-primary-foreground: #FFFFFF; /* white */
+  --brand-secondary: #3B82F6; /* blue-500 */
+  --brand-secondary-hover: #2563EB; /* blue-600 */
+  --brand-accent: #1F2937; /* gray-800 */
+  --brand-light: #EFF6FF; /* blue-50 */
 }
 
 .dark {
@@ -99,8 +101,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #3B82F6; /* blue-500 - lighter navy for dark mode */
+  --primary-foreground: #FFFFFF; /* white */
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -126,12 +128,13 @@
   --sidebar-ring: oklch(0.556 0 0);
   
   /* Brand Colors - Dark Mode */
-  --brand-primary: oklch(0.598 0.217 263.827); /* indigo-400 */
-  --brand-primary-hover: oklch(0.648 0.194 265.755); /* indigo-300 */
-  --brand-primary-foreground: oklch(0.145 0 0);
-  --brand-secondary: oklch(0.636 0.265 287.621); /* purple-400 */
-  --brand-secondary-hover: oklch(0.678 0.234 285.751); /* purple-300 */
-  --brand-accent: oklch(0.717 0.23 349.761); /* pink-400 */
+  --brand-primary: #3B82F6; /* blue-500 - lighter navy for dark mode */
+  --brand-primary-hover: #60A5FA; /* blue-400 - even lighter for hover */
+  --brand-primary-foreground: #FFFFFF; /* white */
+  --brand-secondary: #60A5FA; /* blue-400 */
+  --brand-secondary-hover: #3B82F6; /* blue-500 */
+  --brand-accent: #EFF6FF; /* blue-50 - light accent in dark mode */
+  --brand-light: #1F2937; /* gray-800 - dark background in dark mode */
 }
 
 @layer base {

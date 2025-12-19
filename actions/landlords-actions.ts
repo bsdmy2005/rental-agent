@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm"
 
 export async function createLandlordAction(
   userProfileId: string,
-  landlordData: InsertLandlord
+  landlordData: Omit<InsertLandlord, "userProfileId">
 ): Promise<ActionState<SelectLandlord>> {
   try {
     const [newLandlord] = await db

@@ -27,10 +27,10 @@ export function CompaniesSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-slate-50 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h2 className="text-gray-900 dark:text-white text-3xl font-bold tracking-tight sm:text-4xl">
             Designed for real rental operations
           </h2>
-          <p className="text-slate-300 mt-4 text-lg leading-8">
+          <p className="text-gray-600 dark:text-gray-300 mt-4 text-lg leading-8">
             RentPilot AI focuses on the boring but critical parts of being a landlord or agency:
             bills in, clear invoices out, and tenants always in the loop.
           </p>
@@ -42,7 +42,7 @@ export function CompaniesSection() {
             {valuePoints.map(point => (
               <li
                 key={point}
-                className="bg-slate-700/50 text-slate-50 flex items-start gap-3 rounded-lg px-4 py-3 text-sm ring-1 ring-slate-600"
+                className="bg-white text-gray-900 flex items-start gap-3 rounded-lg px-4 py-3 text-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:text-white dark:ring-gray-700"
               >
                 <span className="mt-1 h-2 w-2 rounded-full bg-brand-primary" />
                 <span>{point}</span>
@@ -68,10 +68,10 @@ export function CompaniesSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
             >
-              <dt className="text-slate-300 text-base leading-7">
+              <dt className="text-gray-600 dark:text-gray-300 text-base leading-7">
                 {stat.label}
               </dt>
-              <dd className="text-slate-50 order-first text-3xl font-semibold tracking-tight sm:text-5xl">
+              <dd className="text-gray-900 dark:text-white order-first text-3xl font-semibold tracking-tight sm:text-5xl">
                 <motion.span
                   initial={{ opacity: 0, scale: 0.5 }}
                   whileInView={{ opacity: 1, scale: 1 }}

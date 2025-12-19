@@ -1,0 +1,17 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <rect width="180" height="180" rx="40" fill="url(#gradient)"/>
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E40AF"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- House/Building icon - simplified for clarity -->
+  <path d="M90 39.375L25.3125 78.75V146.25H56.25V106.875H123.75V146.25H154.688V78.75L90 39.375Z" fill="white" fill-opacity="0.95"/>
+  
+  <!-- Door/Entry point -->
+  <rect x="73.125" y="106.875" width="33.75" height="39.375" fill="#1E40AF" fill-opacity="0.3"/>
+</svg>
+

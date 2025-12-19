@@ -43,7 +43,7 @@ export function SocialProofSection() {
             Testimonials
           </motion.h2>
           <motion.p
-            className="text-slate-50 mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-gray-900 dark:text-white mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -57,7 +57,7 @@ export function SocialProofSection() {
             {testimonials.map((testimonial, index) => (
               <motion.div
                 key={testimonial.name}
-                className="bg-slate-700/50 ring-slate-600 relative rounded-2xl p-8 shadow-md ring-1"
+                className="bg-white ring-gray-200 relative rounded-2xl p-8 shadow-md ring-1 dark:bg-gray-800 dark:ring-gray-700"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -79,12 +79,12 @@ export function SocialProofSection() {
                     />
                   ))}
                 </div>
-                <blockquote className="text-slate-300 mt-6 text-base leading-7">
+                <blockquote className="text-gray-600 dark:text-gray-300 mt-6 text-base leading-7">
                   <p>"{testimonial.content}"</p>
                 </blockquote>
-                <figcaption className="text-slate-50 mt-6 text-base font-semibold">
+                <figcaption className="text-gray-900 dark:text-white mt-6 text-base font-semibold">
                   <div>{testimonial.name}</div>
-                  <div className="text-slate-400 mt-1 text-sm">
+                  <div className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
                     {testimonial.role}
                   </div>
                 </figcaption>

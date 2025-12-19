@@ -57,7 +57,7 @@ export function FAQSection() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-4xl">
           <motion.h2
-            className="text-slate-50 text-2xl leading-10 font-bold tracking-tight"
+            className="text-gray-900 dark:text-white text-2xl leading-10 font-bold tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -66,7 +66,7 @@ export function FAQSection() {
             Frequently asked questions
           </motion.h2>
           <motion.p
-            className="text-slate-300 mt-6 text-base leading-7"
+            className="text-gray-600 dark:text-gray-300 mt-6 text-base leading-7"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -89,7 +89,7 @@ export function FAQSection() {
                   onOpenChange={() => toggleItem(faq.question)}
                 >
                   <CollapsibleTrigger className="flex w-full items-start justify-between text-left">
-                    <span className="text-slate-50 text-base leading-7 font-semibold">
+                    <span className="text-gray-900 dark:text-white text-base leading-7 font-semibold">
                       {faq.question}
                     </span>
                     <motion.span
@@ -99,12 +99,12 @@ export function FAQSection() {
                       }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Plus className="text-slate-400 h-6 w-6" aria-hidden="true" />
+                      <Plus className="text-gray-500 dark:text-gray-400 h-6 w-6" aria-hidden="true" />
                     </motion.span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 pr-12">
                     <motion.p
-                      className="text-slate-300 text-base leading-7"
+                      className="text-gray-600 dark:text-gray-300 text-base leading-7"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3 }}
