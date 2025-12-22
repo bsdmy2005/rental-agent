@@ -1,6 +1,7 @@
 import { integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { propertiesTable } from "./properties"
 import { extractionRulesTable } from "./extraction-rules"
+import { billTemplatesTable } from "./bill-templates"
 import { billTypeEnum, sourceEnum, statusEnum } from "./enums"
 
 /**
@@ -44,6 +45,9 @@ export const billsTable = pgTable("bills", {
   // Used to prevent duplicate uploads and organize bills by period
   billingYear: integer("billing_year"), // e.g. 2025
   billingMonth: integer("billing_month"), // 1-12 (January = 1, December = 12)
+  // Link to bill template (optional, linked after processing)
+  billTemplateId: uuid("bill_template_id")
+    .references(() => billTemplatesTable.id, { onDelete: "set null" }), // Optional - linked after processing
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

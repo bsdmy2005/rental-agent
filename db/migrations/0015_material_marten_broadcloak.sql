@@ -1,0 +1,3 @@
+ALTER TABLE "billing_periods" ADD COLUMN "payable_template_id" uuid;--> statement-breakpoint
+ALTER TABLE "billing_periods" ADD COLUMN "scheduled_payment_day" integer;--> statement-breakpoint
+ALTER TABLE "billing_periods" ADD CONSTRAINT "billing_periods_payable_template_id_payable_templates_id_fk" FOREIGN KEY ("payable_template_id") REFERENCES "public"."payable_templates"("id") ON DELETE cascade ON UPDATE no action;

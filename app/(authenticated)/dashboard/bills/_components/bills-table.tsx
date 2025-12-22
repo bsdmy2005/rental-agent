@@ -25,7 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BillActions } from "./bill-actions"
 import { FileText, DollarSign, Filter, X, ExternalLink, Settings, FileIcon, Eye } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import type { SelectExtractionRule } from "@/db/schema"
+import type { SelectExtractionRule, SelectBillTemplate } from "@/db/schema"
 
 interface Bill {
   id: string
@@ -43,6 +43,7 @@ interface Bill {
   invoiceRule: SelectExtractionRule | null
   paymentRule: SelectExtractionRule | null
   legacyRule: SelectExtractionRule | null
+  billTemplate: SelectBillTemplate | null
   createdAt: Date
 }
 
@@ -450,6 +451,7 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                   <TableHead className="min-w-[200px]">File Name</TableHead>
                   <TableHead className="min-w-[150px]">Property</TableHead>
                   <TableHead className="min-w-[120px]">Bill Type</TableHead>
+                  <TableHead className="min-w-[150px]">Template</TableHead>
                   <TableHead className="min-w-[100px]">Period</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
                   <TableHead className="min-w-[100px]">Source</TableHead>
@@ -462,7 +464,7 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
               <TableBody>
                 {filteredBills.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No bills match the selected filters.
                     </TableCell>
                   </TableRow>
@@ -531,6 +533,13 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                           <Badge variant="outline" className="capitalize">
                             {bill.billType}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {bill.billTemplate ? (
+                            <span className="text-sm font-medium">{bill.billTemplate.name}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {billingPeriod ? (

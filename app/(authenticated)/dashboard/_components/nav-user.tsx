@@ -31,7 +31,8 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 
 export function NavUser({
-  user
+  user,
+  userType
 }: {
   user: {
     name: string
@@ -39,6 +40,7 @@ export function NavUser({
     avatar: string
     membership: string
   }
+  userType: "landlord" | "rental_agent" | "tenant" | "admin"
 }) {
   const { isMobile } = useSidebar()
   const { theme, setTheme } = useTheme()
@@ -50,6 +52,36 @@ export function NavUser({
       return words[0][0] + words[1][0]
     }
     return name.slice(0, 2).toUpperCase()
+  }
+
+  const getUserTypeLabel = (type: string) => {
+    switch (type) {
+      case "landlord":
+        return "Landlord"
+      case "rental_agent":
+        return "Rental Agent"
+      case "tenant":
+        return "Tenant"
+      case "admin":
+        return "Admin"
+      default:
+        return type
+    }
+  }
+
+  const getUserTypeVariant = (type: string): "default" | "secondary" | "outline" => {
+    switch (type) {
+      case "admin":
+        return "default"
+      case "landlord":
+        return "default"
+      case "rental_agent":
+        return "secondary"
+      case "tenant":
+        return "outline"
+      default:
+        return "secondary"
+    }
   }
 
   return (
@@ -69,12 +101,20 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                <Badge
-                  variant={user.membership === "pro" ? "default" : "secondary"}
-                  className="mt-0.5 w-fit px-2 py-0 text-xs"
-                >
-                  {user.membership === "pro" ? "Pro" : "Free"}
-                </Badge>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Badge
+                    variant={getUserTypeVariant(userType)}
+                    className="w-fit px-2 py-0 text-xs"
+                  >
+                    {getUserTypeLabel(userType)}
+                  </Badge>
+                  <Badge
+                    variant={user.membership === "pro" ? "default" : "secondary"}
+                    className="w-fit px-2 py-0 text-xs"
+                  >
+                    {user.membership === "pro" ? "Pro" : "Free"}
+                  </Badge>
+                </div>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -96,6 +136,20 @@ export function NavUser({
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Badge
+                      variant={getUserTypeVariant(userType)}
+                      className="w-fit px-2 py-0 text-xs"
+                    >
+                      {getUserTypeLabel(userType)}
+                    </Badge>
+                    <Badge
+                      variant={user.membership === "pro" ? "default" : "secondary"}
+                      className="w-fit px-2 py-0 text-xs"
+                    >
+                      {user.membership === "pro" ? "Pro" : "Free"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </DropdownMenuLabel>

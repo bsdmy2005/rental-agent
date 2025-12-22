@@ -9,12 +9,22 @@ import {
   propertiesTable,
   propertyManagementsTable,
   tenantsTable,
+  leaseAgreementsTable,
   billsTable,
   extractionRulesTable,
   ruleSamplesTable,
   emailProcessorsTable,
   billingSchedulesTable,
-  billingScheduleStatusTable
+  billingScheduleStatusTable,
+  billingPeriodsTable,
+  periodBillMatchesTable,
+  billTemplatesTable,
+  payableTemplatesTable,
+  rentalInvoiceTemplatesTable,
+  payableInstancesTable,
+  rentalInvoiceInstancesTable,
+  billArrivalSchedulesTable,
+  payableSchedulesTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -33,12 +43,22 @@ const dbSchema = {
   properties: propertiesTable,
   propertyManagements: propertyManagementsTable,
   tenants: tenantsTable,
+  leaseAgreements: leaseAgreementsTable,
   bills: billsTable,
   extractionRules: extractionRulesTable,
   ruleSamples: ruleSamplesTable,
   emailProcessors: emailProcessorsTable,
   billingSchedules: billingSchedulesTable,
-  billingScheduleStatus: billingScheduleStatusTable
+  billingScheduleStatus: billingScheduleStatusTable,
+  billingPeriods: billingPeriodsTable,
+  periodBillMatches: periodBillMatchesTable,
+  billTemplates: billTemplatesTable,
+  payableTemplates: payableTemplatesTable,
+  rentalInvoiceTemplates: rentalInvoiceTemplatesTable,
+  payableInstances: payableInstancesTable,
+  rentalInvoiceInstances: rentalInvoiceInstancesTable,
+  billArrivalSchedules: billArrivalSchedulesTable,
+  payableSchedules: payableSchedulesTable
   // relations
 }
 

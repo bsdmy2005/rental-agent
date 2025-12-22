@@ -1,6 +1,6 @@
 import { db } from "@/db"
 import { billsTable, extractionRulesTable, type SelectBill, type SelectExtractionRule } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 
 export async function getBillByIdQuery(billId: string): Promise<SelectBill | null> {
   const [bill] = await db
@@ -103,5 +103,37 @@ export async function getBillsByPropertyWithRulesQuery(
   )
 
   return billsWithRules
+}
+
+/**
+ * Batch fetch bills for multiple properties
+ */
+export async function getBillsByPropertyIdsQuery(propertyIds: string[]): Promise<SelectBill[]> {
+  if (propertyIds.length === 0) {
+    return []
+  }
+
+  const bills = await db
+    .select()
+    .from(billsTable)
+    .where(inArray(billsTable.propertyId, propertyIds))
+
+  return bills
+}
+
+/**
+ * Batch fetch rules by IDs
+ */
+export async function getRulesByIdsQuery(ruleIds: string[]): Promise<Map<string, SelectExtractionRule>> {
+  if (ruleIds.length === 0) {
+    return new Map()
+  }
+
+  const rules = await db
+    .select()
+    .from(extractionRulesTable)
+    .where(inArray(extractionRulesTable.id, ruleIds))
+
+  return new Map(rules.map((rule) => [rule.id, rule]))
 }
 

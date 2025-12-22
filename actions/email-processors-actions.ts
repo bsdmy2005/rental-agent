@@ -479,7 +479,7 @@ export async function processEmailWebhookAction(
         )
           .then(async ({ invoiceData, paymentData }) => {
             // Update bill with extracted data
-            await updateBillAction(billResult.data!.id, {
+            const updateResult = await updateBillAction(billResult.data!.id, {
               status: "processed",
               invoiceExtractionData: invoiceData as any,
               paymentExtractionData: paymentData as any,
@@ -487,6 +487,18 @@ export async function processEmailWebhookAction(
               paymentRuleId: paymentRule?.id || null
             })
             console.log(`[Email Processing]     ✓ Bill ${billResult.data?.id} processed successfully`)
+            
+            // Link bill to template after successful processing
+            if (updateResult.isSuccess && updateResult.data) {
+              try {
+                const { linkBillToTemplate } = await import("@/actions/bills-actions")
+                await linkBillToTemplate(billResult.data!.id, updateResult.data)
+                console.log(`[Email Processing]     ✓ Template linking attempted for bill ${billResult.data?.id}`)
+              } catch (linkError) {
+                // Log but don't fail - template linking is optional
+                console.error(`[Email Processing]     Error linking template for bill ${billResult.data?.id}:`, linkError)
+              }
+            }
           })
           .catch(async (error) => {
             console.error(`[Email Processing]     ✗ Failed to process bill ${billResult.data?.id}:`, error)

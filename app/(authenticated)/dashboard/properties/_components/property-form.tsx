@@ -73,12 +73,13 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
         propertyType: formData.propertyType || undefined
       })
 
-      if (result.isSuccess) {
+      if (result.isSuccess && result.data) {
         toast.success("Property created successfully!")
         if (onSuccess) {
           onSuccess()
         } else {
-          router.push("/dashboard/properties")
+          // Redirect to template setup page
+          router.push(`/dashboard/properties/${result.data.id}/setup-templates`)
         }
         // Reset form
         setFormData({

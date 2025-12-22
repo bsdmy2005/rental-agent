@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Pencil, Trash2, X, Check } from "lucide-react"
+import { Pencil, Trash2, X, Check, Eye } from "lucide-react"
+import Link from "next/link"
 import { TenantWithProperty } from "@/queries/tenants-queries"
 import { updateTenantAction, deleteTenantAction } from "@/actions/tenants-actions"
 import { toast } from "sonner"
@@ -222,6 +223,11 @@ export function TenantTableRow({ tenant }: TenantTableRowProps) {
       <td className="p-4 text-sm">{formatDate(tenant.leaseEndDate)}</td>
       <td className="p-4">
         <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="icon" asChild className="h-8 w-8">
+            <Link href={`/dashboard/tenants/${tenant.id}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
+          </Button>
           <Button
             variant="ghost"
             size="icon"

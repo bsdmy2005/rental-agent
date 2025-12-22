@@ -91,3 +91,25 @@ export async function isRuleReferencedBySchedulesQuery(ruleId: string): Promise<
   return schedules.length > 0
 }
 
+/**
+ * Batch check which rules are referenced by billing schedules
+ * Returns a Set of rule IDs that are referenced
+ */
+export async function getRulesReferencedBySchedulesQuery(ruleIds: string[]): Promise<Set<string>> {
+  if (ruleIds.length === 0) {
+    return new Set()
+  }
+
+  const { billingSchedulesTable } = await import("@/db/schema")
+  const { inArray, isNotNull } = await import("drizzle-orm")
+  
+  const schedules = await db
+    .select({ extractionRuleId: billingSchedulesTable.extractionRuleId })
+    .from(billingSchedulesTable)
+    .where(
+      inArray(billingSchedulesTable.extractionRuleId, ruleIds)
+    )
+
+  return new Set(schedules.map((s) => s.extractionRuleId).filter((id): id is string => id !== null))
+}
+

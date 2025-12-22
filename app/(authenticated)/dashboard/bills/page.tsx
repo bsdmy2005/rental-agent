@@ -5,6 +5,7 @@ import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { BillsList } from "./_components/bills-list"
 import { BillsListSkeleton } from "./_components/bills-list-skeleton"
+import { BackfillTemplatesButton } from "./_components/backfill-templates-button"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus } from "lucide-react"
@@ -24,12 +25,15 @@ export default async function BillsPage() {
         </div>
 
         {userProfile && (
-          <Button asChild>
-            <Link href="/dashboard/bills/upload">
-              <Plus className="mr-2 h-4 w-4" />
-              Upload Bills
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <BackfillTemplatesButton />
+            <Button asChild>
+              <Link href="/dashboard/bills/upload">
+                <Plus className="mr-2 h-4 w-4" />
+                Upload Bills
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 

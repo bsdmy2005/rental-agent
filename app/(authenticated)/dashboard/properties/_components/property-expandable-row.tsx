@@ -454,7 +454,7 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
               className="h-8 w-8"
               title="Manage Billing Schedules"
             >
-              <Link href={`/dashboard/properties/${property.id}/billing-setup`}>
+              <Link href={`/dashboard/properties/${property.id}/billing-schedule`}>
                 <Calendar className="h-4 w-4" />
               </Link>
             </Button>

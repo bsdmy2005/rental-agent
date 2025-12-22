@@ -71,35 +71,99 @@ export async function getDashboardStatsQuery(userProfileId: string, userType: st
   // Get properties count
   const propertiesCount = propertyIds.length
 
-  // Get tenants count
-  const tenants = await db
-    .select()
+  // Get tenants count (optimized - count in SQL)
+  const tenantsCountResult = await db
+    .select({ count: sql<number>`count(*)` })
     .from(tenantsTable)
     .where(inArray(tenantsTable.propertyId, propertyIds))
-  const tenantsCount = tenants.length
+  const tenantsCount = Number(tenantsCountResult[0]?.count || 0)
 
-  // Get bills for these properties
-  const allBills = await db
-    .select()
+  // Count bills by status (optimized - count in SQL instead of loading all bills)
+  const [pendingBillsResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        eq(billsTable.status, "pending")
+      )
+    )
+  const pendingBills = Number(pendingBillsResult?.count || 0)
+
+  const [processingBillsResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        eq(billsTable.status, "processing")
+      )
+    )
+  const processingBills = Number(processingBillsResult?.count || 0)
+
+  const [processedBillsResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        eq(billsTable.status, "processed")
+      )
+    )
+  const processedBills = Number(processedBillsResult?.count || 0)
+
+  const [errorBillsResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        eq(billsTable.status, "error")
+      )
+    )
+  const errorBills = Number(errorBillsResult?.count || 0)
+
+  // Count bills with invoice/payment data (optimized - count in SQL)
+  const [billsWithInvoicesResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        isNotNull(billsTable.invoiceExtractionData)
+      )
+    )
+  const billsWithInvoices = Number(billsWithInvoicesResult?.count || 0)
+
+  const [billsWithPayablesResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(billsTable)
+    .where(
+      and(
+        inArray(billsTable.propertyId, propertyIds),
+        isNotNull(billsTable.paymentExtractionData)
+      )
+    )
+  const billsWithPayables = Number(billsWithPayablesResult?.count || 0)
+
+  // Get total bills count (optimized)
+  const [totalBillsResult] = await db
+    .select({ count: sql<number>`count(*)` })
     .from(billsTable)
     .where(inArray(billsTable.propertyId, propertyIds))
+  const totalBills = Number(totalBillsResult?.count || 0)
 
-  // Count bills by status
-  const pendingBills = allBills.filter((b) => b.status === "pending").length
-  const processingBills = allBills.filter((b) => b.status === "processing").length
-  const processedBills = allBills.filter((b) => b.status === "processed").length
-  const errorBills = allBills.filter((b) => b.status === "error").length
-
-  // Count bills with invoice/payment data
-  const billsWithInvoices = allBills.filter((b) => b.invoiceExtractionData !== null).length
-  const billsWithPayables = allBills.filter((b) => b.paymentExtractionData !== null).length
-
-  // Get active extraction rules for these properties
-  const rules = await db
-    .select()
+  // Get active extraction rules count (optimized - count in SQL)
+  const [activeRulesResult] = await db
+    .select({ count: sql<number>`count(*)` })
     .from(extractionRulesTable)
-    .where(inArray(extractionRulesTable.propertyId, propertyIds))
-  const activeRules = rules.filter((r) => r.isActive).length
+    .where(
+      and(
+        inArray(extractionRulesTable.propertyId, propertyIds),
+        eq(extractionRulesTable.isActive, true)
+      )
+    )
+  const activeRules = Number(activeRulesResult?.count || 0)
 
   return {
     properties: propertiesCount,
@@ -111,7 +175,7 @@ export async function getDashboardStatsQuery(userProfileId: string, userType: st
     billsWithInvoices,
     billsWithPayables,
     activeRules,
-    totalBills: allBills.length
+    totalBills
   }
 }
 

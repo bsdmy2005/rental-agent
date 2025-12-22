@@ -117,6 +117,95 @@ export async function getScheduleStatusForPropertyAction(
   }
 }
 
+/**
+ * Batch get schedule statuses for multiple properties
+ * Returns a Map of propertyId -> statuses array
+ */
+export async function getScheduleStatusesForPropertiesAction(
+  propertyIds: string[],
+  periodYear?: number,
+  periodMonth?: number
+): Promise<ActionState<Map<string, SelectBillingScheduleStatus[]>>> {
+  try {
+    if (propertyIds.length === 0) {
+      return {
+        isSuccess: true,
+        message: "No properties provided",
+        data: new Map()
+      }
+    }
+
+    // Get all schedules for all properties
+    const schedules = await db.query.billingSchedules.findMany({
+      where: inArray(billingSchedulesTable.propertyId, propertyIds)
+    })
+
+    const scheduleIds = schedules.map((s) => s.id)
+
+    if (scheduleIds.length === 0) {
+      return {
+        isSuccess: true,
+        message: "No schedules found for properties",
+        data: new Map()
+      }
+    }
+
+    // Build where conditions
+    const conditions: any[] = [inArray(billingScheduleStatusTable.scheduleId, scheduleIds)]
+
+    if (periodYear && periodMonth) {
+      conditions.push(
+        eq(billingScheduleStatusTable.periodYear, periodYear),
+        eq(billingScheduleStatusTable.periodMonth, periodMonth)
+      )
+    }
+
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions)
+
+    const statuses = await db.query.billingScheduleStatus.findMany({
+      where: whereClause,
+      orderBy: (status, { desc }) => [
+        desc(status.periodYear),
+        desc(status.periodMonth)
+      ]
+    })
+
+    // Create a map of scheduleId -> propertyId for quick lookup
+    const scheduleToProperty = new Map<string, string>()
+    for (const schedule of schedules) {
+      scheduleToProperty.set(schedule.id, schedule.propertyId)
+    }
+
+    // Group statuses by propertyId
+    const statusesByProperty = new Map<string, SelectBillingScheduleStatus[]>()
+    for (const status of statuses) {
+      const propertyId = scheduleToProperty.get(status.scheduleId)
+      if (propertyId) {
+        if (!statusesByProperty.has(propertyId)) {
+          statusesByProperty.set(propertyId, [])
+        }
+        statusesByProperty.get(propertyId)!.push(status)
+      }
+    }
+
+    // Ensure all propertyIds have an entry (even if empty)
+    for (const propertyId of propertyIds) {
+      if (!statusesByProperty.has(propertyId)) {
+        statusesByProperty.set(propertyId, [])
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Schedule statuses retrieved successfully",
+      data: statusesByProperty
+    }
+  } catch (error) {
+    console.error("Error getting schedule statuses for properties:", error)
+    return { isSuccess: false, message: "Failed to get schedule statuses" }
+  }
+}
+
 export async function getScheduleStatusForPeriodAction(
   scheduleId: string,
   periodYear: number,

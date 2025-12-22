@@ -21,20 +21,21 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RuleActions } from "./rule-actions"
-import { isRuleReferencedBySchedulesQuery } from "@/queries/extraction-rules-queries"
+import { getRulesReferencedBySchedulesQuery } from "@/queries/extraction-rules-queries"
 
 async function RuleActionsWrapper({
   ruleId,
   ruleName,
+  isReferenced,
   userProfileId,
   properties
 }: {
   ruleId: string
   ruleName: string
+  isReferenced: boolean
   userProfileId: string
   properties: Array<{ id: string; name: string }>
 }) {
-  const isReferenced = await isRuleReferencedBySchedulesQuery(ruleId)
   return (
     <RuleActions
       ruleId={ruleId}
@@ -109,6 +110,10 @@ export async function RulesTable() {
       allProperties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
     }
   }
+
+  // Batch check which rules are referenced by schedules (fixes N+1 query problem)
+  const allRuleIds = rules.map((r) => r.id)
+  const referencedRuleIds = await getRulesReferencedBySchedulesQuery(allRuleIds)
 
   return (
     <div className="space-y-6">
@@ -198,6 +203,7 @@ export async function RulesTable() {
                         <RuleActionsWrapper
                           ruleId={rule.id}
                           ruleName={rule.name}
+                          isReferenced={referencedRuleIds.has(rule.id)}
                           userProfileId={userProfile.id}
                           properties={allProperties}
                         />

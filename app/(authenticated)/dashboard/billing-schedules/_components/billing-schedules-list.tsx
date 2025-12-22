@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Plus, ArrowRight, Calendar } from "lucide-react"
-import { getScheduleStatusForPropertyAction } from "@/actions/billing-schedule-status-actions"
+import { getScheduleStatusesForPropertiesAction } from "@/actions/billing-schedule-status-actions"
 
 export async function BillingSchedulesList() {
   const user = await currentUser()
@@ -76,20 +76,26 @@ export async function BillingSchedulesList() {
     schedulesByProperty.get(schedule.propertyId)!.push(schedule)
   }
 
-  // Get statuses for each property
-  const propertiesWithSchedules = await Promise.all(
-    Array.from(schedulesByProperty.entries()).map(async ([propertyId, schedules]) => {
-      const property = properties.find((p) => p.id === propertyId) || { id: propertyId, name: "Unknown Property" }
-      const statusesResult = await getScheduleStatusForPropertyAction(propertyId, currentYear, currentMonth)
-      const statuses = statusesResult.isSuccess ? statusesResult.data : []
-
-      return {
-        property,
-        schedules,
-        statuses
-      }
-    })
+  // Batch fetch statuses for all properties at once (fixes N+1 query problem)
+  const propertyIdsWithSchedules = Array.from(schedulesByProperty.keys())
+  const statusesResult = await getScheduleStatusesForPropertiesAction(
+    propertyIdsWithSchedules,
+    currentYear,
+    currentMonth
   )
+  const statusesByPropertyMap = statusesResult.isSuccess ? statusesResult.data : new Map()
+
+  // Map properties with schedules
+  const propertiesWithSchedules = Array.from(schedulesByProperty.entries()).map(([propertyId, schedules]) => {
+    const property = properties.find((p) => p.id === propertyId) || { id: propertyId, name: "Unknown Property" }
+    const statuses = statusesByPropertyMap.get(propertyId) || []
+
+    return {
+      property,
+      schedules,
+      statuses
+    }
+  })
 
   // Properties without schedules
   const propertiesWithoutSchedules = properties.filter(
@@ -125,7 +131,7 @@ export async function BillingSchedulesList() {
                   </CardDescription>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/dashboard/properties/${property.id}/billing-setup`}>
+                  <Link href={`/dashboard/properties/${property.id}/billing-schedule`}>
                     Manage Schedules
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
@@ -236,7 +242,7 @@ export async function BillingSchedulesList() {
                     {schedules.length > 5 && (
                       <div className="p-3 text-center border-t">
                         <Button asChild variant="ghost" size="sm">
-                          <Link href={`/dashboard/properties/${property.id}/billing-setup`}>
+                          <Link href={`/dashboard/properties/${property.id}/billing-schedule`}>
                             View all {schedules.length} schedules
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
@@ -272,7 +278,7 @@ export async function BillingSchedulesList() {
                     <p className="text-sm text-muted-foreground">No billing schedules configured</p>
                   </div>
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/dashboard/properties/${property.id}/billing-setup`}>
+                    <Link href={`/dashboard/properties/${property.id}/billing-schedule`}>
                       <Plus className="mr-2 h-4 w-4" />
                       Set Up Schedules
                     </Link>
