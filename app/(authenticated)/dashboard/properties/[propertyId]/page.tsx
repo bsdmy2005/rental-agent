@@ -8,6 +8,7 @@ import { getBillsByPropertyIdQuery } from "@/queries/bills-queries"
 import { getExtractionRulesByPropertyIdQuery } from "@/queries/extraction-rules-queries"
 import { getBillingSchedulesForPropertyAction } from "@/actions/billing-schedules-actions"
 import { getScheduleStatusForPropertyAction } from "@/actions/billing-schedule-status-actions"
+import { getBillTemplatesByPropertyIdAction } from "@/actions/bill-templates-actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
@@ -15,6 +16,10 @@ import { ArrowLeft, Plus, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PropertyBillsSection } from "./_components/property-bills-section"
 import { PropertyRulesSection } from "./_components/property-rules-section"
+import { LeaseDrivenPeriodsSummary } from "./_components/lease-driven-periods-summary"
+import { PropertyTemplatesSection } from "./_components/property-templates-section"
+import { TemplateDependencyVisualization } from "./_components/template-dependency-visualization"
+import { CollapsibleSectionCard } from "./_components/collapsible-section-card"
 
 export default async function PropertyDetailPage({
   params
@@ -40,6 +45,11 @@ export default async function PropertyDetailPage({
 
   const bills = await getBillsByPropertyIdQuery(propertyId)
   const rules = await getExtractionRulesByPropertyIdQuery(propertyId)
+
+  // Check if templates have been set up
+  const billTemplatesResult = await getBillTemplatesByPropertyIdAction(propertyId)
+  const billTemplates = billTemplatesResult.isSuccess ? billTemplatesResult.data : []
+  const hasTemplates = billTemplates.length > 0
 
   // Get billing schedules and statuses
   const schedulesResult = await getBillingSchedulesForPropertyAction(propertyId)
@@ -90,63 +100,36 @@ export default async function PropertyDetailPage({
             </p>
           </div>
         </div>
-        <Link href={`/dashboard/properties/${propertyId}/billing-setup`}>
-          <Button variant="outline">
-            {schedules.length > 0 ? "Manage Billing Schedules" : "Setup Billing Schedules"}
-          </Button>
-        </Link>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Property Bills</CardTitle>
-                  <CardDescription>
-                    Bills received for this property (grouped by type)
-                  </CardDescription>
-                </div>
-                <Link href="/dashboard/bills">
-                  <Button variant="outline" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Upload Bill
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PropertyBillsSection bills={bills} billsByType={billsByType} />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Extraction Rules</CardTitle>
-                  <CardDescription>
-                    Rules configured for this property (grouped by bill type)
-                  </CardDescription>
-                </div>
-                <Link href={`/dashboard/rules?propertyId=${propertyId}`}>
-                  <Button variant="outline" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Rule
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PropertyRulesSection rules={rules} rulesByBillType={rulesByBillType} />
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-2">
+          {!hasTemplates && (
+            <Link href={`/dashboard/properties/${propertyId}/setup-templates`}>
+              <Button variant="default">
+                Setup Billing Templates
+              </Button>
+            </Link>
+          )}
+          <Link href={`/dashboard/properties/${propertyId}/billing`}>
+            <Button variant="outline">
+              Billing
+            </Button>
+          </Link>
+          <Link href={`/dashboard/properties/${propertyId}/billing-schedule`}>
+            <Button variant="outline">
+              {schedules.length > 0 ? "Manage Billing Schedules" : "Setup Billing Schedules"}
+            </Button>
+          </Link>
         </div>
       </div>
 
+      {/* Templates Management Section */}
+      {hasTemplates && (
+        <PropertyTemplatesSection propertyId={propertyId} billTemplates={billTemplates} />
+      )}
+
+      {/* Lease-Driven Billing Periods Summary */}
+      <LeaseDrivenPeriodsSummary propertyId={propertyId} />
+
+      {/* Billing Schedule Status */}
       {schedules.length > 0 && (
         <Card>
           <CardHeader>
@@ -157,7 +140,7 @@ export default async function PropertyDetailPage({
                   Current status of expected billing schedules for this property
                 </CardDescription>
               </div>
-              <Link href={`/dashboard/properties/${propertyId}/billing-setup`}>
+              <Link href={`/dashboard/properties/${propertyId}/billing-schedule`}>
                 <Button variant="outline" size="sm">
                   Manage Schedules
                 </Button>
@@ -177,7 +160,7 @@ export default async function PropertyDetailPage({
                       Review billing setup to ensure all schedules are on track
                     </p>
                   </div>
-                  <Link href={`/dashboard/properties/${propertyId}/billing-setup`}>
+                  <Link href={`/dashboard/properties/${propertyId}/billing-schedule`}>
                     <Button variant="outline" size="sm">
                       View Details
                     </Button>
@@ -195,53 +178,50 @@ export default async function PropertyDetailPage({
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Data Flow</CardTitle>
-              <CardDescription>How bills are processed for this property</CardDescription>
-            </div>
-            {schedules.length === 0 && (
-              <Link href={`/dashboard/properties/${propertyId}/billing-setup`}>
-                <Button variant="outline" size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Setup Billing Schedules
-                </Button>
-              </Link>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="rounded-full bg-primary/10 text-primary px-3 py-1 font-medium dark:bg-primary/20 dark:text-primary">
-                Property
-              </div>
-              <span className="text-muted-foreground">→</span>
-              <div className="rounded-full bg-muted text-muted-foreground px-3 py-1 font-medium dark:bg-muted dark:text-muted-foreground">
-                Multiple Bills ({bills.length})
-              </div>
-              <span className="text-muted-foreground">→</span>
-              <div className="rounded-full bg-muted text-muted-foreground px-3 py-1 font-medium dark:bg-muted dark:text-muted-foreground">
-                Rules ({rules.length})
-              </div>
-              <span className="text-muted-foreground">→</span>
-              <div className="rounded-full bg-green-100 text-green-700 px-3 py-1 font-medium dark:bg-green-950 dark:text-green-300">
-                Invoice Data
-              </div>
-              <span className="text-muted-foreground">+</span>
-              <div className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 font-medium dark:bg-blue-950 dark:text-blue-300">
-                Payment Data
-              </div>
-            </div>
-            <p className="text-muted-foreground mt-4 text-xs">
-              Bills are processed using extraction rules. Each rule can extract invoice data
-              (tenant-chargeable items), payment data (landlord-payable items), or both.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Template Dependency Visualization */}
+      {hasTemplates && (
+        <CollapsibleSectionCard
+          title="Template Dependencies"
+          description="Visual representation of how bill templates, invoice templates, and payable templates are connected"
+          defaultOpen={false}
+        >
+          <TemplateDependencyVisualization propertyId={propertyId} billTemplates={billTemplates} />
+        </CollapsibleSectionCard>
+      )}
+
+      {/* Collapsible Bills Section */}
+      <CollapsibleSectionCard
+        title="Property Bills"
+        description="Bills received for this property (grouped by type)"
+        defaultOpen={false}
+        actionButton={
+          <Link href="/dashboard/bills">
+            <Button variant="outline" size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Upload Bill
+            </Button>
+          </Link>
+        }
+      >
+        <PropertyBillsSection bills={bills} billsByType={billsByType} />
+      </CollapsibleSectionCard>
+
+      {/* Collapsible Rules Section */}
+      <CollapsibleSectionCard
+        title="Extraction Rules"
+        description="Rules configured for this property (grouped by bill type)"
+        defaultOpen={false}
+        actionButton={
+          <Link href={`/dashboard/rules?propertyId=${propertyId}`}>
+            <Button variant="outline" size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Rule
+            </Button>
+          </Link>
+        }
+      >
+        <PropertyRulesSection rules={rules} rulesByBillType={rulesByBillType} />
+      </CollapsibleSectionCard>
     </div>
   )
 }
