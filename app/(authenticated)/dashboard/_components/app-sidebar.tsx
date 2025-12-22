@@ -52,7 +52,7 @@ export function AppSidebar({
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={data.user} userType={userType} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

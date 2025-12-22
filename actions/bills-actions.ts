@@ -3,8 +3,8 @@
 import { db } from "@/db"
 import { billsTable, type InsertBill, type SelectBill } from "@/db/schema"
 import { ActionState } from "@/types"
-import { eq } from "drizzle-orm"
-import { getBillByIdQuery } from "@/queries/bills-queries"
+import { eq, and, isNull } from "drizzle-orm"
+import { getBillByIdQuery, getBillsByPropertyIdQuery } from "@/queries/bills-queries"
 
 export async function createBillAction(bill: InsertBill): Promise<ActionState<SelectBill>> {
   try {
@@ -83,6 +83,131 @@ function extractStoragePathFromUrl(fileUrl: string): string | null {
   }
 
   return null
+}
+
+/**
+ * Link a bill to a bill template
+ * Matching priority:
+ * 1. If bill has invoiceRuleId or paymentRuleId, find template with matching extractionRuleId
+ * 2. Fallback: Find first active template matching billType + propertyId
+ * 
+ * Also triggers:
+ * - Arrival schedule compliance check
+ * - Generation checks for payables/invoices that depend on this template
+ */
+export async function linkBillToTemplate(
+  billId: string,
+  bill: SelectBill
+): Promise<string | null> {
+  // Skip if bill already has a template
+  if (bill.billTemplateId) {
+    return bill.billTemplateId
+  }
+
+  try {
+    const {
+      findBillTemplateByExtractionRuleAction,
+      findBillTemplateByBillTypeAndPropertyAction
+    } = await import("@/actions/bill-templates-actions")
+
+    let templateResult: { isSuccess: boolean; data: any } | null = null
+
+    // Priority 1: Try to match by extraction rule ID
+    if (bill.invoiceRuleId || bill.paymentRuleId) {
+      const ruleId = bill.invoiceRuleId || bill.paymentRuleId
+      if (ruleId) {
+        templateResult = await findBillTemplateByExtractionRuleAction(
+          bill.propertyId,
+          ruleId
+        )
+        if (templateResult.isSuccess && templateResult.data) {
+          console.log(
+            `[Bill Template Linking] Found template by extraction rule: ${templateResult.data.id} for bill ${billId}`
+          )
+        }
+      }
+    }
+
+    // Priority 2: Fallback to billType + propertyId matching
+    if (!templateResult?.isSuccess || !templateResult.data) {
+      templateResult = await findBillTemplateByBillTypeAndPropertyAction(
+        bill.propertyId,
+        bill.billType
+      )
+      if (templateResult.isSuccess && templateResult.data) {
+        console.log(
+          `[Bill Template Linking] Found template by billType: ${templateResult.data.id} for bill ${billId}`
+        )
+      }
+    }
+
+    // Link the template if found
+    if (templateResult.isSuccess && templateResult.data) {
+      await db
+        .update(billsTable)
+        .set({ billTemplateId: templateResult.data.id })
+        .where(eq(billsTable.id, billId))
+      console.log(
+        `[Bill Template Linking] ✓ Linked bill ${billId} to template ${templateResult.data.id}`
+      )
+
+      // Check arrival schedule compliance if schedule exists
+      try {
+        const { getBillArrivalScheduleByTemplateIdAction } = await import(
+          "@/actions/bill-arrival-schedules-actions"
+        )
+        const scheduleResult = await getBillArrivalScheduleByTemplateIdAction(
+          templateResult.data.id
+        )
+
+        if (scheduleResult.isSuccess && scheduleResult.data && bill.billingMonth) {
+          const expectedDay = scheduleResult.data.expectedDayOfMonth
+          console.log(
+            `[Bill Template Linking] Template expects arrival on day ${expectedDay} of month`
+          )
+        }
+      } catch (scheduleError) {
+        // Log but don't fail
+        console.error("[Bill Template Linking] Error checking arrival schedule:", scheduleError)
+      }
+
+      // Trigger generation checks for payables and invoices that depend on this bill template
+      if (bill.billingYear && bill.billingMonth) {
+        try {
+          const { checkAndGeneratePayables, checkAndGenerateInvoices } = await import(
+            "@/lib/generation-triggers"
+          )
+          await checkAndGeneratePayables(
+            bill.propertyId,
+            bill.billingYear,
+            bill.billingMonth
+          )
+          await checkAndGenerateInvoices(
+            bill.propertyId,
+            bill.billingYear,
+            bill.billingMonth
+          )
+          console.log(
+            `[Bill Template Linking] ✓ Triggered generation checks for period ${bill.billingYear}-${bill.billingMonth}`
+          )
+        } catch (generationError) {
+          // Log but don't fail
+          console.error("[Bill Template Linking] Error triggering generation:", generationError)
+        }
+      }
+
+      return templateResult.data.id
+    }
+
+    console.log(
+      `[Bill Template Linking] No template found for bill ${billId} (property: ${bill.propertyId}, type: ${bill.billType})`
+    )
+    return null
+  } catch (templateError) {
+    // Log error but don't fail (templates are optional)
+    console.error("[Bill Template Linking] Error linking bill to template:", templateError)
+    return null
+  }
 }
 
 export async function deleteBillAction(billId: string): Promise<ActionState<void>> {
@@ -292,6 +417,23 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
         return { isSuccess: false, message: "Failed to update bill after processing" }
       }
 
+      // Auto-match bill to billing period if billingYear/billingMonth is set
+      if (processedBill.billingYear && processedBill.billingMonth) {
+        try {
+          const { matchBillToPeriod } = await import("@/lib/period-bill-matcher")
+          await matchBillToPeriod(processedBill, "automatic")
+          console.log(`[Bill Processing] ✓ Auto-matched bill ${billId} to period`)
+        } catch (matchError) {
+          // Log error but don't fail the bill processing
+          console.error(`[Bill Processing] Error auto-matching bill to period:`, matchError)
+        }
+      } else {
+        console.log(`[Bill Processing] Bill ${billId} has no billing period, skipping auto-match`)
+      }
+
+      // Link bill to template using the reusable function
+      await linkBillToTemplate(billId, processedBill)
+
       // NEW: Check for matching billing schedule and link bill (non-breaking)
       // This integration is optional - bills work fine without schedules
       try {
@@ -373,6 +515,83 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
   } catch (error) {
     console.error("Error processing bill:", error)
     return { isSuccess: false, message: "Failed to process bill" }
+  }
+}
+
+/**
+ * Backfill bill template links for existing bills that don't have templates assigned
+ * Links bills to templates using the same priority logic as linkBillToTemplate
+ * 
+ * @param propertyId - Optional property ID to limit backfill to a specific property
+ * @returns ActionState with count of bills updated
+ */
+export async function backfillBillTemplateLinksAction(
+  propertyId?: string
+): Promise<ActionState<{ updatedCount: number; totalProcessed: number }>> {
+  try {
+    // Query bills without template IDs that are processed
+    let billsToUpdate: SelectBill[]
+    
+    if (propertyId) {
+      // Get all bills for the property and filter
+      const allBills = await getBillsByPropertyIdQuery(propertyId)
+      billsToUpdate = allBills.filter(
+        (bill) => !bill.billTemplateId && bill.status === "processed"
+      )
+    } else {
+      // Get all processed bills without template IDs across all properties
+      billsToUpdate = await db
+        .select()
+        .from(billsTable)
+        .where(and(isNull(billsTable.billTemplateId), eq(billsTable.status, "processed")))
+    }
+
+    console.log(
+      `[Bill Template Backfill] Found ${billsToUpdate.length} bills without template IDs to process`
+    )
+
+    let updatedCount = 0
+    let errorCount = 0
+
+    // Process each bill
+    for (const bill of billsToUpdate) {
+      try {
+        const linkedTemplateId = await linkBillToTemplate(bill.id, bill)
+        if (linkedTemplateId) {
+          updatedCount++
+          console.log(
+            `[Bill Template Backfill] ✓ Linked bill ${bill.id} to template ${linkedTemplateId}`
+          )
+        } else {
+          console.log(
+            `[Bill Template Backfill] No template found for bill ${bill.id} (property: ${bill.propertyId}, type: ${bill.billType})`
+          )
+        }
+      } catch (error) {
+        errorCount++
+        console.error(`[Bill Template Backfill] Error processing bill ${bill.id}:`, error)
+        // Continue with next bill
+      }
+    }
+
+    console.log(
+      `[Bill Template Backfill] Completed: ${updatedCount} linked, ${errorCount} errors, ${billsToUpdate.length - updatedCount - errorCount} skipped`
+    )
+
+    return {
+      isSuccess: true,
+      message: `Backfill completed: ${updatedCount} bills linked to templates`,
+      data: {
+        updatedCount,
+        totalProcessed: billsToUpdate.length
+      }
+    }
+  } catch (error) {
+    console.error("Error backfilling bill template links:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to backfill bill template links"
+    }
   }
 }
 

@@ -1,0 +1,3 @@
+ALTER TABLE "billing_periods" ADD COLUMN "rental_invoice_template_id" uuid;--> statement-breakpoint
+ALTER TABLE "billing_periods" ADD COLUMN "scheduled_generation_day" integer;--> statement-breakpoint
+ALTER TABLE "billing_periods" ADD CONSTRAINT "billing_periods_rental_invoice_template_id_rental_invoice_templates_id_fk" FOREIGN KEY ("rental_invoice_template_id") REFERENCES "public"."rental_invoice_templates"("id") ON DELETE cascade ON UPDATE no action;
