@@ -34,6 +34,8 @@ export const rentalInvoiceInstancesTable = pgTable("rental_invoice_instances", {
   contributingBillIds: jsonb("contributing_bill_ids"), // Array of bill instance IDs
   // Generated invoice data
   invoiceData: jsonb("invoice_data"), // Extracted invoice data from bills
+  // PDF storage
+  pdfUrl: text("pdf_url"), // URL of the PDF stored in Supabase
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

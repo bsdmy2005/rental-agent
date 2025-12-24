@@ -16,8 +16,15 @@ export async function uploadLeaseAgreementAction(
   try {
     console.log(`[Lease Upload] Starting upload for tenant: ${tenantId}, file: ${fileName}`)
 
+    // Sanitize filename for Supabase storage (must be URL-safe)
+    // Replace any non-alphanumeric characters (except dots and hyphens) with underscores
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_")
+    // Add timestamp to avoid collisions and ensure uniqueness
+    const timestamp = Date.now()
+    const storageFileName = `${timestamp}-${sanitizedFileName}`
+
     // Upload file to storage
-    const storagePath = `lease-agreements/${propertyId}/${tenantId}/${fileName}`
+    const storagePath = `lease-agreements/${propertyId}/${tenantId}/${storageFileName}`
     const fileUrl = await uploadPDFToSupabase(fileBuffer, storagePath)
 
     // Extract dates from PDF

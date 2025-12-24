@@ -16,6 +16,13 @@ export const propertiesTable = pgTable("properties", {
   postalCode: text("postal_code"),
   propertyType: text("property_type"),
   paymentModel: paymentModelEnum("payment_model").default("prepaid").notNull(),
+  // Banking details for payment instructions
+  bankName: text("bank_name"),
+  accountHolderName: text("account_holder_name"),
+  accountNumber: text("account_number"),
+  branchCode: text("branch_code"),
+  swiftCode: text("swift_code"),
+  referenceFormat: text("reference_format"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

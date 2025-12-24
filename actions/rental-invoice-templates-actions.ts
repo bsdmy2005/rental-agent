@@ -128,6 +128,7 @@ export async function autoCreateRentalInvoiceTemplateForTenantAction(
       description: null,
       dependsOnBillTemplateIds: invoiceBillTemplateIds.length > 0 ? invoiceBillTemplateIds : [],
       generationDayOfMonth: defaultGenerationDay,
+      pdfTemplate: "classic", // Default to classic template
       isActive: true
     }
 
@@ -300,6 +301,63 @@ export async function deleteRentalInvoiceTemplateAction(
     return {
       isSuccess: false,
       message: "Failed to delete rental invoice template"
+    }
+  }
+}
+
+/**
+ * Update invoice template dependencies by adding or removing a bill template ID
+ * Used when editing dependencies from bill template side
+ */
+export async function updateInvoiceTemplateDependencyAction(
+  invoiceTemplateId: string,
+  billTemplateId: string,
+  add: boolean // true to add, false to remove
+): Promise<ActionState<SelectRentalInvoiceTemplate>> {
+  try {
+    const template = await db.query.rentalInvoiceTemplates.findFirst({
+      where: eq(rentalInvoiceTemplatesTable.id, invoiceTemplateId)
+    })
+
+    if (!template) {
+      return { isSuccess: false, message: "Invoice template not found" }
+    }
+
+    const currentDependencies = (template.dependsOnBillTemplateIds as string[]) || []
+    let newDependencies: string[]
+
+    if (add) {
+      // Add bill template ID if not already present
+      if (currentDependencies.includes(billTemplateId)) {
+        // Already has this dependency, return success
+        return {
+          isSuccess: true,
+          message: "Dependency already exists",
+          data: template
+        }
+      }
+      newDependencies = [...currentDependencies, billTemplateId]
+    } else {
+      // Remove bill template ID
+      newDependencies = currentDependencies.filter((id) => id !== billTemplateId)
+      
+      // Ensure at least one dependency remains
+      if (newDependencies.length === 0) {
+        return {
+          isSuccess: false,
+          message: "At least one bill template dependency is required"
+        }
+      }
+    }
+
+    return await updateRentalInvoiceTemplateAction(invoiceTemplateId, {
+      dependsOnBillTemplateIds: newDependencies
+    })
+  } catch (error) {
+    console.error("Error updating invoice template dependency:", error)
+    return {
+      isSuccess: false,
+      message: "Failed to update invoice template dependency"
     }
   }
 }

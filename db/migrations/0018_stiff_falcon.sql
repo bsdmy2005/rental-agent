@@ -1,0 +1,1 @@
+ALTER TABLE "rental_invoice_templates" ADD COLUMN "pdf_template" text DEFAULT 'classic' NOT NULL;

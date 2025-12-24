@@ -31,6 +31,8 @@ export const rentalInvoiceTemplatesTable = pgTable(
     dependsOnBillTemplateIds: jsonb("depends_on_bill_template_ids").notNull(), // Array of bill template IDs
     // Schedule: single day per month for generation
     generationDayOfMonth: integer("generation_day_of_month").notNull(), // 1-31, e.g., 5 for 5th of month
+    // PDF Template selection: "classic", "modern", or "minimal"
+    pdfTemplate: text("pdf_template").default("classic").notNull(), // PDF template style
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

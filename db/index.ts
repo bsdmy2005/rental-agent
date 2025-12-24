@@ -24,7 +24,12 @@ import {
   payableInstancesTable,
   rentalInvoiceInstancesTable,
   billArrivalSchedulesTable,
-  payableSchedulesTable
+  payableSchedulesTable,
+  paymentInstructionsTable,
+  bankAccountsTable,
+  beneficiariesTable,
+  accountBeneficiariesTable,
+  paymentsTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -58,7 +63,12 @@ const dbSchema = {
   payableInstances: payableInstancesTable,
   rentalInvoiceInstances: rentalInvoiceInstancesTable,
   billArrivalSchedules: billArrivalSchedulesTable,
-  payableSchedules: payableSchedulesTable
+  payableSchedules: payableSchedulesTable,
+  paymentInstructions: paymentInstructionsTable,
+  bankAccounts: bankAccountsTable,
+  beneficiaries: beneficiariesTable,
+  accountBeneficiaries: accountBeneficiariesTable,
+  payments: paymentsTable
   // relations
 }
 

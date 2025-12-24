@@ -1,17 +1,99 @@
 "use server"
 
 import { type SelectBill, billsTable, billingPeriodsTable } from "@/db/schema"
-import { findBillingPeriodByYearMonthQuery } from "@/queries/billing-periods-queries"
+import { findAllBillingPeriodsByYearMonthQuery } from "@/queries/billing-periods-queries"
 import { db } from "@/db"
 import { periodBillMatchesTable, type InsertPeriodBillMatch } from "@/db/schema"
 import { and, eq } from "drizzle-orm"
 import { canBillMatchToPeriod } from "./period-bill-matcher-validation"
 
 /**
+ * Find ALL matching periods for a bill based on billingYear/billingMonth
+ * Returns all compatible periods (both invoice and payable) that match the bill
+ * Supports multi-matching: one bill template can match multiple invoice/payable templates
+ */
+export async function findAllMatchingPeriods(
+  bill: SelectBill
+): Promise<Array<{ periodId: string; periodType: "invoice" | "payable" }>> {
+  if (!bill.billingYear || !bill.billingMonth) {
+    console.log(`[Period Matcher] Bill ${bill.id} has no billingYear/billingMonth, cannot match`)
+    return []
+  }
+
+  const matchingPeriods: Array<{ periodId: string; periodType: "invoice" | "payable" }> = []
+
+  // Find ALL invoice periods for this property/year/month
+  // There can be multiple invoice periods (one per invoice template)
+  const invoicePeriods = await findAllBillingPeriodsByYearMonthQuery(
+    bill.propertyId,
+    bill.billingYear,
+    bill.billingMonth,
+    "invoice"
+  )
+
+  console.log(`[Period Matcher] Found ${invoicePeriods.length} invoice period(s) for ${bill.billingYear}-${bill.billingMonth}`)
+
+  // Validate each invoice period against the bill's template
+  for (const invoicePeriod of invoicePeriods) {
+    const validation = await canBillMatchToPeriod(bill, invoicePeriod)
+    if (validation.canMatch) {
+      console.log(
+        `[Period Matcher] ✓ Invoice period ${invoicePeriod.id} matches bill ${bill.id} (template dependency satisfied)`
+      )
+      matchingPeriods.push({ periodId: invoicePeriod.id, periodType: "invoice" })
+    } else {
+      console.log(
+        `[Period Matcher] ✗ Invoice period ${invoicePeriod.id} does not match bill ${bill.id}: ${validation.reason}`
+      )
+    }
+  }
+
+  // Find ALL payable periods for this property/year/month
+  // There can be multiple payable periods (one per payable template)
+  const payablePeriods = await findAllBillingPeriodsByYearMonthQuery(
+    bill.propertyId,
+    bill.billingYear,
+    bill.billingMonth,
+    "payable"
+  )
+
+  console.log(`[Period Matcher] Found ${payablePeriods.length} payable period(s) for ${bill.billingYear}-${bill.billingMonth}`)
+
+  // Validate each payable period against the bill's template
+  for (const payablePeriod of payablePeriods) {
+    const validation = await canBillMatchToPeriod(bill, payablePeriod)
+    if (validation.canMatch) {
+      console.log(
+        `[Period Matcher] ✓ Payable period ${payablePeriod.id} matches bill ${bill.id} (template dependency satisfied)`
+      )
+      matchingPeriods.push({ periodId: payablePeriod.id, periodType: "payable" })
+    } else {
+      console.log(
+        `[Period Matcher] ✗ Payable period ${payablePeriod.id} does not match bill ${bill.id}: ${validation.reason}`
+      )
+    }
+  }
+
+  if (matchingPeriods.length === 0) {
+    console.log(
+      `[Period Matcher] No matching periods found for bill ${bill.id} (${bill.billingYear}-${bill.billingMonth}, property ${bill.propertyId}, type: ${bill.billType})`
+    )
+  } else {
+    console.log(
+      `[Period Matcher] Found ${matchingPeriods.length} matching period(s) for bill ${bill.id}: ${matchingPeriods.map(p => `${p.periodType}:${p.periodId}`).join(", ")}`
+    )
+  }
+
+  return matchingPeriods
+}
+
+/**
  * Find matching period for a bill based on billingYear/billingMonth
  * Enhanced to consider bill type when matching:
  * - Municipality bills typically go to invoice periods (tenant pays)
  * - Utility/Levy bills typically go to payable periods (landlord pays)
+ * 
+ * @deprecated Use findAllMatchingPeriods instead to match to all compatible periods
  */
 export async function findMatchingPeriod(
   bill: SelectBill
@@ -136,51 +218,95 @@ export async function isBillMatched(billId: string): Promise<boolean> {
 }
 
 /**
- * Auto-match bill to period based on billingYear/billingMonth
- * Now supports matching to multiple periods (both invoice and payable)
+ * Check if a period is already matched to any bill
+ * Returns true if period has any match record (regardless of which bill)
+ */
+export async function isPeriodMatchedToAnyBill(periodId: string): Promise<boolean> {
+  const existingMatch = await db.query.periodBillMatches.findFirst({
+    where: eq(periodBillMatchesTable.periodId, periodId)
+  })
+  return !!existingMatch
+}
+
+/**
+ * Auto-match bill to ALL compatible periods based on billingYear/billingMonth
+ * Matches to both invoice and payable periods if both are compatible
+ * Returns array of all matches created
  */
 export async function matchBillToPeriod(
   bill: SelectBill,
   matchType: "automatic" | "manual" = "automatic",
   matchedBy?: string
-): Promise<{ periodId: string; matchId: string } | null> {
+): Promise<Array<{ periodId: string; periodType: "invoice" | "payable"; matchId: string }>> {
   try {
-    // Find matching period
-    const match = await findMatchingPeriod(bill)
-    if (!match) {
-      console.log(`[Period Matcher] No matching period found for bill ${bill.id}`)
-      return null
+    // Find ALL matching periods
+    const matchingPeriods = await findAllMatchingPeriods(bill)
+    
+    if (matchingPeriods.length === 0) {
+      console.log(`[Period Matcher] No matching periods found for bill ${bill.id}`)
+      return []
     }
 
-    // Check if already matched to this specific period
-    const alreadyMatchedToThisPeriod = await isBillMatchedToPeriod(bill.id, match.periodId)
-    if (alreadyMatchedToThisPeriod) {
-      console.log(`[Period Matcher] Bill ${bill.id} is already matched to period ${match.periodId}, skipping`)
-      return null
+    const createdMatches: Array<{ periodId: string; periodType: "invoice" | "payable"; matchId: string }> = []
+    const rejectedMatches: Array<{ periodId: string; reason: string }> = []
+
+    // Match to each compatible period
+    for (const match of matchingPeriods) {
+      // Check if already matched to this specific period
+      const alreadyMatchedToThisPeriod = await isBillMatchedToPeriod(bill.id, match.periodId)
+      if (alreadyMatchedToThisPeriod) {
+        console.log(`[Period Matcher] Bill ${bill.id} is already matched to period ${match.periodId}, skipping`)
+        continue
+      }
+
+      // Check if period is already matched to ANY other bill
+      const periodAlreadyMatched = await isPeriodMatchedToAnyBill(match.periodId)
+      if (periodAlreadyMatched) {
+        const reason = `Period already matched to another bill`
+        console.log(`[Period Matcher] Period ${match.periodId} is already matched to another bill. Bill ${bill.id} cannot match to this period.`)
+        rejectedMatches.push({ periodId: match.periodId, reason })
+        continue
+      }
+
+      // Create match record
+      const matchData: InsertPeriodBillMatch = {
+        periodId: match.periodId,
+        billId: bill.id,
+        matchType,
+        matchedBy: matchedBy || null
+      }
+
+      const [newMatch] = await db.insert(periodBillMatchesTable).values(matchData).returning()
+
+      if (!newMatch) {
+        console.error(`[Period Matcher] Failed to create match record for bill ${bill.id} to period ${match.periodId}`)
+        continue
+      }
+
+      console.log(
+        `[Period Matcher] ✓ Matched bill ${bill.id} to ${match.periodType} period ${match.periodId} (${matchType})`
+      )
+
+      createdMatches.push({
+        periodId: match.periodId,
+        periodType: match.periodType,
+        matchId: newMatch.id
+      })
     }
 
-    // Create match record
-    const matchData: InsertPeriodBillMatch = {
-      periodId: match.periodId,
-      billId: bill.id,
-      matchType,
-      matchedBy: matchedBy || null
+    if (createdMatches.length > 0) {
+      console.log(
+        `[Period Matcher] ✓ Successfully matched bill ${bill.id} to ${createdMatches.length} period(s): ${createdMatches.map(m => `${m.periodType}:${m.periodId}`).join(", ")}`
+      )
     }
 
-    const [newMatch] = await db.insert(periodBillMatchesTable).values(matchData).returning()
-
-    if (!newMatch) {
-      throw new Error("Failed to create match record")
+    if (rejectedMatches.length > 0) {
+      console.log(
+        `[Period Matcher] Rejected ${rejectedMatches.length} match(es) for bill ${bill.id}: ${rejectedMatches.map(m => `${m.periodId} (${m.reason})`).join(", ")}`
+      )
     }
 
-    console.log(
-      `[Period Matcher] ✓ Matched bill ${bill.id} to ${match.periodType} period ${match.periodId} (${matchType})`
-    )
-
-    return {
-      periodId: match.periodId,
-      matchId: newMatch.id
-    }
+    return createdMatches
   } catch (error) {
     console.error(`[Period Matcher] Error matching bill ${bill.id}:`, error)
     throw error
@@ -258,6 +384,14 @@ export async function manuallyMatchBillToPeriod(
     if (alreadyMatched) {
       console.log(`[Period Matcher] Bill ${billId} is already matched to period ${periodId}`)
       return { success: true, reason: "Already matched" }
+    }
+
+    // Check if period is already matched to ANY other bill
+    const periodAlreadyMatched = await isPeriodMatchedToAnyBill(periodId)
+    if (periodAlreadyMatched) {
+      const reason = `Period ${periodId} is already matched to another bill. Cannot match bill ${billId} to this period.`
+      console.log(`[Period Matcher] ${reason}`)
+      return { success: false, reason }
     }
 
     // Create new match (allows multiple matches per bill)

@@ -120,7 +120,14 @@ export async function BillingSchedulesList() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{property.name}</CardTitle>
+                  <CardTitle className="text-lg">
+                    <Link
+                      href={`/dashboard/properties/${property.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {property.name}
+                    </Link>
+                  </CardTitle>
                   <CardDescription className="mt-1">
                     {schedules.length} schedule{schedules.length !== 1 ? "s" : ""} configured
                     {lateCount > 0 && (
@@ -274,7 +281,12 @@ export async function BillingSchedulesList() {
                   className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/50"
                 >
                   <div>
-                    <p className="font-medium">{property.name}</p>
+                    <Link
+                      href={`/dashboard/properties/${property.id}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {property.name}
+                    </Link>
                     <p className="text-sm text-muted-foreground">No billing schedules configured</p>
                   </div>
                   <Button asChild variant="outline" size="sm">

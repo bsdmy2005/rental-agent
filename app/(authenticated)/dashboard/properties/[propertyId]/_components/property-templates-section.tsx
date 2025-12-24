@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoiceTemplatesManager } from "./invoice-templates-manager"
 import { PayableTemplatesManager } from "./payable-templates-manager"
+import { BillTemplatesManager } from "./bill-templates-manager"
 import { getRentalInvoiceTemplatesByPropertyIdAction } from "@/actions/rental-invoice-templates-actions"
 import { getPayableTemplatesByPropertyIdAction } from "@/actions/payable-templates-actions"
+import { getPaymentInstructionByPropertyAction } from "@/actions/payment-instructions-actions"
 import { getTenantsByPropertyIdQuery } from "@/queries/tenants-queries"
 import { type SelectBillTemplate } from "@/db/schema"
 
@@ -29,6 +31,12 @@ export async function PropertyTemplatesSection({
   // Fetch tenants for the property
   const tenants = await getTenantsByPropertyIdQuery(propertyId)
 
+  // Fetch payment instruction for bank account selection
+  const paymentInstructionResult = await getPaymentInstructionByPropertyAction(propertyId)
+  const paymentInstructionId = paymentInstructionResult.isSuccess && paymentInstructionResult.data
+    ? paymentInstructionResult.data.id
+    : null
+
   // Map invoice templates with tenant info
   const invoiceTemplatesWithTenants = invoiceTemplates.map((template) => {
     const tenant = tenants.find((t) => t.id === template.tenantId)
@@ -43,17 +51,20 @@ export async function PropertyTemplatesSection({
       <CardHeader>
         <CardTitle>Templates</CardTitle>
         <CardDescription>
-          Manage invoice and payable templates and their bill template dependencies
+          Manage bill templates, invoice templates, and payable templates and their dependencies
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="invoices" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="invoices">
               Invoice Templates ({invoiceTemplates.length})
             </TabsTrigger>
             <TabsTrigger value="payables">
               Payable Templates ({payableTemplates.length})
+            </TabsTrigger>
+            <TabsTrigger value="bills">
+              Bill Templates ({billTemplates.length})
             </TabsTrigger>
           </TabsList>
           <TabsContent value="invoices" className="mt-6">
@@ -69,6 +80,16 @@ export async function PropertyTemplatesSection({
               propertyId={propertyId}
               payableTemplates={payableTemplates}
               billTemplates={billTemplates}
+              paymentInstructionId={paymentInstructionId}
+            />
+          </TabsContent>
+          <TabsContent value="bills" className="mt-6">
+            <BillTemplatesManager
+              propertyId={propertyId}
+              billTemplates={billTemplates}
+              invoiceTemplates={invoiceTemplates}
+              payableTemplates={payableTemplates}
+              tenants={tenants}
             />
           </TabsContent>
         </Tabs>

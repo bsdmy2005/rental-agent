@@ -38,6 +38,8 @@ export const scheduleStatusEnum = pgEnum("schedule_status", [
   "on_time",
   "late",
   "missed",
-  "blocked"
+  "blocked",
+  "generated",
+  "sent"
 ])
 

@@ -33,7 +33,13 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
     province: "",
     country: "South Africa",
     postalCode: "",
-    propertyType: ""
+    propertyType: "",
+    bankName: "",
+    accountHolderName: "",
+    accountNumber: "",
+    branchCode: "",
+    swiftCode: "",
+    referenceFormat: ""
   })
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
 
@@ -70,7 +76,13 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
         province: formData.province,
         country: formData.country,
         postalCode: formData.postalCode || undefined,
-        propertyType: formData.propertyType || undefined
+        propertyType: formData.propertyType || undefined,
+        bankName: formData.bankName || undefined,
+        accountHolderName: formData.accountHolderName || undefined,
+        accountNumber: formData.accountNumber || undefined,
+        branchCode: formData.branchCode || undefined,
+        swiftCode: formData.swiftCode || undefined,
+        referenceFormat: formData.referenceFormat || undefined
       })
 
       if (result.isSuccess && result.data) {
@@ -89,7 +101,13 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
           province: "",
           country: "South Africa",
           postalCode: "",
-          propertyType: ""
+          propertyType: "",
+          bankName: "",
+          accountHolderName: "",
+          accountNumber: "",
+          branchCode: "",
+          swiftCode: "",
+          referenceFormat: ""
         })
         setNameManuallyEdited(false)
       } else {
@@ -226,6 +244,81 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
             <p className="text-muted-foreground text-xs">
               Name will be auto-generated from address fields, but you can edit it
             </p>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Payment Instructions (Banking Details)</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Optional: Add banking details that will appear on rental invoices
+            </p>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="bankName">Bank Name</Label>
+                  <Input
+                    id="bankName"
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    placeholder="e.g., Standard Bank"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                  <Input
+                    id="accountHolderName"
+                    value={formData.accountHolderName}
+                    onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
+                    placeholder="Name on account"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number</Label>
+                  <Input
+                    id="accountNumber"
+                    value={formData.accountNumber}
+                    onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                    placeholder="Account number"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branchCode">Branch Code</Label>
+                  <Input
+                    id="branchCode"
+                    value={formData.branchCode}
+                    onChange={(e) => setFormData({ ...formData, branchCode: e.target.value })}
+                    placeholder="e.g., 000123"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="swiftCode">Swift Code</Label>
+                  <Input
+                    id="swiftCode"
+                    value={formData.swiftCode}
+                    onChange={(e) => setFormData({ ...formData, swiftCode: e.target.value })}
+                    placeholder="e.g., SBZAZAJJ"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referenceFormat">Reference Format</Label>
+                  <Input
+                    id="referenceFormat"
+                    value={formData.referenceFormat}
+                    onChange={(e) => setFormData({ ...formData, referenceFormat: e.target.value })}
+                    placeholder="e.g., Use invoice number as reference"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end pt-2">

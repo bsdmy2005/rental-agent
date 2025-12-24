@@ -488,15 +488,71 @@ export async function processEmailWebhookAction(
             })
             console.log(`[Email Processing]     ✓ Bill ${billResult.data?.id} processed successfully`)
             
-            // Link bill to template after successful processing
+            // CRITICAL: Link bill to template FIRST before period matching
+            // Template linking is required for proper dependency validation during period matching
             if (updateResult.isSuccess && updateResult.data) {
               try {
                 const { linkBillToTemplate } = await import("@/actions/bills-actions")
-                await linkBillToTemplate(billResult.data!.id, updateResult.data)
-                console.log(`[Email Processing]     ✓ Template linking attempted for bill ${billResult.data?.id}`)
+                const { getBillByIdQuery } = await import("@/queries/bills-queries")
+                
+                // Get updated bill after PDF processing
+                const billAfterProcessing = await getBillByIdQuery(billResult.data!.id)
+                
+                if (billAfterProcessing) {
+                  console.log(`[Email Processing]     Linking bill ${billResult.data?.id} to template before period matching...`)
+                  await linkBillToTemplate(billResult.data!.id, billAfterProcessing)
+                  
+                  // Get bill after template linking to check if it succeeded
+                  const billWithTemplate = await getBillByIdQuery(billResult.data!.id)
+                  
+                  if (billWithTemplate?.billTemplateId) {
+                    console.log(`[Email Processing]     ✓ Bill ${billResult.data?.id} linked to template ${billWithTemplate.billTemplateId}`)
+                  } else {
+                    console.warn(`[Email Processing]     ⚠ Template linking failed for bill ${billResult.data?.id}. Skipping period matching.`)
+                    console.warn(`[Email Processing]       Bill must have a template ID before period matching can occur.`)
+                    return // Skip period matching if template linking failed
+                  }
+                }
               } catch (linkError) {
-                // Log but don't fail - template linking is optional
+                // Log error and skip period matching if template linking fails
                 console.error(`[Email Processing]     Error linking template for bill ${billResult.data?.id}:`, linkError)
+                console.warn(`[Email Processing]     Skipping period matching due to template linking failure.`)
+                return // Skip period matching if template linking failed
+              }
+              
+              // Process period extraction and auto-matching using reusable function
+              // This handles period inference and matching to all compatible periods
+              // Now that bill has template ID, matching can validate template dependencies correctly
+              try {
+                const { processBillPeriod } = await import("@/lib/bill-period-processing")
+                const periodResult = await processBillPeriod(
+                  billResult.data!.id,
+                  invoiceData || null,
+                  paymentData || null,
+                  pdf.name
+                )
+                
+                if (periodResult.periodSet) {
+                  console.log(`[Email Processing]     ✓ Period extraction completed for bill ${billResult.data?.id}`)
+                } else {
+                  console.log(`[Email Processing]     ⚠ Could not extract period for bill ${billResult.data?.id}. Can be manually matched later.`)
+                }
+                
+                if (periodResult.matched) {
+                  console.log(
+                    `[Email Processing]     ✓ Auto-matched bill ${billResult.data?.id} to ${periodResult.matchedPeriods.length} period(s): ${periodResult.matchedPeriods.map(m => `${m.periodType}:${m.periodId}`).join(", ")}`
+                  )
+                } else {
+                  console.log(
+                    `[Email Processing]     ⚠ Bill ${billResult.data?.id} was not auto-matched to any periods. Can be manually matched later.`
+                  )
+                }
+              } catch (periodError) {
+                // Log error but don't fail - period processing is optional
+                console.error(`[Email Processing]     Error processing period for bill ${billResult.data?.id}:`, periodError)
+                if (periodError instanceof Error) {
+                  console.error(`[Email Processing]       Error message: ${periodError.message}`)
+                }
               }
             }
           })

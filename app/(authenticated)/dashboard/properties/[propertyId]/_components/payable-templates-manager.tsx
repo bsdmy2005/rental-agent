@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog"
-import { Edit2, Save, X, Trash2, Plus } from "lucide-react"
+import { Edit2, Save, X, Trash2, Plus, Link as LinkIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import {
@@ -28,20 +28,26 @@ import {
 } from "@/actions/payable-templates-actions"
 import { type SelectPayableTemplate, type SelectBillTemplate } from "@/db/schema"
 import { TemplateDependencyEditor } from "./template-dependency-editor"
+import { PayableTemplateBeneficiarySelector } from "@/app/(authenticated)/dashboard/payables/_components/payable-template-beneficiary-selector"
+import { PayableTemplateLinkDialog } from "./payable-template-link-dialog"
+import { PayableTemplatePaymentInfo } from "./payable-template-payment-info"
 
 interface PayableTemplatesManagerProps {
   propertyId: string
   payableTemplates: SelectPayableTemplate[]
   billTemplates: SelectBillTemplate[]
+  paymentInstructionId?: string | null
 }
 
 export function PayableTemplatesManager({
   propertyId,
   payableTemplates,
-  billTemplates
+  billTemplates,
+  paymentInstructionId
 }: PayableTemplatesManagerProps) {
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [linkingId, setLinkingId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -84,6 +90,7 @@ export function PayableTemplatesManager({
         <PayableTemplateCreateForm
           propertyId={propertyId}
           billTemplates={billTemplates}
+          paymentInstructionId={paymentInstructionId || null}
           onCancel={() => setIsCreating(false)}
           onSave={async (data) => {
             setLoading(true)
@@ -122,6 +129,26 @@ export function PayableTemplatesManager({
 
       {payableTemplates.map((template) => {
         const isEditing = editingId === template.id
+        const isLinking = linkingId === template.id
+
+        if (isLinking) {
+          return (
+            <PayableTemplateLinkDialog
+              key={template.id}
+              template={template}
+              paymentInstructionId={paymentInstructionId || null}
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setLinkingId(null)
+                }
+              }}
+              onSuccess={() => {
+                setLinkingId(null)
+              }}
+            />
+          )
+        }
 
         if (isEditing) {
           return (
@@ -129,6 +156,7 @@ export function PayableTemplatesManager({
               key={template.id}
               template={template}
               billTemplates={billTemplates}
+              paymentInstructionId={paymentInstructionId || null}
               onCancel={() => setEditingId(null)}
               onSave={async (data) => {
                 setLoading(true)
@@ -165,6 +193,15 @@ export function PayableTemplatesManager({
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLinkingId(template.id)}
+                    disabled={loading}
+                  >
+                    <LinkIcon className="h-4 w-4 mr-1" />
+                    {template.bankAccountId ? "Change Link" : "Link Payment"}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -242,6 +279,10 @@ export function PayableTemplatesManager({
                   </div>
                 )}
               </div>
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium mb-2">Payment Configuration:</p>
+                <PayableTemplatePaymentInfo template={template} />
+              </div>
             </CardContent>
           </Card>
         )
@@ -253,25 +294,32 @@ export function PayableTemplatesManager({
 interface PayableTemplateEditFormProps {
   template: SelectPayableTemplate
   billTemplates: SelectBillTemplate[]
+  paymentInstructionId: string | null
   onCancel: () => void
   onSave: (data: {
     name: string
     description: string | null
     dependsOnBillTemplateIds: string[]
+    bankAccountId?: string | null
+    beneficiaryId?: string | null
   }) => Promise<void>
 }
 
 function PayableTemplateEditForm({
   template,
   billTemplates,
+  paymentInstructionId,
   onCancel,
   onSave
 }: PayableTemplateEditFormProps) {
   const [formData, setFormData] = useState({
     name: template.name,
     description: template.description || "",
-    dependencies: (template.dependsOnBillTemplateIds as string[]) || []
+    dependencies: (template.dependsOnBillTemplateIds as string[]) || [],
+    bankAccountId: template.bankAccountId || null,
+    beneficiaryId: (template as any).beneficiaryId || null
   })
+
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -287,7 +335,9 @@ function PayableTemplateEditForm({
     await onSave({
       name: formData.name.trim(),
       description: formData.description.trim() || null,
-      dependsOnBillTemplateIds: formData.dependencies
+      dependsOnBillTemplateIds: formData.dependencies,
+      bankAccountId: formData.bankAccountId,
+      beneficiaryId: formData.beneficiaryId
     })
   }
 
@@ -329,6 +379,20 @@ function PayableTemplateEditForm({
           description="Select which bill templates must arrive before generating payables"
         />
 
+        <PayableTemplateBeneficiarySelector
+          propertyId={template.propertyId}
+          paymentInstructionId={paymentInstructionId}
+          selectedBankAccountId={formData.bankAccountId}
+          onBankAccountChange={(bankAccountId) =>
+            setFormData({ ...formData, bankAccountId, beneficiaryId: null })
+          }
+          selectedBeneficiaryId={formData.beneficiaryId}
+          onBeneficiaryChange={(beneficiaryId) =>
+            setFormData({ ...formData, beneficiaryId })
+          }
+          showBeneficiary={true}
+        />
+
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={onCancel}>
             <X className="h-4 w-4 mr-1" />
@@ -347,12 +411,15 @@ function PayableTemplateEditForm({
 interface PayableTemplateCreateFormProps {
   propertyId: string
   billTemplates: SelectBillTemplate[]
+  paymentInstructionId: string | null
   onCancel: () => void
   onSave: (data: {
     propertyId: string
     name: string
     description: string | null
     dependsOnBillTemplateIds: string[]
+    bankAccountId?: string | null
+    beneficiaryId?: string | null
     isActive: boolean
   }) => Promise<void>
 }
@@ -360,13 +427,16 @@ interface PayableTemplateCreateFormProps {
 function PayableTemplateCreateForm({
   propertyId,
   billTemplates,
+  paymentInstructionId,
   onCancel,
   onSave
 }: PayableTemplateCreateFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    dependencies: [] as string[]
+    dependencies: [] as string[],
+    bankAccountId: null as string | null,
+    beneficiaryId: null as string | null
   })
 
   const handleSave = async () => {
@@ -385,6 +455,8 @@ function PayableTemplateCreateForm({
       name: formData.name.trim(),
       description: formData.description.trim() || null,
       dependsOnBillTemplateIds: formData.dependencies,
+      bankAccountId: formData.bankAccountId,
+      beneficiaryId: formData.beneficiaryId,
       isActive: true
     })
   }
@@ -425,6 +497,20 @@ function PayableTemplateCreateForm({
           }
           title="Bill Template Dependencies"
           description="Select which bill templates must arrive before generating payables"
+        />
+
+        <PayableTemplateBeneficiarySelector
+          propertyId={propertyId}
+          paymentInstructionId={paymentInstructionId}
+          selectedBankAccountId={formData.bankAccountId}
+          onBankAccountChange={(bankAccountId) =>
+            setFormData({ ...formData, bankAccountId, beneficiaryId: null })
+          }
+          selectedBeneficiaryId={formData.beneficiaryId}
+          onBeneficiaryChange={(beneficiaryId) =>
+            setFormData({ ...formData, beneficiaryId })
+          }
+          showBeneficiary={true}
         />
 
         <div className="flex justify-end gap-2 pt-4">

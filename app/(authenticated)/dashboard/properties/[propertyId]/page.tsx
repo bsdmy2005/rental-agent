@@ -20,6 +20,7 @@ import { LeaseDrivenPeriodsSummary } from "./_components/lease-driven-periods-su
 import { PropertyTemplatesSection } from "./_components/property-templates-section"
 import { TemplateDependencyVisualization } from "./_components/template-dependency-visualization"
 import { CollapsibleSectionCard } from "./_components/collapsible-section-card"
+import { PropertyBankingDetailsSection } from "./_components/property-banking-details-section"
 
 export default async function PropertyDetailPage({
   params
@@ -108,18 +109,21 @@ export default async function PropertyDetailPage({
               </Button>
             </Link>
           )}
-          <Link href={`/dashboard/properties/${propertyId}/billing`}>
-            <Button variant="outline">
-              Billing
-            </Button>
-          </Link>
           <Link href={`/dashboard/properties/${propertyId}/billing-schedule`}>
             <Button variant="outline">
               {schedules.length > 0 ? "Manage Billing Schedules" : "Setup Billing Schedules"}
             </Button>
           </Link>
+          <Link href={`/dashboard/properties/${propertyId}/payment-instructions`}>
+            <Button variant="outline">
+              Payment Instructions
+            </Button>
+          </Link>
         </div>
       </div>
+
+      {/* Banking Details Section */}
+      <PropertyBankingDetailsSection property={property} />
 
       {/* Templates Management Section */}
       {hasTemplates && (

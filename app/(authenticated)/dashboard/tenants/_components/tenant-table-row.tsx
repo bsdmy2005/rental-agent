@@ -122,7 +122,12 @@ export function TenantTableRow({ tenant }: TenantTableRowProps) {
           />
         </td>
         <td className="p-4">
-          <span className="text-sm">{tenant.property.name}</span>
+          <Link
+            href={`/dashboard/properties/${tenant.property.id}`}
+            className="text-sm text-primary hover:underline"
+          >
+            {tenant.property.name}
+          </Link>
         </td>
         <td className="p-4">
           <Input
@@ -212,7 +217,14 @@ export function TenantTableRow({ tenant }: TenantTableRowProps) {
   return (
     <tr className="border-b hover:bg-muted/50">
       <td className="p-4 font-medium">{tenant.name}</td>
-      <td className="p-4 text-sm text-muted-foreground">{tenant.property.name}</td>
+      <td className="p-4 text-sm text-muted-foreground">
+        <Link
+          href={`/dashboard/properties/${tenant.property.id}`}
+          className="text-primary hover:underline"
+        >
+          {tenant.property.name}
+        </Link>
+      </td>
       <td className="p-4 text-sm">{tenant.idNumber}</td>
       <td className="p-4 text-sm font-medium">
         {tenant.rentalAmount ? `R${tenant.rentalAmount}/month` : "-"}

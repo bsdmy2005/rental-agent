@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
 import { useWizardState } from "../wizard-state"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +34,8 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
     name: `${tenantName} Rental Invoice`,
     description: "",
     dependsOnBillTemplateIds: [],
-    generationDayOfMonth: 5
+    generationDayOfMonth: 5,
+    pdfTemplate: "classic" as const
   }
 
   const toggleBillTemplateDependency = (billTemplateId: string) => {
@@ -47,7 +55,7 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
     updateTenants(updated)
   }
 
-  const updateTemplateField = (field: "name" | "description" | "generationDayOfMonth", value: string | number) => {
+  const updateTemplateField = (field: "name" | "description" | "generationDayOfMonth" | "pdfTemplate", value: string | number) => {
     const updated = [...state.tenants]
     updated[tenantIndex] = {
       ...updated[tenantIndex],
@@ -114,6 +122,30 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
               />
               <span className="text-muted-foreground text-sm">of each month</span>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`pdf-template-${tenantIndex}`}>PDF Template Style</Label>
+            <Select
+              value={(templateConfig.pdfTemplate as string) || "classic"}
+              onValueChange={(value) => updateTemplateField("pdfTemplate", value)}
+              disabled={!!tenant.tenantId}
+            >
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select PDF template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic - Traditional professional layout</SelectItem>
+                <SelectItem value="modern">Modern - Colorful and contemporary design</SelectItem>
+                <SelectItem value="minimal">Minimal - Clean and simple layout</SelectItem>
+                <SelectItem value="professional">Professional - Corporate formal style</SelectItem>
+                <SelectItem value="elegant">Elegant - Sophisticated refined design</SelectItem>
+                <SelectItem value="compact">Compact - Space-efficient dense layout</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choose the visual style for generated PDF invoices
+            </p>
           </div>
         </CardContent>
       </Card>
