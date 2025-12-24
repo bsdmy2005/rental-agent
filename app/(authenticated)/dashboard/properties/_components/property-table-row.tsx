@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -153,7 +154,14 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
 
   return (
     <tr className="border-b hover:bg-muted/50">
-      <td className="p-4 font-medium">{property.name}</td>
+      <td className="p-4 font-medium">
+        <Link
+          href={`/dashboard/properties/${property.id}`}
+          className="text-primary hover:underline"
+        >
+          {property.name}
+        </Link>
+      </td>
       <td className="p-4 text-sm text-muted-foreground max-w-xs truncate">
         {property.address || "-"}
       </td>

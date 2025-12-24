@@ -266,7 +266,13 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
     province: property.province || "",
     country: property.country || "",
     postalCode: property.postalCode || "",
-    propertyType: property.propertyType || ""
+    propertyType: property.propertyType || "",
+    bankName: property.bankName || "",
+    accountHolderName: property.accountHolderName || "",
+    accountNumber: property.accountNumber || "",
+    branchCode: property.branchCode || "",
+    swiftCode: property.swiftCode || "",
+    referenceFormat: property.referenceFormat || ""
   })
 
   const handleUpdate = async () => {
@@ -279,7 +285,13 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
         province: formData.province,
         country: formData.country,
         postalCode: formData.postalCode || undefined,
-        propertyType: formData.propertyType || undefined
+        propertyType: formData.propertyType || undefined,
+        bankName: formData.bankName || undefined,
+        accountHolderName: formData.accountHolderName || undefined,
+        accountNumber: formData.accountNumber || undefined,
+        branchCode: formData.branchCode || undefined,
+        swiftCode: formData.swiftCode || undefined,
+        referenceFormat: formData.referenceFormat || undefined
       })
 
       if (result.isSuccess) {
@@ -325,7 +337,13 @@ export function PropertyExpandableRow({ property }: PropertyExpandableRowProps) 
       province: property.province || "",
       country: property.country || "",
       postalCode: property.postalCode || "",
-      propertyType: property.propertyType || ""
+      propertyType: property.propertyType || "",
+      bankName: property.bankName || "",
+      accountHolderName: property.accountHolderName || "",
+      accountNumber: property.accountNumber || "",
+      branchCode: property.branchCode || "",
+      swiftCode: property.swiftCode || "",
+      referenceFormat: property.referenceFormat || ""
     })
     setIsEditing(false)
   }

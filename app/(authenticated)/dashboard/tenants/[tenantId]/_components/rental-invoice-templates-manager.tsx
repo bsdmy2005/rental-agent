@@ -23,6 +23,13 @@ import { Edit2, Save, X, Trash2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import {
   createRentalInvoiceTemplateAction,
   updateRentalInvoiceTemplateAction,
   deleteRentalInvoiceTemplateAction,
@@ -57,6 +64,7 @@ export function RentalInvoiceTemplatesManager({
     name: existingTemplate?.name || `${tenantName} Rental Invoice`,
     description: existingTemplate?.description || "",
     generationDay: existingTemplate?.generationDayOfMonth || 5,
+    pdfTemplate: (existingTemplate?.pdfTemplate as "classic" | "modern" | "minimal" | "professional" | "elegant" | "compact") || "classic",
     dependencies: (existingTemplate?.dependsOnBillTemplateIds as string[]) || []
   })
 
@@ -119,6 +127,7 @@ export function RentalInvoiceTemplatesManager({
         description: formData.description.trim() || null,
         dependsOnBillTemplateIds: formData.dependencies,
         generationDayOfMonth: formData.generationDay,
+        pdfTemplate: formData.pdfTemplate,
         isActive: true
       })
 
@@ -161,7 +170,8 @@ export function RentalInvoiceTemplatesManager({
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         dependsOnBillTemplateIds: formData.dependencies,
-        generationDayOfMonth: formData.generationDay
+        generationDayOfMonth: formData.generationDay,
+        pdfTemplate: formData.pdfTemplate
       })
 
       if (result.isSuccess) {
@@ -336,6 +346,31 @@ export function RentalInvoiceTemplatesManager({
             </p>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="pdf-template">PDF Template Style *</Label>
+            <Select
+              value={formData.pdfTemplate}
+              onValueChange={(value: "classic" | "modern" | "minimal" | "professional" | "elegant" | "compact") =>
+                setFormData({ ...formData, pdfTemplate: value })
+              }
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Select PDF template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic - Traditional professional layout</SelectItem>
+                <SelectItem value="modern">Modern - Colorful and contemporary design</SelectItem>
+                <SelectItem value="minimal">Minimal - Clean and simple layout</SelectItem>
+                <SelectItem value="professional">Professional - Corporate formal style</SelectItem>
+                <SelectItem value="elegant">Elegant - Sophisticated refined design</SelectItem>
+                <SelectItem value="compact">Compact - Space-efficient dense layout</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choose the visual style for generated PDF invoices
+            </p>
+          </div>
+
           <div className="space-y-3">
             <Label>Bill Template Dependencies *</Label>
             <p className="text-xs text-muted-foreground">
@@ -479,6 +514,28 @@ export function RentalInvoiceTemplatesManager({
                 }
                 className="h-11"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-pdf-template">PDF Template Style *</Label>
+              <Select
+                value={formData.pdfTemplate}
+                onValueChange={(value: "classic" | "modern" | "minimal") =>
+                  setFormData({ ...formData, pdfTemplate: value })
+                }
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select PDF template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">Classic - Traditional professional layout</SelectItem>
+                  <SelectItem value="modern">Modern - Colorful and contemporary design</SelectItem>
+                  <SelectItem value="minimal">Minimal - Clean and simple layout</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose the visual style for generated PDF invoices
+              </p>
             </div>
 
             <div className="space-y-3">

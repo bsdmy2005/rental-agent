@@ -1,0 +1,1 @@
+ALTER TABLE "rental_invoice_instances" ADD COLUMN "pdf_url" text;

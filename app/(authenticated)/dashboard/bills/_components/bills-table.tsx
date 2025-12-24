@@ -528,7 +528,14 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{bill.propertyName}</TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/dashboard/properties/${bill.propertyId}`}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {bill.propertyName}
+                          </Link>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
                             {bill.billType}

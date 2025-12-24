@@ -81,8 +81,8 @@ export function getNavigationForUserType(
           ]
         },
         {
-          title: "Invoices",
-          url: "/dashboard/invoices",
+          title: "Rental Invoices",
+          url: "/dashboard/rental-invoices",
           icon: Receipt
         },
         {
@@ -150,8 +150,8 @@ export function getNavigationForUserType(
           ]
         },
         {
-          title: "Invoices",
-          url: "/dashboard/invoices",
+          title: "Rental Invoices",
+          url: "/dashboard/rental-invoices",
           icon: Receipt
         },
         {

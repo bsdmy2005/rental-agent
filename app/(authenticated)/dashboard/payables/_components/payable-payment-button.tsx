@@ -1,0 +1,200 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { executePayablePaymentAction } from "@/actions/payments-actions"
+import { listBeneficiariesAction } from "@/actions/beneficiaries-actions"
+import { type SelectPayableInstance, type SelectBeneficiary } from "@/db/schema"
+import { toast } from "sonner"
+import { Loader2, CreditCard } from "lucide-react"
+import { useEffect } from "react"
+
+interface PayablePaymentButtonProps {
+  payableInstance: SelectPayableInstance
+  paymentInstructionId: string
+  bankAccountId: string
+}
+
+export function PayablePaymentButton({
+  payableInstance,
+  paymentInstructionId,
+  bankAccountId
+}: PayablePaymentButtonProps) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [beneficiaries, setBeneficiaries] = useState<SelectBeneficiary[]>([])
+  const [loadingBeneficiaries, setLoadingBeneficiaries] = useState(false)
+  const [selectedBeneficiaryId, setSelectedBeneficiaryId] = useState<string>("")
+  const [myReference, setMyReference] = useState("")
+  const [theirReference, setTheirReference] = useState("")
+
+  // Load beneficiaries when dialog opens
+  useEffect(() => {
+    if (open && paymentInstructionId) {
+      loadBeneficiaries()
+    }
+  }, [open, paymentInstructionId])
+
+  const loadBeneficiaries = async () => {
+    setLoadingBeneficiaries(true)
+    try {
+      const result = await listBeneficiariesAction(paymentInstructionId)
+      if (result.isSuccess && result.data) {
+        setBeneficiaries(result.data)
+      } else {
+        toast.error("Failed to load beneficiaries")
+      }
+    } catch (error) {
+      toast.error("Failed to load beneficiaries")
+    } finally {
+      setLoadingBeneficiaries(false)
+    }
+  }
+
+  const handlePayment = async () => {
+    if (!selectedBeneficiaryId) {
+      toast.error("Please select a beneficiary")
+      return
+    }
+
+    if (!myReference.trim() || !theirReference.trim()) {
+      toast.error("Please enter both reference fields")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const result = await executePayablePaymentAction(
+        payableInstance.id,
+        selectedBeneficiaryId,
+        myReference.trim(),
+        theirReference.trim()
+      )
+
+      if (result.isSuccess) {
+        toast.success("Payment executed successfully")
+        setOpen(false)
+        // Reset form
+        setSelectedBeneficiaryId("")
+        setMyReference("")
+        setTheirReference("")
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Extract amount from payable data
+  const payableData = payableInstance.payableData as { amount?: number; currency?: string } | null
+  const amount = payableData?.amount || 0
+  const currency = payableData?.currency || "ZAR"
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        disabled={payableInstance.status === "paid"}
+      >
+        <CreditCard className="mr-2 h-4 w-4" />
+        {payableInstance.status === "paid" ? "Paid" : "Pay"}
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Execute Payment</DialogTitle>
+            <DialogDescription>
+              Execute payment for this payable instance. Amount: {currency} {amount.toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="beneficiary">Beneficiary *</Label>
+              {loadingBeneficiaries ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading beneficiaries...
+                </div>
+              ) : (
+                <Select value={selectedBeneficiaryId} onValueChange={setSelectedBeneficiaryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a beneficiary" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {beneficiaries.map((ben) => (
+                      <SelectItem key={ben.id} value={ben.id}>
+                        {ben.name} {ben.bankAccountNumber ? `(${ben.bankAccountNumber})` : `(${ben.beneficiaryId})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {beneficiaries.length === 0 && !loadingBeneficiaries && (
+                <p className="text-muted-foreground text-xs">
+                  No beneficiaries found. Please sync beneficiaries in payment instructions.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="myReference">My Reference *</Label>
+              <Input
+                id="myReference"
+                value={myReference}
+                onChange={(e) => setMyReference(e.target.value)}
+                placeholder="Enter your reference"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="theirReference">Their Reference *</Label>
+              <Input
+                id="theirReference"
+                value={theirReference}
+                onChange={(e) => setTheirReference(e.target.value)}
+                placeholder="Enter beneficiary reference"
+                required
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handlePayment} disabled={loading || !selectedBeneficiaryId}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Execute Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+

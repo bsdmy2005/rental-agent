@@ -80,6 +80,36 @@ export async function findBillingPeriodByYearMonthQuery(
   return period || null
 }
 
+/**
+ * Find ALL billing periods for a given property/year/month/type
+ * Returns all periods (not just the first one) to support multi-matching
+ * where one bill template can match multiple invoice/payable templates
+ */
+export async function findAllBillingPeriodsByYearMonthQuery(
+  propertyId: string,
+  year: number,
+  month: number,
+  periodType?: "invoice" | "payable"
+): Promise<SelectBillingPeriod[]> {
+  const conditions: any[] = [
+    eq(billingPeriodsTable.propertyId, propertyId),
+    eq(billingPeriodsTable.periodYear, year),
+    eq(billingPeriodsTable.periodMonth, month),
+    eq(billingPeriodsTable.isActive, true)
+  ]
+
+  if (periodType) {
+    conditions.push(eq(billingPeriodsTable.periodType, periodType))
+  }
+
+  const periods = await db
+    .select()
+    .from(billingPeriodsTable)
+    .where(and(...conditions))
+
+  return periods
+}
+
 export async function getBillingPeriodsByPropertyIdsQuery(
   propertyIds: string[],
   periodType?: "invoice" | "payable"

@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FileText, DollarSign, Calendar, Edit2, Save, X, CheckCircle2, AlertCircle, XCircle, Info, ChevronDown, ChevronRight } from "lucide-react"
+import { FileText, DollarSign, Calendar, Edit2, Save, X, CheckCircle2, AlertCircle, XCircle, Info, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
 import { updateBillingPeriodAction } from "@/actions/billing-periods-actions"
 import { unmatchBillFromPeriodAction } from "@/actions/period-bill-matches-actions"
+import { createInvoiceInstanceFromPeriodAction } from "@/actions/rental-invoice-instances-actions"
 import { toast } from "sonner"
 import { type PeriodDependencyStatus } from "@/queries/period-dependency-status-queries"
 import { ManualPeriodMatcherDialog } from "./manual-period-matcher-dialog"
 import { BillExtractedDataDialog } from "./bill-extracted-data-dialog"
+import Link from "next/link"
 // Format date helper
 function formatDate(date: Date, formatStr: string): string {
   const d = new Date(date)
@@ -86,11 +88,30 @@ export function BillingScheduleTable({
   const [matchMoreDialogOpen, setMatchMoreDialogOpen] = useState(false)
   const [billToView, setBillToView] = useState<string | null>(null)
   const [viewBillDialogOpen, setViewBillDialogOpen] = useState(false)
+  const [creatingInvoiceInstance, setCreatingInvoiceInstance] = useState<string | null>(null)
 
   // Create maps for quick lookup
   const payableTemplateMap = new Map(payableTemplates.map((t) => [t.id, t]))
   const invoiceTemplateMap = new Map(invoiceTemplates.map((t) => [t.id, t]))
   const tenantMap = new Map(tenants.map((t) => [t.id, t]))
+  
+  // Create map for payable instances by period
+  const payableInstanceMap = new Map<string, SelectPayableInstance>()
+  if (periodType === "payable") {
+    payableInstances.forEach((instance) => {
+      const key = `${instance.payableTemplateId}-${instance.periodYear}-${instance.periodMonth}`
+      payableInstanceMap.set(key, instance)
+    })
+  }
+  
+  // Create map for invoice instances by period
+  const invoiceInstanceMap = new Map<string, SelectRentalInvoiceInstance>()
+  if (periodType === "invoice") {
+    invoiceInstances.forEach((instance) => {
+      const key = `${instance.rentalInvoiceTemplateId}-${instance.periodYear}-${instance.periodMonth}`
+      invoiceInstanceMap.set(key, instance)
+    })
+  }
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -277,7 +298,104 @@ export function BillingScheduleTable({
   }
 
   // Helper to render dependency status badge
-  const renderDependencyStatus = (status: PeriodDependencyStatus | undefined) => {
+  const renderDependencyStatus = (
+    status: PeriodDependencyStatus | undefined,
+    period?: SelectBillingPeriod
+  ) => {
+    // For payable periods, check if payable instance exists and its status
+    if (periodType === "payable" && period) {
+      const payableTemplate = period.payableTemplateId
+        ? payableTemplateMap.get(period.payableTemplateId)
+        : null
+      
+      if (payableTemplate) {
+        const instanceKey = `${payableTemplate.id}-${period.periodYear}-${period.periodMonth}`
+        const payableInstance = payableInstanceMap.get(instanceKey)
+        
+        if (payableInstance) {
+          // Payable exists - show status based on payable instance status
+          if (payableInstance.status === "paid") {
+            return (
+              <Badge className="bg-blue-600 text-white text-xs">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Paid
+              </Badge>
+            )
+          }
+          
+          if (payableInstance.status === "generated") {
+            return (
+              <Badge className="bg-purple-600 text-white text-xs">
+                <FileText className="mr-1 h-3 w-3" />
+                Generated
+              </Badge>
+            )
+          }
+          
+          if (payableInstance.status === "ready") {
+            return (
+              <Badge className="bg-green-700 text-white text-xs">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Ready to Process
+              </Badge>
+            )
+          }
+          
+          if (payableInstance.status === "pending") {
+            return (
+              <Badge variant="secondary" className="text-xs">
+                <Info className="mr-1 h-3 w-3" />
+                Pending
+              </Badge>
+            )
+          }
+        }
+      }
+    }
+
+    // For invoice periods, check if invoice instance exists and its status
+    if (periodType === "invoice" && period) {
+      const invoiceTemplate = period.rentalInvoiceTemplateId
+        ? invoiceTemplateMap.get(period.rentalInvoiceTemplateId)
+        : null
+      
+      if (invoiceTemplate) {
+        const instanceKey = `${invoiceTemplate.id}-${period.periodYear}-${period.periodMonth}`
+        const invoiceInstance = invoiceInstanceMap.get(instanceKey)
+        
+        if (invoiceInstance) {
+          // Invoice exists - show status based on invoice instance status
+          if (invoiceInstance.status === "sent") {
+            return (
+              <Badge className="bg-blue-600 text-white text-xs">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Sent
+              </Badge>
+            )
+          }
+          
+          if (invoiceInstance.status === "generated") {
+            return (
+              <Badge className="bg-purple-600 text-white text-xs">
+                <FileText className="mr-1 h-3 w-3" />
+                Generated
+              </Badge>
+            )
+          }
+          
+          if (invoiceInstance.status === "ready") {
+            return (
+              <Badge className="bg-green-700 text-white text-xs">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Ready to Process
+              </Badge>
+            )
+          }
+        }
+      }
+    }
+
+    // Fall back to dependency status if no invoice instance or not invoice type
     if (!status) {
       return (
         <Badge variant="secondary" className="text-xs">
@@ -610,7 +728,7 @@ export function BillingScheduleTable({
 
                   {/* Dependency Status Column */}
                   <TableCell>
-                    {renderDependencyStatus(dependencyStatus)}
+                    {renderDependencyStatus(dependencyStatus, period)}
                   </TableCell>
 
                   <TableCell>
@@ -676,6 +794,67 @@ export function BillingScheduleTable({
                         </Button>
                       </div>
                     ) : (
+                      <div className="flex items-center gap-1">
+                        {periodType === "invoice" && invoiceTemplate && (
+                          <>
+                            {(() => {
+                              const instanceKey = `${invoiceTemplate.id}-${period.periodYear}-${period.periodMonth}`
+                              const existingInstance = invoiceInstanceMap.get(instanceKey)
+                              
+                              if (existingInstance) {
+                                return (
+                                  <Link href={`/dashboard/rental-invoices/${existingInstance.id}`}>
+                                    <Button size="sm" variant="outline">
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      View Invoice
+                                    </Button>
+                                  </Link>
+                                )
+                              }
+                              
+                              // Check if dependencies are met
+                              const isReady = dependencyStatus?.allMet === true
+                              const isCreating = creatingInvoiceInstance === period.id
+                              
+                              if (isReady && !isCreating) {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={async () => {
+                                      setCreatingInvoiceInstance(period.id)
+                                      try {
+                                        const result = await createInvoiceInstanceFromPeriodAction(
+                                          propertyId,
+                                          period.periodYear,
+                                          period.periodMonth,
+                                          invoiceTemplate.id
+                                        )
+                                        
+                                        if (result.isSuccess) {
+                                          toast.success("Invoice instance created successfully")
+                                          router.refresh()
+                                        } else {
+                                          toast.error(result.message || "Failed to create invoice instance")
+                                        }
+                                      } catch (error) {
+                                        toast.error("Failed to create invoice instance")
+                                        console.error(error)
+                                      } finally {
+                                        setCreatingInvoiceInstance(null)
+                                      }
+                                    }}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Create Invoice
+                                  </Button>
+                                )
+                              }
+                              
+                              return null
+                            })()}
+                          </>
+                        )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -683,6 +862,7 @@ export function BillingScheduleTable({
                       >
                         <Edit2 className="h-3 w-3" />
                       </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

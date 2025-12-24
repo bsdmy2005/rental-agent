@@ -1,6 +1,7 @@
 "use server"
 
 import { currentUser } from "@clerk/nextjs/server"
+import Link from "next/link"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getExtractionRulesByUserProfileIdQuery } from "@/queries/extraction-rules-queries"
 import { getPropertyByIdQuery } from "@/queries/properties-queries"
@@ -25,7 +26,8 @@ export async function ExtractionRulesList() {
       const property = rule.propertyId ? await getPropertyByIdQuery(rule.propertyId) : null
       return {
         ...rule,
-        propertyName: property?.name || "Unknown Property"
+        propertyName: property?.name || "Unknown Property",
+        propertyId: rule.propertyId
       }
     })
   )
@@ -68,7 +70,17 @@ export async function ExtractionRulesList() {
                   )}
                 </div>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {rule.propertyName} • {rule.billType} •{" "}
+                  {rule.propertyId ? (
+                    <Link
+                      href={`/dashboard/properties/${rule.propertyId}`}
+                      className="text-primary hover:underline"
+                    >
+                      {rule.propertyName}
+                    </Link>
+                  ) : (
+                    rule.propertyName
+                  )}{" "}
+                  • {rule.billType} •{" "}
                   {rule.channel === "email_forward"
                     ? "Email Forward"
                     : rule.channel === "agentic"

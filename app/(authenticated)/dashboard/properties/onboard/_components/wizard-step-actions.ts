@@ -31,7 +31,13 @@ export async function savePropertyStep(
       province: property.province,
       country: property.country,
       postalCode: property.postalCode || null,
-      propertyType: property.propertyType || null
+      propertyType: property.propertyType || null,
+      bankName: property.bankName || null,
+      accountHolderName: property.accountHolderName || null,
+      accountNumber: property.accountNumber || null,
+      branchCode: property.branchCode || null,
+      swiftCode: property.swiftCode || null,
+      referenceFormat: property.referenceFormat || null
     })
 
     if (result.isSuccess && result.data) {

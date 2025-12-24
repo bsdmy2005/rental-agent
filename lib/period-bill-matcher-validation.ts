@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm"
 /**
  * Check if a bill can be matched to a period based on template dependencies
  * A bill can only be matched if:
- * - The bill has a billTemplateId
+ * - The bill has a billTemplateId (REQUIRED - no backward compatibility)
  * - The period has a template (invoice or payable)
  * - The template's dependsOnBillTemplateIds includes the bill's billTemplateId
  */
@@ -15,9 +15,9 @@ export async function canBillMatchToPeriod(
   bill: SelectBill,
   period: SelectBillingPeriod
 ): Promise<{ canMatch: boolean; reason?: string }> {
-  // If bill has no template ID, we can't validate - allow match (for backward compatibility)
+  // REQUIRE billTemplateId - all bills must have templates
   if (!bill.billTemplateId) {
-    return { canMatch: true, reason: "Bill has no template ID" }
+    return { canMatch: false, reason: "Bill has no template ID - template linking required before matching" }
   }
 
   // Get the template for this period

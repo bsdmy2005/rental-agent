@@ -22,6 +22,43 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
 const BUCKET_NAME = "bills"
 
 /**
+ * Test Supabase connection and bucket access
+ * @returns true if connection is valid, throws error if not
+ */
+export async function testSupabaseConnection(): Promise<boolean> {
+  try {
+    // Check if environment variables are set
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error(
+        "Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+      )
+    }
+
+    // Test connection by listing buckets
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
+
+    if (bucketsError) {
+      throw new Error(`Failed to connect to Supabase storage: ${bucketsError.message}`)
+    }
+
+    // Check if the required bucket exists
+    const bucketExists = buckets?.some((bucket) => bucket.name === BUCKET_NAME)
+
+    if (!bucketExists) {
+      throw new Error(
+        `Storage bucket "${BUCKET_NAME}" does not exist. Available buckets: ${buckets?.map((b) => b.name).join(", ") || "none"}`
+      )
+    }
+
+    console.log(`[Supabase] Connection verified. Bucket "${BUCKET_NAME}" exists.`)
+    return true
+  } catch (error) {
+    console.error("[Supabase] Connection test failed:", error)
+    throw error
+  }
+}
+
+/**
  * Upload a PDF file to Supabase storage
  * @param file - File object or Buffer
  * @param path - Storage path (e.g., "bills/{propertyId}/{billId}/{filename}")
@@ -32,6 +69,13 @@ export async function uploadPDFToSupabase(
   path: string
 ): Promise<string> {
   try {
+    // Validate path doesn't contain spaces (common issue)
+    if (path.includes(" ")) {
+      throw new Error(
+        `Invalid storage path: "${path}". Path contains spaces which are not allowed in Supabase storage keys. Please sanitize the filename before constructing the path.`
+      )
+    }
+
     const fileBuffer = file instanceof File ? await file.arrayBuffer() : file
     const fileName = file instanceof File ? file.name : path.split("/").pop() || "file.pdf"
 
@@ -43,7 +87,11 @@ export async function uploadPDFToSupabase(
       })
 
     if (error) {
-      throw new Error(`Failed to upload PDF to Supabase: ${error.message}`)
+      // Provide more detailed error information
+      const errorDetails = error.message || JSON.stringify(error)
+      throw new Error(
+        `Failed to upload PDF to Supabase: ${errorDetails}. Path: "${path}", Bucket: "${BUCKET_NAME}"`
+      )
     }
 
     // Get public URL

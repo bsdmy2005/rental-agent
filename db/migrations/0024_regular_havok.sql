@@ -1,0 +1,2 @@
+ALTER TABLE "payable_templates" ADD COLUMN "beneficiary_id" uuid;--> statement-breakpoint
+ALTER TABLE "payable_templates" ADD CONSTRAINT "payable_templates_beneficiary_id_beneficiaries_id_fk" FOREIGN KEY ("beneficiary_id") REFERENCES "public"."beneficiaries"("id") ON DELETE set null ON UPDATE no action;

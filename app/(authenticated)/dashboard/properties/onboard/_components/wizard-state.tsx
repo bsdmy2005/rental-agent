@@ -74,6 +74,12 @@ export interface WizardState {
     country: string
     postalCode?: string
     propertyType?: string
+    bankName?: string
+    accountHolderName?: string
+    accountNumber?: string
+    branchCode?: string
+    swiftCode?: string
+    referenceFormat?: string
     propertyId?: string // Created property ID (saved to DB)
   }
 
@@ -95,7 +101,13 @@ const initialState: WizardState = {
     province: "",
     country: "South Africa",
     postalCode: "",
-    propertyType: ""
+    propertyType: "",
+    bankName: "",
+    accountHolderName: "",
+    accountNumber: "",
+    branchCode: "",
+    swiftCode: "",
+    referenceFormat: ""
   },
   billTemplates: [],
   payableTemplates: [],

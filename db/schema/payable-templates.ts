@@ -1,5 +1,7 @@
 import { boolean, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { propertiesTable } from "./properties"
+import { bankAccountsTable } from "./bank-accounts"
+import { beneficiariesTable } from "./beneficiaries"
 
 /**
  * Payable Templates Schema
@@ -22,6 +24,12 @@ export const payableTemplatesTable = pgTable("payable_templates", {
   description: text("description"), // Optional description
   // Dependencies: which bill templates must arrive before generating payable
   dependsOnBillTemplateIds: jsonb("depends_on_bill_template_ids").notNull(), // Array of bill template IDs
+  // Payment configuration: link to bank account for payment execution
+  bankAccountId: uuid("bank_account_id")
+    .references(() => bankAccountsTable.id, { onDelete: "set null" }),
+  // Optional: pre-select beneficiary for this template (can be overridden at payment time)
+  beneficiaryId: uuid("beneficiary_id")
+    .references(() => beneficiariesTable.id, { onDelete: "set null" }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")

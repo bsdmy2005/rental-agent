@@ -341,47 +341,11 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
           : undefined
       )
 
-      // Infer billing period from extracted data (only if not already set by user)
-      let inferredPeriod: { billingYear: number; billingMonth: number } | null = null
-      if (!updatedBill.billingYear || !updatedBill.billingMonth) {
-        const { inferBillingPeriod } = await import("@/lib/bill-period")
-        
-        // Log period extraction for debugging
-        console.log("[Bill Processing] Attempting to infer billing period...")
-        console.log("[Bill Processing] Invoice data period:", invoiceData?.period)
-        console.log("[Bill Processing] Payment data period:", paymentData?.period)
-        console.log("[Bill Processing] File name:", updatedBill.fileName)
-        
-        inferredPeriod = inferBillingPeriod(
-          invoiceData || null,
-          paymentData || null,
-          updatedBill.fileName
-        )
-        
-        if (inferredPeriod) {
-          console.log(`[Bill Processing] ✓ Inferred billing period: ${inferredPeriod.billingYear}-${inferredPeriod.billingMonth}`)
-        } else {
-          console.log("[Bill Processing] ⚠ Could not infer billing period from extracted data")
-        }
-      } else {
-        console.log(`[Bill Processing] Billing period already set: ${updatedBill.billingYear}-${updatedBill.billingMonth}`)
-      }
-
       // Update bill with extracted data and track which rules were used
       const updateData: Partial<typeof billsTable.$inferInsert> = {
         status: "processed",
         invoiceRuleId: invoiceRule?.id || null,
         paymentRuleId: paymentRule?.id || null
-      }
-
-      // Set billing period if inferred and not already set by user
-      // User-provided period takes precedence (set in upload route)
-      if (inferredPeriod && (!updatedBill.billingYear || !updatedBill.billingMonth)) {
-        updateData.billingYear = inferredPeriod.billingYear
-        updateData.billingMonth = inferredPeriod.billingMonth
-        console.log(`[Bill Processing] ✓ Setting billing period: ${updateData.billingYear}-${updateData.billingMonth}`)
-      } else if (!inferredPeriod && (!updatedBill.billingYear || !updatedBill.billingMonth)) {
-        console.log("[Bill Processing] ⚠ No billing period inferred and none set by user")
       }
 
       if (invoiceData) {
@@ -417,44 +381,96 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
         return { isSuccess: false, message: "Failed to update bill after processing" }
       }
 
-      // Auto-match bill to billing period if billingYear/billingMonth is set
-      if (processedBill.billingYear && processedBill.billingMonth) {
-        try {
-          const { matchBillToPeriod } = await import("@/lib/period-bill-matcher")
-          await matchBillToPeriod(processedBill, "automatic")
-          console.log(`[Bill Processing] ✓ Auto-matched bill ${billId} to period`)
-        } catch (matchError) {
-          // Log error but don't fail the bill processing
-          console.error(`[Bill Processing] Error auto-matching bill to period:`, matchError)
-        }
-      } else {
-        console.log(`[Bill Processing] Bill ${billId} has no billing period, skipping auto-match`)
+      // CRITICAL: Link bill to template FIRST before period matching
+      // Template linking is required for proper dependency validation during period matching
+      console.log(`[Bill Processing] Linking bill ${billId} to template before period matching...`)
+      const templateLinkResult = await linkBillToTemplate(billId, processedBill)
+      
+      // Get updated bill after template linking
+      const billWithTemplate = await db.query.bills.findFirst({
+        where: eq(billsTable.id, billId)
+      })
+
+      if (!billWithTemplate) {
+        return { isSuccess: false, message: "Failed to retrieve bill after template linking" }
       }
 
-      // Link bill to template using the reusable function
-      await linkBillToTemplate(billId, processedBill)
+      // If template linking failed, skip period matching (log clearly)
+      if (!billWithTemplate.billTemplateId) {
+        console.warn(`[Bill Processing] ⚠ Template linking failed for bill ${billId}. Skipping period matching.`)
+        console.warn(`[Bill Processing]   Bill must have a template ID before period matching can occur.`)
+        return {
+          isSuccess: true,
+          message: "Bill processed but template linking failed - period matching skipped",
+          data: billWithTemplate
+        }
+      }
+
+      console.log(`[Bill Processing] ✓ Bill ${billId} linked to template ${billWithTemplate.billTemplateId}`)
+
+      // Process period extraction and auto-matching using reusable function
+      // This handles period inference and matching to all compatible periods
+      // Now that bill has template ID, matching can validate template dependencies correctly
+      try {
+        const { processBillPeriod } = await import("@/lib/bill-period-processing")
+        const periodResult = await processBillPeriod(
+          billId,
+          invoiceData || null,
+          paymentData || null,
+          processedBill.fileName
+        )
+        
+        if (periodResult.periodSet) {
+          console.log(`[Bill Processing] ✓ Period processing completed for bill ${billId}`)
+        }
+        
+        if (periodResult.matched) {
+          console.log(
+            `[Bill Processing] ✓ Auto-matched bill ${billId} to ${periodResult.matchedPeriods.length} period(s): ${periodResult.matchedPeriods.map(m => `${m.periodType}:${m.periodId}`).join(", ")}`
+          )
+        } else {
+          console.log(
+            `[Bill Processing] ⚠ Bill ${billId} was not auto-matched to any periods. Can be manually matched later.`
+          )
+        }
+      } catch (periodError) {
+          // Log error but don't fail the bill processing
+        console.error(`[Bill Processing] Error processing period for bill ${billId}:`, periodError)
+        if (periodError instanceof Error) {
+          console.error(`[Bill Processing]   Error message: ${periodError.message}`)
+        }
+      }
+
+      // Get final bill after period processing (period may have been set)
+      const finalBill = await db.query.bills.findFirst({
+        where: eq(billsTable.id, billId)
+      })
+
+      if (!finalBill) {
+        return { isSuccess: false, message: "Failed to retrieve bill after period processing" }
+      }
 
       // NEW: Check for matching billing schedule and link bill (non-breaking)
       // This integration is optional - bills work fine without schedules
       try {
-        if (processedBill.billingYear && processedBill.billingMonth) {
+        if (finalBill.billingYear && finalBill.billingMonth) {
           const { findMatchingScheduleForBill, markBillAsFulfillingSchedule } = await import(
             "@/lib/billing-schedule-compliance"
           )
 
           const matchingSchedule = await findMatchingScheduleForBill(
-            processedBill.propertyId,
-            processedBill.billType,
-            processedBill.billingYear,
-            processedBill.billingMonth
+            finalBill.propertyId,
+            finalBill.billType,
+            finalBill.billingYear,
+            finalBill.billingMonth
           )
 
           if (matchingSchedule) {
             await markBillAsFulfillingSchedule(
-              processedBill.id,
+              finalBill.id,
               matchingSchedule.id,
-              processedBill.billingYear,
-              processedBill.billingMonth
+              finalBill.billingYear,
+              finalBill.billingMonth
             )
           }
         }
@@ -494,10 +510,42 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
         }
       }
 
+      // Update existing payable instances that reference this bill
+      // This ensures payableData is populated even if instance was created before bill processing
+      if (paymentData && finalBill.billingYear && finalBill.billingMonth) {
+        try {
+          const { updatePayableInstanceFromBills } = await import("@/lib/generation-triggers")
+          const { payableInstancesTable } = await import("@/db/schema")
+          const { db } = await import("@/db")
+          
+          // Find all payable instances that have this bill in their contributingBillIds
+          const payableInstances = await db.query.payableInstances.findMany({
+            where: (instances, { eq, and }) => and(
+              eq(instances.propertyId, finalBill.propertyId),
+              eq(instances.periodYear, finalBill.billingYear),
+              eq(instances.periodMonth, finalBill.billingMonth)
+            )
+          })
+
+          // Update each instance that references this bill
+          for (const instance of payableInstances) {
+            if (instance.contributingBillIds && Array.isArray(instance.contributingBillIds)) {
+              const billIds = instance.contributingBillIds as string[]
+              if (billIds.includes(finalBill.id)) {
+                await updatePayableInstanceFromBills(instance.id)
+              }
+            }
+          }
+        } catch (payableUpdateError) {
+          console.error("Error updating payable instances:", payableUpdateError)
+          // Don't fail the bill processing if payable update fails
+        }
+      }
+
       return {
         isSuccess: true,
         message: "Bill processed successfully",
-        data: processedBill
+        data: finalBill
       }
     } catch (processingError) {
       // Update status to error

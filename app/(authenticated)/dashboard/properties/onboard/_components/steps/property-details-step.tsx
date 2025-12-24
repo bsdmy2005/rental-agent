@@ -167,6 +167,81 @@ export function PropertyDetailsStep() {
             Name will be auto-generated from address fields, but you can edit it
           </p>
         </div>
+
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold mb-4">Payment Instructions (Banking Details)</h3>
+          <p className="text-muted-foreground text-sm mb-4">
+            Optional: Add banking details that will appear on rental invoices
+          </p>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input
+                  id="bankName"
+                  value={state.property.bankName || ""}
+                  onChange={(e) => updateProperty({ bankName: e.target.value })}
+                  placeholder="e.g., Standard Bank"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                <Input
+                  id="accountHolderName"
+                  value={state.property.accountHolderName || ""}
+                  onChange={(e) => updateProperty({ accountHolderName: e.target.value })}
+                  placeholder="Name on account"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <Input
+                  id="accountNumber"
+                  value={state.property.accountNumber || ""}
+                  onChange={(e) => updateProperty({ accountNumber: e.target.value })}
+                  placeholder="Account number"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="branchCode">Branch Code</Label>
+                <Input
+                  id="branchCode"
+                  value={state.property.branchCode || ""}
+                  onChange={(e) => updateProperty({ branchCode: e.target.value })}
+                  placeholder="e.g., 000123"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="swiftCode">Swift Code</Label>
+                <Input
+                  id="swiftCode"
+                  value={state.property.swiftCode || ""}
+                  onChange={(e) => updateProperty({ swiftCode: e.target.value })}
+                  placeholder="e.g., SBZAZAJJ"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="referenceFormat">Reference Format</Label>
+                <Input
+                  id="referenceFormat"
+                  value={state.property.referenceFormat || ""}
+                  onChange={(e) => updateProperty({ referenceFormat: e.target.value })}
+                  placeholder="e.g., Use invoice number as reference"
+                  className="h-11"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </WizardStep>
   )
