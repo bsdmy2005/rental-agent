@@ -35,8 +35,9 @@ import {
 } from "@/actions/bill-templates-actions"
 import { updateInvoiceTemplateDependencyAction } from "@/actions/rental-invoice-templates-actions"
 import { updatePayableTemplateDependencyAction } from "@/actions/payable-templates-actions"
-import { type SelectBillTemplate, type SelectRentalInvoiceTemplate, type SelectPayableTemplate, type SelectTenant } from "@/db/schema"
+import { type SelectBillTemplate, type SelectRentalInvoiceTemplate, type SelectPayableTemplate, type SelectTenant, type SelectExtractionRule } from "@/db/schema"
 import { ReverseDependencyEditor } from "./reverse-dependency-editor"
+import Link from "next/link"
 
 interface BillTemplatesManagerProps {
   propertyId: string
@@ -44,6 +45,7 @@ interface BillTemplatesManagerProps {
   invoiceTemplates: SelectRentalInvoiceTemplate[]
   payableTemplates: SelectPayableTemplate[]
   tenants: SelectTenant[]
+  extractionRules: SelectExtractionRule[]
 }
 
 export function BillTemplatesManager({
@@ -51,7 +53,8 @@ export function BillTemplatesManager({
   billTemplates,
   invoiceTemplates,
   payableTemplates,
-  tenants
+  tenants,
+  extractionRules
 }: BillTemplatesManagerProps) {
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -91,6 +94,15 @@ export function BillTemplatesManager({
     if (!tenantId) return null
     const tenant = tenants.find((t) => t.id === tenantId)
     return tenant?.name || null
+  }
+
+  const getLinkedRule = (template: SelectBillTemplate) => {
+    if (!template.extractionRuleId) return null
+    return extractionRules.find((r) => r.id === template.extractionRuleId) || null
+  }
+
+  const getAvailableRulesForBillType = (billType: string) => {
+    return extractionRules.filter((r) => r.billType === billType && r.isActive)
   }
 
   return (
@@ -158,17 +170,22 @@ export function BillTemplatesManager({
             <BillTemplateEditForm
               key={template.id}
               template={template}
+              propertyId={propertyId}
               invoiceTemplates={invoiceTemplates}
               payableTemplates={payableTemplates}
               tenants={tenants}
+              extractionRules={extractionRules}
               currentInvoiceDependents={reverseDeps.invoiceDependents}
               currentPayableDependents={reverseDeps.payableDependents}
               onCancel={() => setEditingId(null)}
-              onSave={async (data, invoiceIds, payableIds) => {
+              onSave={async (data, invoiceIds, payableIds, extractionRuleId) => {
                 setLoading(true)
                 try {
-                  // Update bill template
-                  const updateResult = await updateBillTemplateAction(template.id, data)
+                  // Update bill template (including extraction rule)
+                  const updateResult = await updateBillTemplateAction(template.id, {
+                    ...data,
+                    extractionRuleId: extractionRuleId || null
+                  })
                   if (!updateResult.isSuccess) {
                     toast.error(updateResult.message || "Failed to update bill template")
                     return
@@ -264,6 +281,25 @@ export function BillTemplatesManager({
                   <CardDescription className="mt-1">
                     {template.description || "No description"}
                   </CardDescription>
+                  {getLinkedRule(template) && (
+                    <div className="mt-2">
+                      <Link
+                        href={`/dashboard/rules/${getLinkedRule(template)!.id}`}
+                        className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Badge variant="outline" className="text-xs">
+                          Linked Rule: {getLinkedRule(template)!.name}
+                        </Badge>
+                      </Link>
+                    </div>
+                  )}
+                  {!getLinkedRule(template) && (
+                    <div className="mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        No extraction rule linked
+                      </Badge>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -319,6 +355,37 @@ export function BillTemplatesManager({
               </div>
             </CardHeader>
             <CardContent>
+              <div className="space-y-4">
+                {/* Linked Rule Section */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Extraction Rule:</p>
+                  {getLinkedRule(template) ? (
+                    <Link
+                      href={`/dashboard/rules/${getLinkedRule(template)!.id}`}
+                      className="inline-flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{getLinkedRule(template)!.name}</p>
+                        <p className="text-muted-foreground text-xs mt-1">
+                          {getLinkedRule(template)!.extractForInvoice && getLinkedRule(template)!.extractForPayment
+                            ? "Invoice + Payment"
+                            : getLinkedRule(template)!.extractForInvoice
+                              ? "Invoice"
+                              : "Payment"}
+                        </p>
+                      </div>
+                      <Badge variant={getLinkedRule(template)!.isActive ? "default" : "secondary"} className="text-xs">
+                        {getLinkedRule(template)!.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No extraction rule linked. Edit the template to link a rule.
+                    </p>
+                  )}
+                </div>
+
+                {/* Dependencies Section */}
               <div>
                 <p className="text-sm font-medium mb-2">
                   Dependencies ({reverseDeps.invoiceDependents.length + reverseDeps.payableDependents.length}):
@@ -378,6 +445,7 @@ export function BillTemplatesManager({
                     )}
                   </div>
                 )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -392,6 +460,7 @@ interface BillTemplateEditFormProps {
   invoiceTemplates: SelectRentalInvoiceTemplate[]
   payableTemplates: SelectPayableTemplate[]
   tenants: SelectTenant[]
+  extractionRules: SelectExtractionRule[]
   currentInvoiceDependents: string[]
   currentPayableDependents: string[]
   onCancel: () => void
@@ -402,15 +471,18 @@ interface BillTemplateEditFormProps {
       description: string | null
     },
     invoiceIds: string[],
-    payableIds: string[]
+    payableIds: string[],
+    extractionRuleId: string | null
   ) => Promise<void>
 }
 
 function BillTemplateEditForm({
   template,
+  propertyId,
   invoiceTemplates,
   payableTemplates,
   tenants,
+  extractionRules,
   currentInvoiceDependents,
   currentPayableDependents,
   onCancel,
@@ -423,6 +495,14 @@ function BillTemplateEditForm({
   })
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>(currentInvoiceDependents)
   const [selectedPayableIds, setSelectedPayableIds] = useState<string[]>(currentPayableDependents)
+  const [selectedExtractionRuleId, setSelectedExtractionRuleId] = useState<string | null>(
+    template.extractionRuleId || null
+  )
+
+  // Filter rules by bill type
+  const availableRules = extractionRules.filter(
+    (r) => r.billType === formData.billType && r.isActive
+  )
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -437,8 +517,21 @@ function BillTemplateEditForm({
         description: formData.description.trim() || null
       },
       selectedInvoiceIds,
-      selectedPayableIds
+      selectedPayableIds,
+      selectedExtractionRuleId
     )
+  }
+
+  // Reset extraction rule selection when bill type changes
+  const handleBillTypeChange = (value: "municipality" | "levy" | "utility" | "other") => {
+    setFormData({ ...formData, billType: value })
+    // Clear rule selection if current rule doesn't match new bill type
+    if (selectedExtractionRuleId) {
+      const currentRule = extractionRules.find((r) => r.id === selectedExtractionRuleId)
+      if (currentRule && currentRule.billType !== value) {
+        setSelectedExtractionRuleId(null)
+      }
+    }
   }
 
   return (
@@ -462,9 +555,7 @@ function BillTemplateEditForm({
           <Label htmlFor="bill-type">Bill Type</Label>
           <Select
             value={formData.billType}
-            onValueChange={(value: "municipality" | "levy" | "utility" | "other") =>
-              setFormData({ ...formData, billType: value })
-            }
+            onValueChange={handleBillTypeChange}
           >
             <SelectTrigger id="bill-type">
               <SelectValue />
@@ -487,6 +578,42 @@ function BillTemplateEditForm({
             placeholder="Optional description"
             rows={3}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="extraction-rule">Extraction Rule (Optional)</Label>
+          <Select
+            value={selectedExtractionRuleId || "__none__"}
+            onValueChange={(value) => setSelectedExtractionRuleId(value === "__none__" ? null : value)}
+          >
+            <SelectTrigger id="extraction-rule">
+              <SelectValue placeholder="Select an extraction rule (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None (No rule linked)</SelectItem>
+              {availableRules.map((rule) => (
+                <SelectItem key={rule.id} value={rule.id}>
+                  {rule.name}
+                  {rule.extractForInvoice && rule.extractForPayment
+                    ? " (Invoice + Payment)"
+                    : rule.extractForInvoice
+                      ? " (Invoice)"
+                      : " (Payment)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            Link an extraction rule to this template. Only active rules matching the bill type are shown.
+            {availableRules.length === 0 && (
+              <span className="block mt-1">
+                No active rules found for {formData.billType} bills.{" "}
+                <Link href={`/dashboard/rules/add?propertyId=${propertyId}&billType=${formData.billType}`} className="text-primary hover:underline">
+                  Create one →
+                </Link>
+              </span>
+            )}
+          </p>
         </div>
 
         <ReverseDependencyEditor

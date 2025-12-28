@@ -10,7 +10,15 @@ import {
   CreditCard,
   MessageSquare,
   UserCog,
-  Calendar
+  Calendar,
+  Globe,
+  Zap,
+  DollarSign,
+  AlertTriangle,
+  Hammer,
+  ClipboardList,
+  FileCheck,
+  FileEdit
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -66,6 +74,16 @@ export function getNavigationForUserType(
           ]
         },
         {
+          title: "Leases",
+          url: "/dashboard/leases",
+          icon: FileCheck
+        },
+        {
+          title: "Lease Templates",
+          url: "/dashboard/lease-templates",
+          icon: FileEdit
+        },
+        {
           title: "Bills",
           url: "/dashboard/bills",
           icon: FileText,
@@ -104,6 +122,36 @@ export function getNavigationForUserType(
               url: "/dashboard/rules/add"
             }
           ]
+        },
+        {
+          title: "Browser Use Explorer",
+          url: "/dashboard/browser-use-explorer",
+          icon: Globe
+        },
+        {
+          title: "Investec Explorer",
+          url: "/dashboard/investec-explorer",
+          icon: Zap
+        },
+        {
+          title: "Expenses",
+          url: "/dashboard/expenses",
+          icon: DollarSign
+        },
+        {
+          title: "Incidents",
+          url: "/dashboard/incidents",
+          icon: AlertTriangle
+        },
+        {
+          title: "Service Providers",
+          url: "/dashboard/service-providers",
+          icon: Hammer
+        },
+        {
+          title: "RFQs",
+          url: "/dashboard/rfqs",
+          icon: ClipboardList
         },
         {
           title: "Settings",
@@ -135,6 +183,16 @@ export function getNavigationForUserType(
           icon: Home
         },
         {
+          title: "Leases",
+          url: "/dashboard/leases",
+          icon: FileCheck
+        },
+        {
+          title: "Lease Templates",
+          url: "/dashboard/lease-templates",
+          icon: FileEdit
+        },
+        {
           title: "Bills",
           url: "/dashboard/bills",
           icon: FileText,
@@ -173,6 +231,36 @@ export function getNavigationForUserType(
               url: "/dashboard/rules/add"
             }
           ]
+        },
+        {
+          title: "Browser Use Explorer",
+          url: "/dashboard/browser-use-explorer",
+          icon: Globe
+        },
+        {
+          title: "Investec Explorer",
+          url: "/dashboard/investec-explorer",
+          icon: Zap
+        },
+        {
+          title: "Expenses",
+          url: "/dashboard/expenses",
+          icon: DollarSign
+        },
+        {
+          title: "Incidents",
+          url: "/dashboard/incidents",
+          icon: AlertTriangle
+        },
+        {
+          title: "Service Providers",
+          url: "/dashboard/service-providers",
+          icon: Hammer
+        },
+        {
+          title: "RFQs",
+          url: "/dashboard/rfqs",
+          icon: ClipboardList
         },
         {
           title: "Settings",
@@ -209,9 +297,9 @@ export function getNavigationForUserType(
           icon: CreditCard
         },
         {
-          title: "Maintenance",
-          url: "/tenant/maintenance",
-          icon: Wrench
+          title: "Incidents",
+          url: "/tenant/incidents",
+          icon: AlertTriangle
         },
         {
           title: "Messages",

@@ -37,6 +37,9 @@ export const extractionRulesTable = pgTable("extraction_rules", {
   invoiceInstruction: text("invoice_instruction"), // Custom instruction for invoice extraction
   paymentInstruction: text("payment_instruction"), // Custom instruction for payment extraction
   emailProcessingInstruction: text("email_processing_instruction"), // Custom instruction for AI to guide email processing (attachments vs links, file selection)
+  preferredLane: text("preferred_lane").default("auto"), // 'auto', 'lane1_attachments', 'lane2_direct', 'lane3_interactive'
+  lane3Config: jsonb("lane3_config"), // Configuration for Lane 3 (playwright/agentic)
+  lane2Config: jsonb("lane2_config"), // Configuration for Lane 2 (redirect settings)
   isActive: boolean("is_active").default(true).notNull(),
   version: integer("version").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

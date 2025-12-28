@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Pencil, Check, X, Building2 } from "lucide-react"
 import { SelectProperty } from "@/db/schema"
 import { updatePropertyAction } from "@/actions/properties-actions"
@@ -78,15 +77,7 @@ export function PropertyBankingDetailsSection({ property }: PropertyBankingDetai
 
   if (isEditing) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Instructions (Banking Details)</CardTitle>
-          <CardDescription>
-            Banking details that will appear on rental invoices for this property
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdate} className="space-y-4">
+      <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="bankName">Bank Name</Label>
@@ -170,33 +161,23 @@ export function PropertyBankingDetailsSection({ property }: PropertyBankingDetai
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Payment Instructions (Banking Details)</CardTitle>
-            <CardDescription>
-              Banking details that will appear on rental invoices for this property
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(true)}
-            disabled={loading}
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            {hasBankingDetails ? "Edit" : "Add"}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsEditing(true)}
+          disabled={loading}
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          {hasBankingDetails ? "Edit" : "Add"}
+        </Button>
+      </div>
+      <div>
         {hasBankingDetails ? (
           <div className="space-y-3">
             {property.bankName && (
@@ -245,8 +226,8 @@ export function PropertyBankingDetailsSection({ property }: PropertyBankingDetai
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

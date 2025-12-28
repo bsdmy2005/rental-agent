@@ -179,3 +179,63 @@ export function extractLinksFromEmail(emailBody: string, isHtml: boolean): PDFLi
   }
 }
 
+/**
+ * Extract ALL links from email body (not just PDF links)
+ * Used for detecting interactive portals
+ */
+export function extractAllLinksFromEmail(emailBody: string, isHtml: boolean): PDFLink[] {
+  if (!emailBody || emailBody.trim() === "") {
+    return []
+  }
+  
+  const links: PDFLink[] = []
+  
+  try {
+    if (isHtml) {
+      // Match <a href="..."> tags
+      const hrefRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi
+      let match
+      while ((match = hrefRegex.exec(emailBody)) !== null) {
+        const url = match[1]
+        const linkText = match[2]?.trim() || ""
+        if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+          links.push({ url, label: linkText || undefined })
+        }
+      }
+      // Also match <a> tags without closing tag
+      const hrefRegex2 = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>/gi
+      let match2
+      while ((match2 = hrefRegex2.exec(emailBody)) !== null) {
+        const url = match2[1]
+        if (url && (url.startsWith("http://") || url.startsWith("https://")) && !links.some(l => l.url === url)) {
+          links.push({ url })
+        }
+      }
+      // Also match plain URLs in HTML
+      const urlRegex = /https?:\/\/[^\s<>"']+/gi
+      let urlMatch
+      while ((urlMatch = urlRegex.exec(emailBody)) !== null) {
+        const url = urlMatch[0]
+        if (!links.some(l => l.url === url)) {
+          links.push({ url })
+        }
+      }
+    } else {
+      // Match URLs in text
+      const urlRegex = /https?:\/\/[^\s<>"']+/gi
+      let urlMatch
+      while ((urlMatch = urlRegex.exec(emailBody)) !== null) {
+        const url = urlMatch[0]
+        if (!links.some(l => l.url === url)) {
+          links.push({ url })
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[Link Extractor] Error extracting all links:", error)
+    return []
+  }
+  
+  return links
+}
+

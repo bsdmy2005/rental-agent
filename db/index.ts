@@ -10,10 +10,13 @@ import {
   propertyManagementsTable,
   tenantsTable,
   leaseAgreementsTable,
+  leaseEscalationsTable,
+  leaseTemplatesTable,
   billsTable,
   extractionRulesTable,
   ruleSamplesTable,
   emailProcessorsTable,
+  extractionJobsTable,
   billingSchedulesTable,
   billingScheduleStatusTable,
   billingPeriodsTable,
@@ -29,7 +32,28 @@ import {
   bankAccountsTable,
   beneficiariesTable,
   accountBeneficiariesTable,
-  paymentsTable
+  paymentsTable,
+  expenseCategoriesTable,
+  expensesTable,
+  expenseAttachmentsTable,
+  depreciationRecordsTable,
+  incidentsTable,
+  incidentAttachmentsTable,
+  incidentStatusHistoryTable,
+  serviceProvidersTable,
+  serviceProviderAreasTable,
+  quoteRequestsTable,
+  quotesTable,
+  rfqCodesTable,
+  rfqAttachmentsTable,
+  propertyCodesTable,
+  movingInspectionsTable,
+  movingInspectionCategoriesTable,
+  movingInspectionItemsTable,
+  movingInspectionDefectsTable,
+  movingInspectionAttachmentsTable,
+  movingInspectionDocumentsTable,
+  movingInspectionComparisonsTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -49,10 +73,13 @@ const dbSchema = {
   propertyManagements: propertyManagementsTable,
   tenants: tenantsTable,
   leaseAgreements: leaseAgreementsTable,
+  leaseEscalations: leaseEscalationsTable,
+  leaseTemplates: leaseTemplatesTable,
   bills: billsTable,
   extractionRules: extractionRulesTable,
   ruleSamples: ruleSamplesTable,
   emailProcessors: emailProcessorsTable,
+  extractionJobs: extractionJobsTable,
   billingSchedules: billingSchedulesTable,
   billingScheduleStatus: billingScheduleStatusTable,
   billingPeriods: billingPeriodsTable,
@@ -68,12 +95,50 @@ const dbSchema = {
   bankAccounts: bankAccountsTable,
   beneficiaries: beneficiariesTable,
   accountBeneficiaries: accountBeneficiariesTable,
-  payments: paymentsTable
+  payments: paymentsTable,
+  expenseCategories: expenseCategoriesTable,
+  expenses: expensesTable,
+  expenseAttachments: expenseAttachmentsTable,
+  depreciationRecords: depreciationRecordsTable,
+  incidents: incidentsTable,
+  incidentAttachments: incidentAttachmentsTable,
+  incidentStatusHistory: incidentStatusHistoryTable,
+  serviceProviders: serviceProvidersTable,
+  serviceProviderAreas: serviceProviderAreasTable,
+  quoteRequests: quoteRequestsTable,
+  quotes: quotesTable,
+  rfqCodes: rfqCodesTable,
+  rfqAttachments: rfqAttachmentsTable,
+  propertyCodes: propertyCodesTable,
+  movingInspections: movingInspectionsTable,
+  movingInspectionCategories: movingInspectionCategoriesTable,
+  movingInspectionItems: movingInspectionItemsTable,
+  movingInspectionDefects: movingInspectionDefectsTable,
+  movingInspectionAttachments: movingInspectionAttachmentsTable,
+  movingInspectionDocuments: movingInspectionDocumentsTable,
+  movingInspectionComparisons: movingInspectionComparisonsTable
   // relations
 }
 
 function initializeDb(url: string) {
-  const client = postgres(url, { prepare: false })
+  // Configure connection pool to prevent exhaustion
+  const client = postgres(url, {
+    prepare: false,
+    max: 15, // Maximum number of connections in the pool
+    idle_timeout: 10, // Close idle connections after 10 seconds
+    connect_timeout: 5, // Connection timeout in seconds
+    max_lifetime: 60 * 10, // Maximum lifetime of a connection (10 minutes)
+    onnotice: () => {}, // Suppress notices
+    transform: {
+      undefined: null, // Transform undefined to null
+    },
+  })
+  
+  // Handle connection errors gracefully
+  client.listen('error', (err) => {
+    console.error('[DB] Connection error:', err)
+  })
+  
   return drizzlePostgres(client, { schema: dbSchema })
 }
 

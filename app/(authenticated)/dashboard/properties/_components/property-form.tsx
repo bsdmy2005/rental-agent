@@ -17,6 +17,7 @@ import { createPropertyAction } from "@/actions/properties-actions"
 import { toast } from "sonner"
 import { SOUTH_AFRICAN_PROVINCES, COUNTRIES } from "@/lib/constants/south-africa"
 import { generatePropertyName } from "@/lib/utils/property-name"
+import { getCitiesByProvince, getSuburbsByCity } from "@/lib/utils/south-africa-geography"
 
 interface PropertyFormProps {
   landlordId: string
@@ -29,6 +30,7 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     streetAddress: "",
+    city: "",
     suburb: "",
     province: "",
     country: "South Africa",
@@ -39,9 +41,35 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
     accountNumber: "",
     branchCode: "",
     swiftCode: "",
-    referenceFormat: ""
+    referenceFormat: "",
+    landlordName: "",
+    landlordEmail: "",
+    landlordPhone: "",
+    landlordIdNumber: "",
+    landlordAddress: ""
   })
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
+  const [landlordDetailsLoaded, setLandlordDetailsLoaded] = useState(false)
+
+  // Get cities and suburbs based on selected province and city
+  const availableCities = formData.province ? getCitiesByProvince(formData.province) : []
+  const availableSuburbs = formData.province && formData.city ? getSuburbsByCity(formData.province, formData.city) : []
+
+  // Reset city and suburb when province changes
+  useEffect(() => {
+    if (!formData.province) {
+      setFormData((prev) => ({ ...prev, city: "", suburb: "" }))
+    } else if (formData.city && !availableCities.some((c) => c.name === formData.city)) {
+      setFormData((prev) => ({ ...prev, city: "", suburb: "" }))
+    }
+  }, [formData.province, formData.city, availableCities])
+
+  // Reset suburb when city changes
+  useEffect(() => {
+    if (!formData.city || !availableSuburbs.some((s) => s.name === formData.suburb)) {
+      setFormData((prev) => ({ ...prev, suburb: "" }))
+    }
+  }, [formData.city, availableSuburbs])
 
   // Auto-generate property name when address fields change
   useEffect(() => {
@@ -57,6 +85,34 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
       }
     }
   }, [formData.streetAddress, formData.suburb, formData.province, formData.postalCode, nameManuallyEdited])
+
+  // Fetch landlord details on mount to pre-populate form
+  useEffect(() => {
+    async function fetchLandlordDetails() {
+      if (landlordDetailsLoaded) return
+      try {
+        const response = await fetch("/api/user/landlord-details")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.landlord) {
+            setFormData(prev => ({
+              ...prev,
+              landlordName: data.landlord.name || "",
+              landlordEmail: data.landlord.email || "",
+              landlordPhone: data.landlord.phone || "",
+              landlordIdNumber: data.landlord.idNumber || "",
+              landlordAddress: data.landlord.address || ""
+            }))
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch landlord details:", err)
+      } finally {
+        setLandlordDetailsLoaded(true)
+      }
+    }
+    fetchLandlordDetails()
+  }, [landlordDetailsLoaded])
 
   const handleNameChange = (value: string) => {
     setNameManuallyEdited(true)
@@ -82,7 +138,12 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
         accountNumber: formData.accountNumber || undefined,
         branchCode: formData.branchCode || undefined,
         swiftCode: formData.swiftCode || undefined,
-        referenceFormat: formData.referenceFormat || undefined
+        referenceFormat: formData.referenceFormat || undefined,
+        landlordName: formData.landlordName || undefined,
+        landlordEmail: formData.landlordEmail || undefined,
+        landlordPhone: formData.landlordPhone || undefined,
+        landlordIdNumber: formData.landlordIdNumber || undefined,
+        landlordAddress: formData.landlordAddress || undefined
       })
 
       if (result.isSuccess && result.data) {
@@ -107,9 +168,15 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
           accountNumber: "",
           branchCode: "",
           swiftCode: "",
-          referenceFormat: ""
+          referenceFormat: "",
+          landlordName: "",
+          landlordEmail: "",
+          landlordPhone: "",
+          landlordIdNumber: "",
+          landlordAddress: ""
         })
         setNameManuallyEdited(false)
+        setLandlordDetailsLoaded(false)
       } else {
         toast.error(result.message)
       }
@@ -140,19 +207,62 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
+              <Label htmlFor="city" className="text-base font-medium">
+                City
+              </Label>
+              <Select
+                value={formData.city}
+                onValueChange={(value) => setFormData({ ...formData, city: value, suburb: "" })}
+                disabled={!formData.province}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder={formData.province ? "Select city" : "Select province first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city.name} value={city.name}>
+                      {city.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="suburb" className="text-base font-medium">
                 Suburb <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="suburb"
-                required
-                value={formData.suburb}
-                onChange={(e) => setFormData({ ...formData, suburb: e.target.value })}
-                placeholder="e.g., Sandton"
-                className="h-11"
-              />
+              {formData.city && availableSuburbs.length > 0 ? (
+                <Select
+                  value={formData.suburb}
+                  onValueChange={(value) => setFormData({ ...formData, suburb: value })}
+                  required
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select suburb" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSuburbs.map((suburb) => (
+                      <SelectItem key={suburb.name} value={suburb.name}>
+                        {suburb.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="suburb"
+                  required
+                  value={formData.suburb}
+                  onChange={(e) => setFormData({ ...formData, suburb: e.target.value })}
+                  placeholder={formData.city ? "No suburbs available, enter manually" : "Select city first or enter manually"}
+                  className="h-11"
+                />
+              )}
             </div>
+          </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="postalCode" className="text-base font-medium">
                 Postal Code
@@ -244,6 +354,84 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
             <p className="text-muted-foreground text-xs">
               Name will be auto-generated from address fields, but you can edit it
             </p>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Landlord Contact Details</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Required: These details will be used in lease agreements and for communication. If managed by a rental agent, enter the landlord's details here.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="landlordName" className="text-base font-medium">
+                  Landlord Name / Company Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordName"
+                  required
+                  value={formData.landlordName}
+                  onChange={(e) => setFormData({ ...formData, landlordName: e.target.value })}
+                  placeholder="Full name or company name"
+                  className="h-11"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="landlordEmail" className="text-base font-medium">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="landlordEmail"
+                    type="email"
+                    required
+                    value={formData.landlordEmail}
+                    onChange={(e) => setFormData({ ...formData, landlordEmail: e.target.value })}
+                    placeholder="landlord@example.com"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="landlordPhone" className="text-base font-medium">
+                    Contact Number <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="landlordPhone"
+                    type="tel"
+                    required
+                    value={formData.landlordPhone}
+                    onChange={(e) => setFormData({ ...formData, landlordPhone: e.target.value })}
+                    placeholder="+27 12 345 6789"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="landlordIdNumber" className="text-base font-medium">
+                  ID / Registration Number <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordIdNumber"
+                  required
+                  value={formData.landlordIdNumber}
+                  onChange={(e) => setFormData({ ...formData, landlordIdNumber: e.target.value })}
+                  placeholder="ID number or company registration number"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="landlordAddress" className="text-base font-medium">
+                  Address <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordAddress"
+                  required
+                  value={formData.landlordAddress}
+                  onChange={(e) => setFormData({ ...formData, landlordAddress: e.target.value })}
+                  placeholder="Full address"
+                  className="h-11"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="border-t pt-6">

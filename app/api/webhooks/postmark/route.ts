@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { processEmailWebhookAction } from "@/actions/email-processors-actions"
 
 // Configure route for longer processing time and ensure it's not blocked
+// Note: We return immediately, so maxDuration is mainly for error handling
 export const maxDuration = 60 // 60 seconds max duration
 export const runtime = "nodejs" // Use Node.js runtime
 
@@ -9,6 +10,27 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   console.log("[Email Webhook] ==========================================")
   console.log("[Email Webhook] Received POST request at:", new Date().toISOString())
+  
+  // Parse payload with timeout protection
+  let payload: any
+  try {
+    // Set a timeout for JSON parsing to avoid hanging
+    const jsonPromise = request.json()
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("JSON parsing timeout after 10 seconds")), 10000)
+    )
+    
+    payload = await Promise.race([jsonPromise, timeoutPromise])
+  } catch (jsonError) {
+    console.error("[Email Webhook] ✗ Failed to parse JSON payload:", jsonError)
+    if (jsonError instanceof Error) {
+      console.error("[Email Webhook]   Error:", jsonError.message)
+    }
+    console.log("[Email Webhook] ==========================================")
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
+  }
+  
+  // Log request info after parsing (non-blocking)
   console.log("[Email Webhook] Request headers:", {
     "content-type": request.headers.get("content-type"),
     "user-agent": request.headers.get("user-agent"),
@@ -17,16 +39,6 @@ export async function POST(request: NextRequest) {
   })
   
   try {
-    let payload: any
-    try {
-      payload = await request.json()
-    } catch (jsonError) {
-      console.error("[Email Webhook] ✗ Failed to parse JSON payload:", jsonError)
-      const text = await request.text()
-      console.error("[Email Webhook]   Raw request body (first 500 chars):", text.substring(0, 500))
-      console.log("[Email Webhook] ==========================================")
-      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
-    }
     
     console.log("[Email Webhook] Raw payload received:")
     console.log("[Email Webhook] - MessageID:", payload?.MessageID || "(missing)")
@@ -57,8 +69,13 @@ export async function POST(request: NextRequest) {
     // const signature = request.headers.get("X-Postmark-Signature")
     // TODO: Verify signature with POSTMARK_WEBHOOK_SECRET
 
-    // Process email asynchronously to avoid timeout
-    // Return success immediately to Postmark, then process in background
+    // Return success immediately to Postmark (webhook acknowledged)
+    // Processing will continue in the background
+    console.log("[Email Webhook] ✓ Webhook acknowledged, processing in background")
+    console.log("[Email Webhook] ==========================================")
+    
+    // Process email asynchronously - don't await, return immediately
+    // The promise chain won't block the response
     processEmailWebhookAction(payload)
       .then((result) => {
         const duration = Date.now() - startTime
@@ -77,11 +94,11 @@ export async function POST(request: NextRequest) {
         }
       })
     
-    // Return success immediately to Postmark (webhook acknowledged)
-    // Processing will continue in the background
-    console.log("[Email Webhook] ✓ Webhook acknowledged, processing in background")
-    console.log("[Email Webhook] ==========================================")
-    return NextResponse.json({ success: true, message: "Webhook received, processing..." }, { status: 200 })
+    // Return response immediately (don't await the background processing)
+    return NextResponse.json(
+      { success: true, message: "Webhook received, processing..." },
+      { status: 200 }
+    )
   } catch (error) {
     const duration = Date.now() - startTime
     console.error(`[Email Webhook] ✗ CRITICAL ERROR processing Postmark webhook (${duration}ms):`, error)

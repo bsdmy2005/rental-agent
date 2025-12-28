@@ -58,6 +58,29 @@ export function EditRuleBuilderWrapper({
 }: EditRuleBuilderWrapperProps) {
   const router = useRouter()
 
+  // Extract lane3Config data
+  const lane3Config = (rule.lane3Config as
+    | {
+        method?: string
+        agenticConfig?: {
+          maxSteps?: number
+          maxTime?: number
+          allowedDomains?: string[]
+          portalContext?: string
+        }
+      }
+    | null) || {}
+
+  const agenticConfig = lane3Config.agenticConfig || {}
+
+  // Extract lane2Config data
+  const lane2Config = (rule.lane2Config as
+    | {
+        followRedirects?: boolean
+        maxRedirects?: number
+      }
+    | null) || {}
+
   // Convert rule data to form data format
   const initialFormData = {
     propertyId: rule.propertyId,
@@ -76,7 +99,15 @@ export function EditRuleBuilderWrapper({
       ? convertConfigToMappings(rule.paymentExtractionConfig as Record<string, unknown>)
       : [],
     invoiceInstruction: rule.invoiceInstruction || "",
-    paymentInstruction: rule.paymentInstruction || ""
+    paymentInstruction: rule.paymentInstruction || "",
+    preferredLane: rule.preferredLane || "auto",
+    lane2FollowRedirects: lane2Config.followRedirects ?? true,
+    lane2MaxRedirects: lane2Config.maxRedirects || 5,
+    lane3Method: lane3Config.method || "agentic",
+    lane3AgenticMaxSteps: agenticConfig.maxSteps || 50,
+    lane3AgenticMaxTime: agenticConfig.maxTime || 120,
+    lane3AgenticAllowedDomains: agenticConfig.allowedDomains?.join(", ") || "",
+    lane3AgenticPortalContext: agenticConfig.portalContext || ""
   }
 
   const handleSuccess = () => {

@@ -1,0 +1,190 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { getLeaseByTokenAction } from "@/actions/lease-initiation-actions"
+import { SignaturePad } from "@/components/utility/signature-pad"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2 } from "lucide-react"
+import { LeaseDetailsView } from "@/app/(authenticated)/dashboard/leases/[leaseId]/sign/_components/lease-details-view"
+
+export default function TenantSigningPage() {
+  const params = useParams()
+  const router = useRouter()
+  // Decode token from URL (in case it was URL-encoded)
+  const token = params.token ? decodeURIComponent(params.token as string) : ""
+
+  const [lease, setLease] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [signing, setSigning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [signatureData, setSignatureData] = useState<string | null>(null)
+  const [signatureConfirmed, setSignatureConfirmed] = useState(false)
+
+  useEffect(() => {
+    async function loadLease() {
+      try {
+        const result = await getLeaseByTokenAction(token)
+        if (!result.isSuccess) {
+          setError(result.message || "Failed to load lease")
+          return
+        }
+        setLease(result.data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load lease")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (token) {
+      loadLease()
+    }
+  }, [token])
+
+  const handleSign = async () => {
+    if (!signatureData) {
+      setError("Please provide your signature")
+      return
+    }
+
+    setSigning(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/leases/${lease.id}/sign/tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          token,
+          signatureData: {
+            image: signatureData,
+            signedAt: new Date().toISOString()
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "Failed to sign lease")
+        return
+      }
+
+      // Success - redirect to confirmation page
+      router.push(`/lease/sign/${token}/success`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign lease")
+    } finally {
+      setSigning(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (error && !lease) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Invalid Signing Link</CardTitle>
+            <CardDescription className="space-y-2 mt-2">
+              <p>{error}</p>
+              <p className="text-sm text-muted-foreground mt-4">
+                Please use the signing link provided in your email. If you don't have the email, please contact your landlord or rental agent to request a new signing link.
+              </p>
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!lease) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Lease Not Found</CardTitle>
+            <CardDescription>The lease agreement could not be found.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto py-8 max-w-4xl">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sign Lease Agreement</CardTitle>
+          <CardDescription>
+            Please review the lease agreement and provide your signature below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Lease Details */}
+          <LeaseDetailsView lease={lease} />
+
+          <div className="border-t pt-6">
+            <h3 className="font-semibold mb-4">Your Signature</h3>
+            {!signatureConfirmed ? (
+              <SignaturePad
+                onSign={(data) => {
+                  setSignatureData(data)
+                  setSignatureConfirmed(true)
+                }}
+              />
+            ) : (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <p className="text-sm text-muted-foreground mb-4">Signature confirmed. Click below to sign the lease.</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSignatureData(null)
+                    setSignatureConfirmed(false)
+                  }}
+                >
+                  Change Signature
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
+
+          {signatureConfirmed && (
+            <div className="flex gap-4">
+              <Button
+                onClick={handleSign}
+                disabled={!signatureData || signing}
+                className="flex-1"
+              >
+                {signing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing...
+                  </>
+                ) : (
+                  "Sign Lease Agreement"
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+

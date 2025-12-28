@@ -3,6 +3,7 @@
 import { db } from "@/db"
 import {
   emailProcessorsTable,
+  extractionJobsTable,
   userProfilesTable,
   type InsertEmailProcessor,
   type SelectEmailProcessor
@@ -95,6 +96,10 @@ export async function processEmailWebhookAction(
   console.log("[Email Processing] ==========================================")
   console.log("[Email Processing] Starting email webhook processing...")
   
+  // Declare variables outside try block for error handling
+  let processorResult: { isSuccess: boolean; data?: SelectEmailProcessor } | null = null
+  let extractionJobId: string | undefined = undefined
+  
   try {
     // Validate payload structure
     if (!payload) {
@@ -179,6 +184,14 @@ export async function processEmailWebhookAction(
     
     // Get user profile from matched rule (rules are user-specific)
     const matchedRule = invoiceRule || paymentRule
+    if (!matchedRule) {
+      console.error("[Email Processing] ✗ No matched rule found")
+      return {
+        isSuccess: false,
+        message: "Error: No matched rule found"
+      }
+    }
+    
     const matchedRuleFull = allEmailRules.find(r => r.id === matchedRule.id)
     
     if (!matchedRuleFull) {
@@ -207,42 +220,12 @@ export async function processEmailWebhookAction(
     console.log(`[Email Processing] ✓ Matched rule: ${matchedRuleFull.name} (ID: ${matchedRule.id})`)
     console.log(`[Email Processing] ✓ User profile: ${userProfile.email} (ID: ${userProfile.id})`)
     
-    // Get email processing instruction from matched rule
-    const emailProcessingInstruction = matchedRuleFull.emailProcessingInstruction || undefined
+    // Step 0: Create email processor record and extraction job
+    console.log("[Email Processing] Step 3: Creating email processor record...")
+    // parsePostmarkWebhook is already imported at line 110
+    const parsed = await parsePostmarkWebhook(payload, matchedRuleFull.emailProcessingInstruction || undefined)
     
-    if (emailProcessingInstruction) {
-      console.log("[Email Processing] ✓ Found email processing instruction from matched rule")
-    }
-
-    // Parse webhook payload with instruction
-    console.log("[Email Processing] Step 3: Parsing webhook payload with instruction...")
-    const parsed = await parsePostmarkWebhook(payload, emailProcessingInstruction)
-    console.log("[Email Processing] ✓ Parsed email data successfully")
-
-    if (parsed.pdfAttachments.length === 0 && parsed.pdfLinks.length === 0) {
-      // No PDF attachments, just create email processor record
-      console.log("[Email Processing] No PDF attachments found, creating email processor record only...")
-      await createEmailProcessorAction({
-        userProfileId: userProfile.id,
-        postmarkMessageId: parsed.messageId,
-        from: parsed.from,
-        subject: parsed.subject || null,
-        receivedAt: parsed.receivedAt,
-        hasAttachments: false,
-        status: "processed"
-      })
-      console.log("[Email Processing] ✓ Email processor record created (no attachments)")
-      console.log("[Email Processing] ==========================================")
-      return {
-        isSuccess: true,
-        message: "Email processed (no PDF attachments)",
-        data: undefined
-      }
-    }
-
-    // Create email processor record
-    console.log("[Email Processing] Step 4: Creating email processor record...")
-    const processorResult = await createEmailProcessorAction({
+    processorResult = await createEmailProcessorAction({
       userProfileId: userProfile.id,
       postmarkMessageId: parsed.messageId,
       from: parsed.from,
@@ -254,13 +237,63 @@ export async function processEmailWebhookAction(
 
     if (!processorResult.isSuccess || !processorResult.data) {
       console.error("[Email Processing] ✗ Failed to create email processor record")
-      console.log("[Email Processing] ==========================================")
       return {
         isSuccess: false,
         message: "Failed to create email processor record"
       }
     }
-    console.log(`[Email Processing] ✓ Email processor record created (ID: ${processorResult.data.id})`)
+
+    // Create extraction job
+    const { createExtractionJobAction, updateExtractionJobAction } = await import("@/actions/extraction-jobs-actions")
+    const extractionJobResult = await createExtractionJobAction({
+      emailProcessorId: processorResult.data.id,
+      extractionRuleId: matchedRuleFull.id,
+      status: "pending",
+      lane: "unknown",
+      trace: [],
+      startedAt: new Date()
+    })
+
+    if (!extractionJobResult.isSuccess || !extractionJobResult.data) {
+      console.warn("[Email Processing] ⚠ Failed to create extraction job, continuing without it")
+    }
+
+    extractionJobId = extractionJobResult.data?.id
+
+    // Use lane-based processing
+    console.log("[Email Processing] Step 4: Processing email with lane-based architecture...")
+    const { processEmailWithLanes } = await import("@/lib/email/lane-orchestrator")
+    const laneResult = await processEmailWithLanes(payload, matchedRuleFull)
+
+    // Update extraction job with lane result
+    if (extractionJobId) {
+      await updateExtractionJobAction(extractionJobId, {
+        lane: laneResult.lane,
+        status: laneResult.success ? "processing" : "failed",
+        trace: laneResult.trace,
+        error: laneResult.error || undefined
+      })
+    }
+
+    if (!laneResult.success || laneResult.pdfBuffers.length === 0) {
+      console.error("[Email Processing] ✗ Lane processing failed or no PDFs extracted")
+      await updateEmailProcessorAction(processorResult.data.id, {
+        status: "error"
+      })
+      if (extractionJobId) {
+        await updateExtractionJobAction(extractionJobId, {
+          status: "failed",
+          error: laneResult.error || "No PDFs extracted",
+          completedAt: new Date()
+        })
+      }
+      return {
+        isSuccess: false,
+        message: laneResult.error || "Failed to extract PDFs from email"
+      }
+    }
+
+    console.log(`[Email Processing] ✓ Lane ${laneResult.lane} extracted ${laneResult.pdfBuffers.length} PDF(s)`)
 
     // Get user's properties
     console.log("[Email Processing] Step 5: Fetching user properties...")
@@ -310,97 +343,14 @@ export async function processEmailWebhookAction(
     }
     console.log(`[Email Processing] ✓ Found ${properties.length} property(ies)`)
 
-    // Process PDFs from attachments and links
-    console.log("[Email Processing] Step 6: Processing PDFs...")
-    console.log(`[Email Processing]   Found ${parsed.pdfAttachments.length} PDF attachment(s)`)
-    console.log(`[Email Processing]   Found ${parsed.pdfLinks.length} PDF link(s)`)
-    
-    // Collect all PDFs to process (from attachments and links)
-    const pdfsToProcess: Array<{ name: string; content: Buffer }> = []
-    
-    // Process attachments
-    for (const attachment of parsed.pdfAttachments) {
-      pdfsToProcess.push({
-        name: attachment.name,
-        content: attachment.content
-      })
-    }
-    
-    // Process links
-    if (parsed.pdfLinks.length > 0) {
-      console.log("[Email Processing]   Processing PDF links...")
-      
-      try {
-        // Get links with labels if available
-        const linksWithLabels = parsed.pdfLinksWithLabels || parsed.pdfLinks.map(url => ({ url }))
-        
-        // If multiple links, use AI to select relevant ones
-        let linksToDownload = parsed.pdfLinks
-        if (parsed.pdfLinks.length > 1 && emailProcessingInstruction) {
-          console.log("[Email Processing]     Multiple links found, using AI to select relevant ones...")
-          const selectedLinks = await selectRelevantFileFromLinks(parsed.pdfLinks, emailProcessingInstruction)
-          linksToDownload = Array.isArray(selectedLinks) ? selectedLinks : [selectedLinks]
-          console.log(`[Email Processing]     ✓ Selected ${linksToDownload.length} link(s) from ${parsed.pdfLinks.length}`)
-        }
-        
-        // Download PDFs from selected links
-        for (let i = 0; i < linksToDownload.length; i++) {
-          const linkUrl = linksToDownload[i]
-          // Find the link with label if available
-          const linkWithLabel = linksWithLabels.find(l => l.url === linkUrl)
-          const linkLabel = linkWithLabel?.label
-          
-          console.log(`[Email Processing]     Downloading PDF ${i + 1}/${linksToDownload.length} from: ${linkUrl}`)
-          if (linkLabel) {
-            console.log(`[Email Processing]     Using link label as filename: "${linkLabel}"`)
-          }
-          try {
-            const pdfBuffer = await downloadPDFFromUrl(linkUrl)
-            // Use link label if available, otherwise extract from URL
-            const fileName = linkLabel 
-              ? (linkLabel.toLowerCase().endsWith(".pdf") ? linkLabel : `${linkLabel}.pdf`)
-              : extractFileNameFromUrl(linkUrl) || `downloaded-${Date.now()}.pdf`
-            pdfsToProcess.push({
-              name: fileName,
-              content: pdfBuffer
-            })
-            console.log(`[Email Processing]     ✓ Downloaded: ${fileName} (${pdfBuffer.length} bytes)`)
-          } catch (error) {
-            console.error(`[Email Processing]     ✗ Failed to download PDF from ${linkUrl}:`, error)
-            // Continue with other links
-          }
-        }
-      } catch (error) {
-        console.error("[Email Processing]     ✗ Error processing links:", error)
-        // Continue with attachments if link processing fails
-      }
-    }
+    // Process PDFs from lane results
+    console.log("[Email Processing] Step 6: Processing PDFs from lane results...")
+    const pdfsToProcess = laneResult.pdfBuffers.map((pdf) => ({
+      name: pdf.name,
+      content: pdf.content
+    }))
     
     console.log(`[Email Processing]   Total PDFs to process: ${pdfsToProcess.length}`)
-    
-    // Helper function to extract filename from URL
-    // Always ensures the filename has a .pdf extension for OpenAI compatibility
-    function extractFileNameFromUrl(url: string): string {
-      let fileName: string
-      try {
-        const urlObj = new URL(url)
-        const pathname = urlObj.pathname
-        fileName = pathname.split("/").pop() || ""
-        fileName = fileName.split("?")[0] || url.split("/").pop()?.split("?")[0] || "unknown"
-      } catch {
-        const match = url.match(/\/([^\/\?]+\.pdf)/i)
-        fileName = match ? match[1] : `downloaded-${Date.now()}`
-      }
-      
-      // Ensure filename has .pdf extension (required by OpenAI)
-      if (!fileName.toLowerCase().endsWith(".pdf")) {
-        // Remove any existing extension and add .pdf
-        const nameWithoutExt = fileName.split(".").slice(0, -1).join(".") || fileName
-        fileName = `${nameWithoutExt}.pdf`
-      }
-      
-      return fileName
-    }
     
     // Process each PDF
     console.log("[Email Processing] Step 7: Processing PDFs...")
@@ -443,7 +393,7 @@ export async function processEmailWebhookAction(
         propertyId,
         billType,
         source: "email",
-        emailId: parsed.messageId,
+        emailId: parsed.messageId || payload.MessageID,
         fileName: pdf.name,
         fileUrl,
         status: "pending",
@@ -574,6 +524,18 @@ export async function processEmailWebhookAction(
     })
     console.log(`[Email Processing] ✓ Email processor status updated to "processed"`)
 
+    // Update extraction job status
+    if (extractionJobId) {
+      await updateExtractionJobAction(extractionJobId, {
+        status: "completed",
+        completedAt: new Date(),
+        result: {
+          pdfCount: pdfsToProcess.length,
+          lane: laneResult.lane
+        }
+      })
+    }
+
     console.log("[Email Processing] ✓ Email webhook processed successfully")
     console.log("[Email Processing] ==========================================")
     return {
@@ -583,12 +545,62 @@ export async function processEmailWebhookAction(
     }
   } catch (error) {
     console.error("[Email Processing] ✗ Error processing email webhook:", error)
+    
+    // Log detailed error information
     if (error instanceof Error) {
+      console.error("[Email Processing]   Error name:", error.name)
       console.error("[Email Processing]   Error message:", error.message)
-      console.error("[Email Processing]   Stack trace:", error.stack)
+      if (error.stack) {
+        console.error("[Email Processing]   Stack trace:", error.stack)
+      }
+      
+      // Handle specific error types
+      if (error.name === "AbortError" || error.message.includes("aborted")) {
+        console.error("[Email Processing]   ⚠ Request was aborted (likely timeout or cancellation)")
+        console.error("[Email Processing]   This may indicate a timeout in Browser Use API or file download")
+      }
+      if (error.message.includes("timeout")) {
+        console.error("[Email Processing]   ⚠ Request timed out")
+      }
+      if (error.message.includes("No PDF files found")) {
+        console.error("[Email Processing]   ⚠ Browser Use task completed but didn't produce PDF files")
+        console.error("[Email Processing]   This may indicate the task failed or couldn't access the portal")
+      }
+    } else {
+      console.error("[Email Processing]   Unknown error type:", typeof error)
+      console.error("[Email Processing]   Error value:", JSON.stringify(error, null, 2))
     }
+    
+    // Update email processor status to error
+    if (processorResult?.data?.id) {
+      try {
+        await updateEmailProcessorAction(processorResult.data.id, {
+          status: "error"
+        })
+      } catch (updateError) {
+        console.error("[Email Processing]   Failed to update processor status:", updateError)
+      }
+    }
+    
+    // Update extraction job status to failed
+    if (extractionJobId) {
+      try {
+        const { updateExtractionJobAction } = await import("@/actions/extraction-jobs-actions")
+        await updateExtractionJobAction(extractionJobId, {
+          status: "failed",
+          error: error instanceof Error ? error.message : "Unknown error",
+          completedAt: new Date()
+        })
+      } catch (updateError) {
+        console.error("[Email Processing]   Failed to update extraction job status:", updateError)
+      }
+    }
+    
     console.log("[Email Processing] ==========================================")
-    return { isSuccess: false, message: "Failed to process email webhook" }
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to process email webhook"
+    }
   }
 }
 

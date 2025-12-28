@@ -40,6 +40,18 @@ interface ModernRuleBuilderProps {
     paymentFieldMappings: FieldMapping[]
     invoiceInstruction: string
     paymentInstruction: string
+    preferredLane?: string
+    lane2FollowRedirects?: boolean
+    lane2MaxRedirects?: number
+    lane3Method?: string
+    lane3PinInputSelector?: string
+    lane3SubmitButtonSelector?: string
+    lane3PdfDownloadSelector?: string
+    lane3WaitForSelector?: string
+    lane3AgenticMaxSteps?: number
+    lane3AgenticMaxTime?: number
+    lane3AgenticAllowedDomains?: string
+    lane3AgenticPortalContext?: string
   }
 }
 
@@ -53,8 +65,7 @@ export function ModernRuleBuilder({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState(
-    initialFormData || {
+  const [formData, setFormData] = useState({
       propertyId: "",
       name: "",
       extractForInvoice: false,
@@ -67,9 +78,21 @@ export function ModernRuleBuilder({
       invoiceFieldMappings: [] as FieldMapping[],
       paymentFieldMappings: [] as FieldMapping[],
       invoiceInstruction: "",
-      paymentInstruction: ""
-    }
-  )
+    paymentInstruction: "",
+    preferredLane: "auto",
+    lane2FollowRedirects: true,
+    lane2MaxRedirects: 5,
+    lane3Method: "agentic",
+    lane3PinInputSelector: "",
+    lane3SubmitButtonSelector: "",
+    lane3PdfDownloadSelector: "",
+    lane3WaitForSelector: "",
+    lane3AgenticMaxSteps: 50,
+    lane3AgenticMaxTime: 120,
+    lane3AgenticAllowedDomains: "",
+    lane3AgenticPortalContext: "",
+    ...initialFormData
+  })
 
   // Reset to step 3 if channel changes and we're on step 4 (email forward only)
   useEffect(() => {
@@ -247,6 +270,27 @@ export function ModernRuleBuilder({
             }
           : undefined
 
+      // Build lane3Config with agentic browser configuration
+      const lane3Config = formData.lane3Method === "agentic" || formData.lane3Method === "auto"
+        ? {
+            method: "agentic",
+            agenticConfig: {
+              maxSteps: formData.lane3AgenticMaxSteps || 50,
+              maxTime: formData.lane3AgenticMaxTime || 120,
+              allowedDomains: formData.lane3AgenticAllowedDomains
+                ? formData.lane3AgenticAllowedDomains.split(",").map(d => d.trim()).filter(Boolean)
+                : [],
+              portalContext: formData.lane3AgenticPortalContext || undefined
+            }
+          }
+        : undefined
+
+      // Build lane2Config
+      const lane2Config = {
+        followRedirects: formData.lane2FollowRedirects ?? true,
+        maxRedirects: formData.lane2MaxRedirects || 5
+      }
+
       const ruleData = {
         userProfileId,
         propertyId: formData.propertyId,
@@ -260,7 +304,10 @@ export function ModernRuleBuilder({
         paymentExtractionConfig: paymentExtractionConfig,
         invoiceInstruction: formData.invoiceInstruction || undefined,
         paymentInstruction: formData.paymentInstruction || undefined,
-        emailProcessingInstruction: formData.emailProcessingInstruction || undefined
+        emailProcessingInstruction: formData.emailProcessingInstruction || undefined,
+        preferredLane: formData.preferredLane || "auto",
+        lane2Config: lane2Config as Record<string, unknown> | undefined,
+        lane3Config: lane3Config as Record<string, unknown> | undefined
       }
 
       const result = initialRule
@@ -289,10 +336,23 @@ export function ModernRuleBuilder({
             channel: "",
             emailFilterFrom: "",
             emailFilterSubject: "",
+            emailProcessingInstruction: "",
             invoiceFieldMappings: [],
             paymentFieldMappings: [],
             invoiceInstruction: "",
-            paymentInstruction: ""
+            paymentInstruction: "",
+            preferredLane: "auto",
+            lane2FollowRedirects: true,
+            lane2MaxRedirects: 5,
+            lane3Method: "agentic",
+            lane3PinInputSelector: "",
+            lane3SubmitButtonSelector: "",
+            lane3PdfDownloadSelector: "",
+            lane3WaitForSelector: "",
+            lane3AgenticMaxSteps: 50,
+            lane3AgenticMaxTime: 120,
+            lane3AgenticAllowedDomains: "",
+            lane3AgenticPortalContext: ""
           })
           setCurrentStep(1)
         }
@@ -791,6 +851,166 @@ export function ModernRuleBuilder({
                 <strong>Tip:</strong> Email filters help ensure bills are processed by the correct rule. If you receive
                 bills from multiple sources, use these filters to route them automatically. Email processing instructions help the AI intelligently handle documents embedded as links or select relevant files when multiple options exist.
               </p>
+            </div>
+
+            {/* Lane Configuration */}
+            <div className="space-y-6 border-t pt-6 mt-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Processing Lane Configuration</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  Configure how emails should be processed. The system will automatically choose the best lane, but you can specify preferences.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="preferredLane" className="text-sm font-medium">
+                  Preferred Processing Lane
+                </Label>
+                <Select
+                  value={formData.preferredLane}
+                  onValueChange={(value) => setFormData({ ...formData, preferredLane: value })}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto (Recommended)</SelectItem>
+                    <SelectItem value="lane1_attachments">Lane 1: Attachments Only</SelectItem>
+                    <SelectItem value="lane2_direct">Lane 2: Direct Download</SelectItem>
+                    <SelectItem value="lane3_interactive">Lane 3: Interactive Portal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  Auto mode intelligently selects the best lane. Specify a lane if you know how your bills arrive.
+                </p>
+              </div>
+
+              {/* Lane 2 Configuration */}
+              <div className="space-y-4 rounded-lg border p-4">
+                <h4 className="font-medium">Lane 2: Direct Download Settings</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="lane2FollowRedirects"
+                      checked={formData.lane2FollowRedirects}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lane2FollowRedirects: e.target.checked })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="lane2FollowRedirects" className="text-sm">
+                      Follow Redirects
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lane2MaxRedirects" className="text-sm">
+                      Max Redirects
+                    </Label>
+                    <Input
+                      id="lane2MaxRedirects"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={formData.lane2MaxRedirects}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          lane2MaxRedirects: parseInt(e.target.value) || 5
+                        })
+                      }
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Lane 3 Configuration */}
+              <div className="space-y-4 rounded-lg border p-4">
+                <h4 className="font-medium">Lane 3: Interactive Portal Settings (Agentic Browser)</h4>
+                <p className="text-sm text-muted-foreground">
+                  Uses Browser Use Cloud API for AI-powered browser automation. The agentic browser reads the email and determines what inputs are needed.
+                </p>
+
+                <div className="space-y-3 mt-4 p-3 bg-purple-50 dark:bg-purple-950/20 rounded-md">
+                  <p className="text-sm font-medium">Agentic Browser Configuration</p>
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="lane3AgenticMaxSteps" className="text-xs">
+                          Max Steps
+                        </Label>
+                        <Input
+                          id="lane3AgenticMaxSteps"
+                          type="number"
+                          min="10"
+                          max="100"
+                          value={formData.lane3AgenticMaxSteps}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lane3AgenticMaxSteps: parseInt(e.target.value) || 50
+                            })
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lane3AgenticMaxTime" className="text-xs">
+                          Max Time (seconds)
+                        </Label>
+                        <Input
+                          id="lane3AgenticMaxTime"
+                          type="number"
+                          min="30"
+                          max="300"
+                          value={formData.lane3AgenticMaxTime}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lane3AgenticMaxTime: parseInt(e.target.value) || 120
+                            })
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lane3AgenticAllowedDomains" className="text-xs">
+                          Allowed Domains (comma-separated)
+                        </Label>
+                        <Input
+                          id="lane3AgenticAllowedDomains"
+                          value={formData.lane3AgenticAllowedDomains}
+                          onChange={(e) =>
+                            setFormData({ ...formData, lane3AgenticAllowedDomains: e.target.value })
+                          }
+                          placeholder="e.g., system.angor.co.za, example.com"
+                          className="h-9 text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Security: Only these domains can be accessed by the agentic browser. Leave empty to allow all domains (not recommended).
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="lane3AgenticPortalContext" className="text-xs">
+                          Portal Context / Instructions
+                        </Label>
+                        <Textarea
+                          id="lane3AgenticPortalContext"
+                          value={formData.lane3AgenticPortalContext}
+                          onChange={(e) =>
+                            setFormData({ ...formData, lane3AgenticPortalContext: e.target.value })
+                          }
+                          placeholder="e.g., The portal requires a PIN entry. Extract the PIN from the email and enter it into the PIN input fields (OTP1, OTP2, etc.). After entering the PIN, click Submit to view the statement, then download the PDF."
+                          className="h-24 text-xs"
+                          rows={4}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Provide specific instructions about how the portal works. This helps the browser agent understand what to do (e.g., PIN entry fields, navigation steps, where to find the download button). This context is prioritized over email content.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+              </div>
             </div>
 
             <div className="flex justify-between">

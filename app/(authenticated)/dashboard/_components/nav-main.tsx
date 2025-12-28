@@ -44,7 +44,10 @@ export function NavMain({
   }[]
 }) {
   const { state } = useSidebar()
-  const isCollapsed = state === "collapsed"
+  const [mounted, setMounted] = useState(false)
+  
+  // Ensure consistent server/client render - default to not collapsed on server
+  const isCollapsed = mounted ? state === "collapsed" : false
 
   // Initialize with default open state - all items start as open
   const defaultOpenState = items.reduce(
@@ -57,7 +60,6 @@ export function NavMain({
 
   // Always start with default state for consistent server/client render
   const [currentOpenItems, setCurrentOpenItems] = useState(defaultOpenState)
-  const [mounted, setMounted] = useState(false)
 
   // Use localStorage hook for persistence, but don't use its value for initial render
   const [, setStoredItems] = useLocalStorage("sidebar-open-items", defaultOpenState)

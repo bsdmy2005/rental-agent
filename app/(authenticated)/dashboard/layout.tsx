@@ -1,9 +1,8 @@
-"use server"
-
 import { getCustomerByUserId } from "@/actions/customers"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import type React from "react"
 import DashboardClientLayout from "./_components/layout-client"
 
 export default async function DashboardLayout({

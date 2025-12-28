@@ -1,6 +1,5 @@
 "use server"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoiceTemplatesManager } from "./invoice-templates-manager"
 import { PayableTemplatesManager } from "./payable-templates-manager"
@@ -9,7 +8,8 @@ import { getRentalInvoiceTemplatesByPropertyIdAction } from "@/actions/rental-in
 import { getPayableTemplatesByPropertyIdAction } from "@/actions/payable-templates-actions"
 import { getPaymentInstructionByPropertyAction } from "@/actions/payment-instructions-actions"
 import { getTenantsByPropertyIdQuery } from "@/queries/tenants-queries"
-import { type SelectBillTemplate } from "@/db/schema"
+import { getExtractionRulesByPropertyIdQuery } from "@/queries/extraction-rules-queries"
+import { type SelectBillTemplate, type SelectExtractionRule } from "@/db/schema"
 
 interface PropertyTemplatesSectionProps {
   propertyId: string
@@ -31,6 +31,9 @@ export async function PropertyTemplatesSection({
   // Fetch tenants for the property
   const tenants = await getTenantsByPropertyIdQuery(propertyId)
 
+  // Fetch extraction rules for the property
+  const extractionRules = await getExtractionRulesByPropertyIdQuery(propertyId)
+
   // Fetch payment instruction for bank account selection
   const paymentInstructionResult = await getPaymentInstructionByPropertyAction(propertyId)
   const paymentInstructionId = paymentInstructionResult.isSuccess && paymentInstructionResult.data
@@ -47,14 +50,7 @@ export async function PropertyTemplatesSection({
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Templates</CardTitle>
-        <CardDescription>
-          Manage bill templates, invoice templates, and payable templates and their dependencies
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div>
         <Tabs defaultValue="invoices" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="invoices">
@@ -90,11 +86,11 @@ export async function PropertyTemplatesSection({
               invoiceTemplates={invoiceTemplates}
               payableTemplates={payableTemplates}
               tenants={tenants}
+              extractionRules={extractionRules}
             />
           </TabsContent>
         </Tabs>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 

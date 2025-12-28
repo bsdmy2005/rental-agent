@@ -1,6 +1,5 @@
 "use server"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -51,24 +50,7 @@ export async function LeaseDrivenPeriodsSummary({ propertyId }: LeaseDrivenPerio
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Lease-Driven Billing Periods</CardTitle>
-            <CardDescription>
-              Invoice periods are automatically generated when lease agreements are uploaded. Payable periods can be generated manually.
-            </CardDescription>
-          </div>
-          <Link href={`/dashboard/properties/${propertyId}/billing-schedule`}>
-            <Button variant="outline" size="sm">
-              <Calendar className="mr-2 h-4 w-4" />
-              View Schedule
-            </Button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div>
         <div className="space-y-4">
           {/* Summary Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -169,8 +151,7 @@ export async function LeaseDrivenPeriodsSummary({ propertyId }: LeaseDrivenPerio
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 

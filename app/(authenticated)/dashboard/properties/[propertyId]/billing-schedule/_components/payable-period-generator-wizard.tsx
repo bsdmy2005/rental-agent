@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,7 +29,8 @@ export function PayablePeriodGeneratorWizard({
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState({
     startDate: "",
-    durationMonths: "24"
+    durationMonths: "24",
+    paymentDay: 1
   })
 
   // Create map of templateId -> schedule
@@ -38,11 +39,28 @@ export function PayablePeriodGeneratorWizard({
     [payableSchedules]
   )
 
-  // Get active templates with schedules
+  // Get all active templates (not filtered by schedule)
   const availableTemplates = useMemo(
-    () => payableTemplates.filter((t) => t.isActive && scheduleMap.has(t.id)),
-    [payableTemplates, scheduleMap]
+    () => payableTemplates.filter((t) => t.isActive),
+    [payableTemplates]
   )
+
+  // Update payment day when templates are selected (pre-fill with first schedule's day if available)
+  useEffect(() => {
+    if (selectedTemplates.size > 0) {
+      const firstTemplateId = Array.from(selectedTemplates)[0]
+      const schedule = scheduleMap.get(firstTemplateId)
+      if (schedule) {
+        setFormData((prev) => {
+          // Only update if still at default value (1) to avoid overwriting user input
+          if (prev.paymentDay === 1) {
+            return { ...prev, paymentDay: schedule.scheduledDayOfMonth }
+          }
+          return prev
+        })
+      }
+    }
+  }, [selectedTemplates, scheduleMap])
 
   const toggleTemplate = useCallback((templateId: string, checked: boolean) => {
     setSelectedTemplates((prev) => {
@@ -89,12 +107,18 @@ export function PayablePeriodGeneratorWizard({
         return
       }
 
-      // Prepare template configs with payment days
+      // Validate payment day
+      if (formData.paymentDay < 1 || formData.paymentDay > 31) {
+        toast.error("Payment day must be between 1 and 31")
+        setLoading(false)
+        return
+      }
+
+      // Prepare template configs with payment days (use form input for all templates)
       const templateConfigs = Array.from(selectedTemplates).map((templateId) => {
-        const schedule = scheduleMap.get(templateId)
         return {
           templateId,
-          paymentDay: schedule?.scheduledDayOfMonth || 1
+          paymentDay: formData.paymentDay
         }
       })
 
@@ -109,9 +133,10 @@ export function PayablePeriodGeneratorWizard({
         toast.success(`Generated ${result.data?.length || 0} payable periods`)
         setFormData({
           startDate: "",
-          durationMonths: "24"
+          durationMonths: "24",
+          paymentDay: 1
         })
-        setSelectedTemplates(new Set(availableTemplates.map((t) => t.id)))
+        setSelectedTemplates(new Set())
         router.refresh()
       } else {
         toast.error(result.message)
@@ -130,7 +155,7 @@ export function PayablePeriodGeneratorWizard({
         <CardHeader>
           <CardTitle>Generate Payable Periods</CardTitle>
           <CardDescription>
-            No active payable templates with schedules found. Please create payable templates and schedules first.
+            No active payable templates found. Please create payable templates first.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -145,7 +170,7 @@ export function PayablePeriodGeneratorWizard({
           <CardTitle>Generate Payable Periods</CardTitle>
         </div>
         <CardDescription>
-          Select payable templates and specify date range to generate periods. Each template will generate periods based on its scheduled payment day.
+          Select payable templates and specify date range to generate periods. All selected templates will use the same payment day.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -189,11 +214,6 @@ export function PayablePeriodGeneratorWizard({
                       />
                       <div className="flex-1">
                         <div className="font-medium">{template.name}</div>
-                        {schedule && (
-                          <div className="text-sm text-muted-foreground">
-                            Payment day: {schedule.scheduledDayOfMonth} of each month
-                          </div>
-                        )}
                       </div>
                     </div>
                     {isSelected && (
@@ -211,6 +231,37 @@ export function PayablePeriodGeneratorWizard({
                 {selectedTemplates.size} template{selectedTemplates.size !== 1 ? "s" : ""} selected
               </p>
             )}
+          </div>
+
+          {/* Payment Day Input */}
+          <div className="space-y-2">
+            <Label htmlFor="paymentDay">Payment Day of Month</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="paymentDay"
+                type="number"
+                min="1"
+                max="31"
+                required
+                value={formData.paymentDay}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentDay: parseInt(e.target.value, 10) || 1
+                  })
+                }
+                className="h-11 w-24"
+              />
+              <span className="text-muted-foreground text-sm">of each month</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Day of the month (1-31) when payables should be generated.
+              {selectedTemplates.size > 0 && (() => {
+                const firstTemplateId = Array.from(selectedTemplates)[0]
+                const schedule = scheduleMap.get(firstTemplateId)
+                return schedule ? ` Default for selected template: ${schedule.scheduledDayOfMonth}` : ""
+              })()}
+            </p>
           </div>
 
           {/* Date Range */}
