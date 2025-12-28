@@ -53,7 +53,9 @@ import {
   movingInspectionDefectsTable,
   movingInspectionAttachmentsTable,
   movingInspectionDocumentsTable,
-  movingInspectionComparisonsTable
+  movingInspectionComparisonsTable,
+  whatsappSessionsTable,
+  whatsappExplorerMessagesTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -116,7 +118,9 @@ const dbSchema = {
   movingInspectionDefects: movingInspectionDefectsTable,
   movingInspectionAttachments: movingInspectionAttachmentsTable,
   movingInspectionDocuments: movingInspectionDocumentsTable,
-  movingInspectionComparisons: movingInspectionComparisonsTable
+  movingInspectionComparisons: movingInspectionComparisonsTable,
+  whatsappSessions: whatsappSessionsTable,
+  whatsappExplorerMessages: whatsappExplorerMessagesTable
   // relations
 }
 

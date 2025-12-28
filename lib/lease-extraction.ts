@@ -117,7 +117,7 @@ async function uploadPDFToOpenAI(fileBuffer: Buffer, fileName: string): Promise<
     console.log(`[Lease Upload] ✓ File uploaded successfully. File ID: ${fileResponse.id}`)
 
     // Wait for file to be processed
-    let fileStatus = fileResponse.status
+    let fileStatus: string = fileResponse.status
     let attempts = 0
     const maxAttempts = 60
 
@@ -125,7 +125,7 @@ async function uploadPDFToOpenAI(fileBuffer: Buffer, fileName: string): Promise<
       await new Promise(resolve => setTimeout(resolve, 2000))
       try {
         const fileInfo = await openai.files.retrieve(fileResponse.id)
-        fileStatus = fileInfo.status
+        fileStatus = fileInfo.status as string
         attempts++
 
         if (fileStatus === "processed") {

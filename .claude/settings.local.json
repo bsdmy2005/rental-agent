@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(xargs basename:*)",
+      "WebFetch(domain:baileys.wiki)",
+      "WebFetch(domain:github.com)",
+      "Bash(tree -L 2 -d:*)",
+      "Bash(head:*)",
+      "Bash(npm install)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

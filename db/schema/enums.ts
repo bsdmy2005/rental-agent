@@ -178,4 +178,11 @@ export const leaseInitiationStatusEnum = pgEnum("lease_initiation_status", [
   "landlord_signed",
   "fully_executed"
 ])
+export const whatsappConnectionStatusEnum = pgEnum("whatsapp_connection_status", [
+  "disconnected",
+  "connecting",
+  "qr_pending",
+  "connected",
+  "logged_out"
+])
 

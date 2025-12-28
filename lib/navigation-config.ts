@@ -134,6 +134,11 @@ export function getNavigationForUserType(
           icon: Zap
         },
         {
+          title: "WhatsApp Explorer",
+          url: "/dashboard/whatsapp-explorer",
+          icon: MessageSquare
+        },
+        {
           title: "Expenses",
           url: "/dashboard/expenses",
           icon: DollarSign
@@ -241,6 +246,11 @@ export function getNavigationForUserType(
           title: "Investec Explorer",
           url: "/dashboard/investec-explorer",
           icon: Zap
+        },
+        {
+          title: "WhatsApp Explorer",
+          url: "/dashboard/whatsapp-explorer",
+          icon: MessageSquare
         },
         {
           title: "Expenses",
