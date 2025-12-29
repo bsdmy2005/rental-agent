@@ -260,6 +260,13 @@
       "when": 1767004511995,
       "tag": "0036_outgoing_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1767008576078,
+      "tag": "0037_normal_toxin",
+      "breakpoints": true
     }
   ]
 }
