@@ -5,6 +5,7 @@ import { createLogger } from "./utils/logger.js"
 import { apiKeyAuth } from "./middleware/auth.js"
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js"
 import routes from "./routes/index.js"
+import { lightRouter as healthLightRouter, deepRouter as healthDeepRouter } from "./routes/health.js"
 import { ConnectionManager } from "./baileys/connection-manager.js"
 
 const logger = createLogger("server")
@@ -51,17 +52,14 @@ app.use((req, res, next) => {
   next()
 })
 
-// Health check (no auth required)
-app.get("/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    service: "whatsapp-baileys-server"
-  })
-})
+// Lightweight health check (no auth required) - must be before apiKeyAuth middleware
+app.use("/health", healthLightRouter)
 
 // API key authentication for all other routes
 app.use(apiKeyAuth)
+
+// Deep health check (requires auth) - must be after apiKeyAuth middleware
+app.use("/health/deep", healthDeepRouter)
 
 // API routes
 app.use(routes)
