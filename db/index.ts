@@ -57,7 +57,8 @@ import {
   whatsappSessionsTable,
   whatsappExplorerMessagesTable,
   whatsappContactsTable,
-  whatsappIncidentRateLimitsTable
+  whatsappIncidentRateLimitsTable,
+  notificationPreferencesTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -124,7 +125,8 @@ const dbSchema = {
   whatsappSessions: whatsappSessionsTable,
   whatsappExplorerMessages: whatsappExplorerMessagesTable,
   whatsappContacts: whatsappContactsTable,
-  whatsappIncidentRateLimits: whatsappIncidentRateLimitsTable
+  whatsappIncidentRateLimits: whatsappIncidentRateLimitsTable,
+  notificationPreferences: notificationPreferencesTable
   // relations
 }
 
