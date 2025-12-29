@@ -1826,6 +1826,80 @@ async function handleAwaitingFollowUpConfirmationState(
   }
 }
 
+/**
+ * Handle messages in the awaiting_update_or_closure state.
+ * User is confirming if their message is an update or indicates resolution.
+ */
+async function handleAwaitingUpdateOrClosureState(
+  phoneNumber: string,
+  messageText: string,
+  context: ConversationContext,
+  incidentId?: string
+): Promise<ConversationResponse> {
+  const lowerText = messageText.toLowerCase().trim()
+
+  // Check for resolution confirmation
+  const resolutionKeywords = ["resolved", "fixed", "done", "yes", "close", "closed"]
+  if (resolutionKeywords.includes(lowerText)) {
+    // Close the incident
+    if (incidentId) {
+      const closeResult = await closeIncidentFromWhatsAppAction(incidentId, phoneNumber)
+      if (!closeResult.isSuccess) {
+        return {
+          message: "Sorry, there was a problem closing the incident. Please try again.",
+          incidentCreated: false,
+          incidentId
+        }
+      }
+    }
+
+    await resetConversationStateAction(phoneNumber)
+
+    const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : "Your incident"
+
+    return {
+      message:
+        `${referenceNumber} has been marked as resolved.\n\n` +
+        `Thank you for letting us know! You can report a new issue anytime.`,
+      incidentCreated: false,
+      incidentId
+    }
+  }
+
+  // Check for update confirmation
+  const updateKeywords = ["update", "no", "not resolved", "still", "more"]
+  if (updateKeywords.some(kw => lowerText.includes(kw))) {
+    // Keep incident active
+    await updateConversationStateAction(phoneNumber, {
+      state: "incident_active",
+      incidentId,
+      context: {
+        ...context,
+        selectedIncidentId: undefined
+      }
+    })
+
+    const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : "the incident"
+
+    return {
+      message:
+        `Your message has been added to ${referenceNumber}.\n\n` +
+        `Our team will review it. You can send more updates or photos anytime.`,
+      incidentCreated: false,
+      incidentId
+    }
+  }
+
+  // Unclear response - ask again
+  return {
+    message:
+      `Is this issue now resolved, or is this an update?\n\n` +
+      `Reply 'resolved' if the issue is fixed, or 'update' if you're adding more information.`,
+    incidentCreated: false,
+    incidentId
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Incident Creation Helper
 // -----------------------------------------------------------------------------
