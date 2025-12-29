@@ -160,29 +160,9 @@ export function isOtpCode(text: string): boolean {
   return /^\d{6}$/.test(text.trim())
 }
 
-/**
- * Check if text contains incident-related keywords for closure
- *
- * @param text - The text to check
- * @returns true if text indicates closure intent
- */
-function isClosureRequest(text: string): boolean {
-  const closureKeywords = [
-    "close",
-    "closed",
-    "resolved",
-    "fixed",
-    "done",
-    "complete",
-    "completed",
-    "finish",
-    "finished",
-    "cancel",
-    "cancelled"
-  ]
-  const lowerText = text.toLowerCase().trim()
-  return closureKeywords.some(keyword => lowerText.includes(keyword))
-}
+// Note: isClosureRequest function removed
+// Keyword-based closure detection caused false positives (e.g., "window doesn't close")
+// Users are now explicitly asked if messages are updates or closures
 
 /**
  * Check if text is an affirmative response
@@ -1156,23 +1136,9 @@ async function handleIncidentActiveState(
     }
   }
 
-  // Check for closure request
-  if (isClosureRequest(messageText)) {
-    await updateConversationStateAction(phoneNumber, {
-      state: "awaiting_closure_confirmation",
-      context
-    })
-
-    const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : "your incident"
-
-    return {
-      message:
-        `Are you sure you want to close ${referenceNumber}? ` +
-        `Reply "yes" to confirm or "no" to keep it open.`,
-      incidentCreated: false,
-      incidentId
-    }
-  }
+  // Note: Removed keyword-based closure detection (isClosureRequest)
+  // Users are now explicitly asked if messages are updates or closures
+  // when they select an existing incident
 
   // Check for explicit new incident request
   if (messageText.toLowerCase().includes("new issue") || messageText.toLowerCase().includes("new problem")) {
