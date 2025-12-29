@@ -434,6 +434,26 @@ export class ConnectionManager {
     }
   }
 
+  /**
+   * Reconnect a session (disconnect then connect)
+   */
+  async reconnect(sessionId: string): Promise<void> {
+    logger.info({ sessionId }, "Reconnecting session")
+
+    // Disconnect if currently connected
+    const session = this.sessions.get(sessionId)
+    if (session?.socket) {
+      session.socket.end(undefined)
+      this.sessions.delete(sessionId)
+    }
+
+    // Small delay before reconnecting
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Reconnect
+    await this.connect(sessionId)
+  }
+
   async logout(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId)
     if (session?.socket) {

@@ -107,4 +107,23 @@ router.post("/:sessionId/logout", async (req: Request, res: Response, next: Next
   }
 })
 
+// Reconnect session (disconnect and reconnect)
+router.post("/:sessionId/reconnect", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId } = req.params
+    const manager = ConnectionManager.getInstance()
+
+    logger.info({ sessionId }, "Reconnect request received")
+    await manager.reconnect(sessionId)
+
+    res.json({
+      success: true,
+      message: "Reconnection initiated",
+      sessionId
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 export default router
