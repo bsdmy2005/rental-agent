@@ -560,4 +560,61 @@ export class ConnectionManager {
     await this.authState.close()
     await this.pool.end()
   }
+
+  /**
+   * Auto-connect all primary sessions that have auth state
+   * Called on server startup
+   */
+  async autoConnectPrimarySessions(): Promise<{
+    attempted: number
+    connected: number
+    failed: string[]
+  }> {
+    logger.info("Starting auto-connect for primary sessions")
+
+    const result = await this.pool.query(`
+      SELECT id, session_name, phone_number
+      FROM whatsapp_sessions
+      WHERE session_name = 'primary'
+        AND auth_state IS NOT NULL
+        AND is_active = true
+        AND auto_connect = true
+    `)
+
+    const sessions = result.rows
+    logger.info({ count: sessions.length }, "Found primary sessions to auto-connect")
+
+    const failed: string[] = []
+    let connected = 0
+
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i]
+      logger.info(
+        { sessionId: session.id, phoneNumber: session.phone_number, index: i + 1, total: sessions.length },
+        "Auto-connecting session"
+      )
+
+      try {
+        await this.connect(session.id)
+        connected++
+        logger.info({ sessionId: session.id }, "Auto-connect successful")
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        logger.error({ sessionId: session.id, error: errorMsg }, "Auto-connect failed")
+        failed.push(session.id)
+      }
+
+      // Stagger connections to avoid overwhelming WhatsApp
+      if (i < sessions.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+    }
+
+    logger.info(
+      { attempted: sessions.length, connected, failed: failed.length },
+      "Auto-connect complete"
+    )
+
+    return { attempted: sessions.length, connected, failed }
+  }
 }

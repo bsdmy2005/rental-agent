@@ -80,7 +80,19 @@ process.on("SIGTERM", shutdown)
 process.on("SIGINT", shutdown)
 
 // Start server
-app.listen(env.port, () => {
+app.listen(env.port, async () => {
   logger.info({ port: env.port }, "WhatsApp Baileys Server started")
   logger.info({ nextjsAppUrl: env.nextjsAppUrl }, "CORS configured for")
+
+  // Auto-connect primary sessions after server starts
+  try {
+    const manager = ConnectionManager.getInstance()
+    const result = await manager.autoConnectPrimarySessions()
+    logger.info(
+      { attempted: result.attempted, connected: result.connected, failed: result.failed.length },
+      "Auto-connect complete"
+    )
+  } catch (error) {
+    logger.error({ error }, "Auto-connect failed")
+  }
 })
