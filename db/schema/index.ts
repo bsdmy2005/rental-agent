@@ -57,4 +57,5 @@ export * from "./moving-inspection-comparisons-schema"
 export * from "./whatsapp-sessions"
 export * from "./whatsapp-contacts"
 export * from "./whatsapp-incident-rate-limits"
+export * from "./whatsapp-conversation-states"
 
