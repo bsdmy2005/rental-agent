@@ -195,6 +195,11 @@ export async function getIncidentWhatsAppMessagesQuery(
 }
 
 /**
+ * @deprecated Use getMessagesForIncidentQuery instead.
+ * This function uses time-window inference which is unreliable and causes
+ * messages from different incidents to be incorrectly grouped together.
+ * Kept for backward compatibility with historical message display only.
+ *
  * Get messages related to a specific incident
  * Filters messages by phone number and timestamp within incident timeframe
  * Excludes messages that are clearly associated with other incidents
