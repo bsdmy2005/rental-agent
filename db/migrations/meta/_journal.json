@@ -267,6 +267,13 @@
       "when": 1767008576078,
       "tag": "0037_normal_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1767008770462,
+      "tag": "0038_pink_diamondback",
+      "breakpoints": true
     }
   ]
 }
