@@ -239,6 +239,13 @@
       "when": 1766921421885,
       "tag": "0033_lethal_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1766985804617,
+      "tag": "0034_clean_wrecker",
+      "breakpoints": true
     }
   ]
 }
