@@ -392,6 +392,14 @@ export async function processConversationMessage(
           context
         )
 
+      case "awaiting_update_or_closure":
+        return await handleAwaitingUpdateOrClosureState(
+          normalizedPhone,
+          trimmedText,
+          context,
+          currentState.incidentId || undefined
+        )
+
       default:
         // Unknown state, reset to idle
         await resetConversationStateAction(normalizedPhone)
