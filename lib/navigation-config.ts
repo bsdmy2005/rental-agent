@@ -170,6 +170,10 @@ export function getNavigationForUserType(
             {
               title: "Account",
               url: "/dashboard/account"
+            },
+            {
+              title: "WhatsApp",
+              url: "/dashboard/settings/whatsapp"
             }
           ]
         }
@@ -284,6 +288,10 @@ export function getNavigationForUserType(
             {
               title: "Account",
               url: "/dashboard/account"
+            },
+            {
+              title: "WhatsApp",
+              url: "/dashboard/settings/whatsapp"
             }
           ]
         }

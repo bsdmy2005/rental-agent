@@ -10,7 +10,11 @@
       "Bash(head:*)",
       "Bash(npm install)",
       "Bash(npx tsc:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Skill(superpowers:brainstorming)"
     ]
+  },
+  "enabledPlugins": {
+    "double-shot-latte@superpowers-marketplace": true
   }
 }

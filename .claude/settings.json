@@ -3,5 +3,8 @@
     "allow": [],
     "deny": []
   },
-  "model": "opus"
+  "model": "opus",
+  "enabledPlugins": {
+    "superpowers@superpowers-dev": true
+  }
 }

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createLandlordAction } from "@/actions/landlords-actions"
 import { completeOnboardingAction } from "@/actions/user-profiles-actions"
+import { WhatsAppSetup } from "./whatsapp-setup"
 import { toast } from "sonner"
 
 interface LandlordOnboardingProps {
@@ -17,6 +18,7 @@ interface LandlordOnboardingProps {
 export function LandlordOnboarding({ userProfileId }: LandlordOnboardingProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<"profile" | "whatsapp">("profile")
   const [formData, setFormData] = useState({
     companyName: "",
     registrationNumber: "",
@@ -26,7 +28,7 @@ export function LandlordOnboarding({ userProfileId }: LandlordOnboardingProps) {
     contactPhone: ""
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
@@ -39,6 +41,19 @@ export function LandlordOnboarding({ userProfileId }: LandlordOnboardingProps) {
         return
       }
 
+      // Move to WhatsApp setup step
+      setStep("whatsapp")
+    } catch (error) {
+      toast.error("Failed to create profile")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleWhatsAppComplete = async () => {
+    setLoading(true)
+
+    try {
       const onboardingResult = await completeOnboardingAction(userProfileId)
 
       if (onboardingResult.isSuccess) {
@@ -54,10 +69,24 @@ export function LandlordOnboarding({ userProfileId }: LandlordOnboardingProps) {
     }
   }
 
+  const handleWhatsAppSkip = async () => {
+    await handleWhatsAppComplete()
+  }
+
+  if (step === "whatsapp") {
+    return (
+      <WhatsAppSetup
+        userProfileId={userProfileId}
+        onComplete={handleWhatsAppComplete}
+        onSkip={handleWhatsAppSkip}
+      />
+    )
+  }
+
   return (
     <div className="rounded-lg border p-6">
       <h2 className="mb-6 text-2xl font-bold">Complete Your Landlord Profile</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleProfileSubmit} className="space-y-4">
         <div>
           <Label htmlFor="companyName">Company Name (Optional)</Label>
           <Input

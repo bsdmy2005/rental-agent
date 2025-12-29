@@ -607,9 +607,15 @@ export async function createQuoteRequestAction(
       }
     }
 
-    // Send via WhatsApp if requested
+    // Send via WhatsApp if requested - check if enabled first
     if (sendChannel === "whatsapp" || sendChannel === "both") {
       try {
+        // Check if WhatsApp is enabled for this user
+        const { isWhatsAppEnabledAction } = await import("@/actions/whatsapp-primary-session-actions")
+        const enabledCheck = await isWhatsAppEnabledAction(updatedQuoteRequest.requestedBy)
+        
+        if (enabledCheck.isSuccess && enabledCheck.data?.enabled && enabledCheck.data?.connected) {
+          // WhatsApp is enabled and connected, send via WhatsApp
         const { sendQuoteRequestWhatsAppAction } = await import("@/actions/whatsapp-actions")
         const whatsappResult = await sendQuoteRequestWhatsAppAction(updatedQuoteRequest.id)
         if (whatsappResult.isSuccess) {
@@ -619,11 +625,38 @@ export async function createQuoteRequestAction(
             .update(quoteRequestsTable)
             .set({ sentCount: updatedQuoteRequest.sentCount + 1 })
             .where(eq(quoteRequestsTable.id, updatedQuoteRequest.id))
+            console.log(`Quote request ${updatedQuoteRequest.id} sent via WhatsApp successfully`)
         } else {
-          console.warn("Failed to send quote request via WhatsApp:", whatsappResult.message)
+            console.warn(`WhatsApp not available for quote request ${updatedQuoteRequest.id}: ${whatsappResult.message}`)
+            // If WhatsApp was the only channel and it failed, this is a problem
+            if (sendChannel === "whatsapp") {
+              return {
+                isSuccess: false,
+                message: `Failed to send via WhatsApp: ${whatsappResult.message}. Please configure WhatsApp in settings or use email instead.`
+              }
+            }
+          }
+        } else {
+          // WhatsApp not enabled or not connected
+          console.log(`WhatsApp not enabled/connected for user ${updatedQuoteRequest.requestedBy}. Skipping WhatsApp send.`)
+          if (sendChannel === "whatsapp") {
+            // If WhatsApp was the only channel, return error
+            return {
+              isSuccess: false,
+              message: "WhatsApp is not enabled or connected. Please configure WhatsApp in settings or use email instead."
+            }
+          }
+          // If "both" was selected, email will still be sent (already handled above)
         }
       } catch (whatsappError) {
         console.error("Error sending quote request via WhatsApp:", whatsappError)
+        if (sendChannel === "whatsapp") {
+          return {
+            isSuccess: false,
+            message: `Failed to send via WhatsApp: ${whatsappError instanceof Error ? whatsappError.message : "Unknown error"}. Please configure WhatsApp in settings or use email instead.`
+          }
+        }
+        // If "both" was selected, email will still be sent (already handled above)
       }
     }
 
@@ -965,6 +998,13 @@ export async function createBulkRfqAction(
   providerIds: string[],
   channel: "email" | "whatsapp" | "both" = "email"
 ): Promise<ActionState<{ rfqId: string; quoteRequestIds: string[]; rfqCode: string | null }>> {
+  console.log(`[RFQ Creation] ========================================`)
+  console.log(`[RFQ Creation] Starting bulk RFQ creation`)
+  console.log(`[RFQ Creation] Channel: ${channel}`)
+  console.log(`[RFQ Creation] Provider count: ${providerIds.length}`)
+  console.log(`[RFQ Creation] Property ID: ${rfqData.propertyId}`)
+  console.log(`[RFQ Creation] Requested by: ${rfqData.requestedBy}`)
+  console.log(`[RFQ Creation] ========================================`)
   try {
     if (providerIds.length === 0) {
       return { isSuccess: false, message: "At least one service provider must be selected" }
@@ -1105,33 +1145,50 @@ export async function createBulkRfqAction(
         let emailSent = false
         let whatsappSent = false
 
+        console.log(`[RFQ Creation] Processing provider ${i + 1}/${providerIds.length}: ${providerId}`)
+        console.log(`[RFQ Creation] Quote Request ID: ${quoteRequest.id}`)
+        console.log(`[RFQ Creation] Channel setting: ${channel}`)
+
         try {
           if (channel === "email" || channel === "both") {
+            console.log(`[RFQ Creation] Sending via EMAIL...`)
             const { sendQuoteRequestEmailAction } = await import("@/lib/email/quote-email-service")
             const emailResult = await sendQuoteRequestEmailAction(quoteRequest.id)
             if (emailResult.isSuccess) {
               emailSent = true
               sentCount++
+              console.log(`[RFQ Creation] ✓ Email sent successfully`)
               await db
                 .update(quoteRequestsTable)
                 .set({ sentCount: 1 })
                 .where(eq(quoteRequestsTable.id, quoteRequest.id))
             } else {
-              console.error(`Failed to send email to provider ${providerId}:`, emailResult.message)
+              console.error(`[RFQ Creation] ❌ Failed to send email to provider ${providerId}:`, emailResult.message)
             }
+          } else {
+            console.log(`[RFQ Creation] Skipping email (channel is "${channel}")`)
           }
 
           if (channel === "whatsapp" || channel === "both") {
+            console.log(`[RFQ Creation] Sending via WHATSAPP...`)
+            console.log(`[RFQ Creation] Calling sendQuoteRequestWhatsAppAction for quote request: ${quoteRequest.id}`)
             const { sendQuoteRequestWhatsAppAction } = await import("@/actions/whatsapp-actions")
             const whatsappResult = await sendQuoteRequestWhatsAppAction(quoteRequest.id)
+            console.log(`[RFQ Creation] WhatsApp result:`, {
+              isSuccess: whatsappResult.isSuccess,
+              message: whatsappResult.message
+            })
             if (whatsappResult.isSuccess) {
               whatsappSent = true
               if (!emailSent) {
                 sentCount++
               }
+              console.log(`[RFQ Creation] ✓ WhatsApp sent successfully`)
             } else {
-              console.error(`Failed to send WhatsApp to provider ${providerId}:`, whatsappResult.message)
+              console.error(`[RFQ Creation] ❌ Failed to send WhatsApp to provider ${providerId}:`, whatsappResult.message)
             }
+          } else {
+            console.log(`[RFQ Creation] Skipping WhatsApp (channel is "${channel}")`)
           }
 
           if (emailSent || whatsappSent) {

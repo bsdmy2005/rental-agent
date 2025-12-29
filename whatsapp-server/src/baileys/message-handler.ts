@@ -372,8 +372,31 @@ export class MessageHandler {
         throw storeError // Re-throw to mark as failed
       }
 
+      // Check if this is an incident report (before AI response)
+      logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Checking if message is an incident report")
+      const incidentHandled = await this.handleIncidentIfApplicable(
+        sessionId,
+        remoteJid,
+        content,
+        socket
+      )
+
+      // If incident was handled, skip AI response (incident handler sends its own response)
+      if (incidentHandled) {
+        logger.info(
+          {
+            sessionId,
+            messageId,
+            remoteJid,
+            incidentHandled: true
+          },
+          "Incident handled - skipping AI response"
+        )
+        return
+      }
+
       // Check if AI auto-response is enabled
-      logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Checking AI auto-response configuration")
+      logger.debug({ sessionId, messageId, remoteJid }, "Step 4: Checking AI auto-response configuration")
       const aiConfig = await this.getAiConfig(sessionId)
       
       logger.debug(
@@ -664,6 +687,118 @@ export class MessageHandler {
       [sessionId, limit, offset]
     )
     return result.rows
+  }
+
+  /**
+   * Handle incident if message appears to be an incident report
+   * Returns true if incident was handled, false otherwise
+   */
+  private async handleIncidentIfApplicable(
+    sessionId: string,
+    remoteJid: string,
+    content: string | null,
+    socket: WASocket
+  ): Promise<boolean> {
+    if (!content) {
+      return false
+    }
+
+    try {
+      // Extract phone number from remoteJid (format: 27788307321@s.whatsapp.net)
+      const phoneNumber = remoteJid.split("@")[0]
+      
+      // Check if message looks like an incident report
+      // Simple check: contains property code or incident keywords
+      const hasPropertyCode = /\bPROP-[A-Z0-9]{6}\b/i.test(content)
+      const hasIncidentKeywords = /broken|leak|leaking|damage|issue|problem|repair|fix|maintenance|urgent|emergency/i.test(content)
+
+      if (!hasPropertyCode && !hasIncidentKeywords) {
+        return false
+      }
+
+      logger.info(
+        {
+          sessionId,
+          remoteJid,
+          phoneNumber,
+          hasPropertyCode,
+          hasIncidentKeywords,
+          contentLength: content.length
+        },
+        "Potential incident report detected - forwarding to Next.js API"
+      )
+
+      // Call Next.js API to handle incident
+      const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000"
+      const apiKey = env.apiKey
+
+      const response = await fetch(`${nextjsUrl}/api/whatsapp/incidents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey
+        },
+        body: JSON.stringify({
+          messageText: content,
+          fromPhoneNumber: phoneNumber,
+          sessionId
+        })
+      })
+
+      if (!response.ok) {
+        logger.error(
+          {
+            sessionId,
+            remoteJid,
+            status: response.status,
+            statusText: response.statusText
+          },
+          "Failed to call incident API"
+        )
+        return false
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.shouldRespond && result.confirmationMessage) {
+        // Send confirmation message
+        await this.sendTextMessage(sessionId, socket, remoteJid, result.confirmationMessage)
+        logger.info(
+          {
+            sessionId,
+            remoteJid,
+            incidentId: result.incidentId
+          },
+          "Incident created and confirmation sent"
+        )
+        return true
+      } else if (result.shouldRespond && result.responseMessage) {
+        // Send error/help message
+        await this.sendTextMessage(sessionId, socket, remoteJid, result.responseMessage)
+        logger.info(
+          {
+            sessionId,
+            remoteJid,
+            error: result.error
+          },
+          "Incident handling failed, sent error message"
+        )
+        return true
+      }
+
+      return false
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          sessionId,
+          remoteJid,
+          errorMessage: error instanceof Error ? error.message : String(error)
+        },
+        "Error handling incident"
+      )
+      return false
+    }
   }
 
   async getAiConfig(sessionId: string): Promise<{

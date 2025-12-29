@@ -55,7 +55,9 @@ import {
   movingInspectionDocumentsTable,
   movingInspectionComparisonsTable,
   whatsappSessionsTable,
-  whatsappExplorerMessagesTable
+  whatsappExplorerMessagesTable,
+  whatsappContactsTable,
+  whatsappIncidentRateLimitsTable
 } from "./schema"
 
 config({ path: ".env.local" })
@@ -120,7 +122,9 @@ const dbSchema = {
   movingInspectionDocuments: movingInspectionDocumentsTable,
   movingInspectionComparisons: movingInspectionComparisonsTable,
   whatsappSessions: whatsappSessionsTable,
-  whatsappExplorerMessages: whatsappExplorerMessagesTable
+  whatsappExplorerMessages: whatsappExplorerMessagesTable,
+  whatsappContacts: whatsappContactsTable,
+  whatsappIncidentRateLimits: whatsappIncidentRateLimitsTable
   // relations
 }
 

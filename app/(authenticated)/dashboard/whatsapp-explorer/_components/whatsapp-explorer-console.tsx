@@ -22,7 +22,8 @@ import {
   updateAiConfigAction,
   testAiResponseAction,
   listSessionsAction,
-  forgetPhoneNumberAction
+  forgetPhoneNumberAction,
+  updateSessionPhoneNumberAction
 } from "@/actions/whatsapp-explorer-actions"
 import {
   AlertCircle,
@@ -39,6 +40,11 @@ import {
   QrCode
 } from "lucide-react"
 import type { StoredMessage } from "@/lib/whatsapp-baileys-client"
+import { MessageThreads } from "./message-threads"
+import { ThreadMessages } from "./thread-messages"
+import { ContactsManager } from "./contacts-manager"
+import { createContactAction } from "@/actions/whatsapp-contacts-actions"
+import { MessageProvider } from "../_context/message-context"
 
 type ConnectionStatus = "disconnected" | "connecting" | "qr_pending" | "connected" | "logged_out"
 
@@ -59,11 +65,14 @@ export function WhatsAppExplorerConsole() {
   const [phoneNumberInput, setPhoneNumberInput] = useState<string>("")
   const [statusError, setStatusError] = useState<string | null>(null)
 
-  // Message state
+  // Message state (legacy - kept for compatibility)
   const [recipient, setRecipient] = useState("")
   const [messageContent, setMessageContent] = useState("")
   const [messages, setMessages] = useState<StoredMessage[]>([])
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
+  
+  // Thread-based messaging state
+  const [selectedThread, setSelectedThread] = useState<string | null>(null)
 
   // AI state
   const [aiEnabled, setAiEnabled] = useState(false)
@@ -82,17 +91,42 @@ export function WhatsAppExplorerConsole() {
   const [activeTab, setActiveTab] = useState("config")
   const [pollingEnabled, setPollingEnabled] = useState(false)
 
-  // Initialize session (but don't load phone number - start fresh each time)
+  // Initialize session and load persisted phone number
   const initSession = useCallback(async () => {
     const result = await getOrCreateSessionAction("explorer")
     if (result.isSuccess && result.data) {
       setSessionId(result.data.sessionId)
-      // Clear any existing phone number - start fresh
-      setPhoneNumber(null)
-      setPhoneNumberInput("")
-      setSessionStatus("disconnected")
+      setSessionStatus(result.data.connectionStatus as ConnectionStatus)
+      
+      // Load persisted phone number if it exists
+      if (result.data.phoneNumber) {
+        setPhoneNumber(result.data.phoneNumber)
+        // Format for display (27... -> 0...)
+        const displayPhone = result.data.phoneNumber.startsWith("27") && result.data.phoneNumber.length === 11
+          ? "0" + result.data.phoneNumber.substring(2)
+          : result.data.phoneNumber
+        setPhoneNumberInput(displayPhone)
+      } else {
+        setPhoneNumber(null)
+        setPhoneNumberInput("")
+      }
+      
+      // If already connected, check status from server
+      if (result.data.connectionStatus === "connected" && apiKey) {
+        const statusResult = await getSessionStatusAction(serverUrl, apiKey, result.data.sessionId)
+        if (statusResult.isSuccess && statusResult.data) {
+          setSessionStatus(statusResult.data.connectionStatus)
+          if (statusResult.data.phoneNumber) {
+            setPhoneNumber(statusResult.data.phoneNumber)
+            const displayPhone = statusResult.data.phoneNumber.startsWith("27") && statusResult.data.phoneNumber.length === 11
+              ? "0" + statusResult.data.phoneNumber.substring(2)
+              : statusResult.data.phoneNumber
+            setPhoneNumberInput(displayPhone)
+          }
+        }
+      }
     }
-  }, [])
+  }, [apiKey, serverUrl])
 
   useEffect(() => {
     initSession()
@@ -111,15 +145,18 @@ export function WhatsAppExplorerConsole() {
         // Only update phone number from server if we don't have one from input
         // This prevents overwriting the user's input with server data
         if (result.data.phoneNumber && !phoneNumberInput) {
-          setPhoneNumber(result.data.phoneNumber)
+        setPhoneNumber(result.data.phoneNumber)
         }
         setStatusError(result.data.lastError)
 
         if (result.data.connectionStatus === "connected") {
           setPollingEnabled(false)
-          // Once connected, use the input phone number
-          if (phoneNumberInput) {
-            setPhoneNumber(phoneNumberInput.trim())
+          // Once connected, save the phone number to database
+          const normalizedPhone = phoneNumberInput ? normalizePhoneNumber(phoneNumberInput.trim()) : result.data.phoneNumber
+          if (normalizedPhone && sessionId) {
+            // Update phone number and connection status in database
+            await updateSessionPhoneNumberAction(sessionId, normalizedPhone, "connected")
+            setPhoneNumber(normalizedPhone)
           }
         }
       }
@@ -244,12 +281,12 @@ export function WhatsAppExplorerConsole() {
         await forgetPhoneNumberAction(sessionId)
       }
       
-      // Now connect
-      const result = await connectSessionAction(serverUrl, apiKey, sessionId)
+      // Now connect (pass phone number to save it)
+      const result = await connectSessionAction(serverUrl, apiKey, sessionId, normalizedPhone)
       if (result.isSuccess) {
         setSessionStatus("connecting")
         setPollingEnabled(true)
-        // Store the normalized phone number for display (but don't save to DB until connected)
+        // Store the normalized phone number for display
         setPhoneNumber(normalizedPhone)
         // Update input to show normalized version
         setPhoneNumberInput(normalizedPhone)
@@ -630,8 +667,8 @@ export function WhatsAppExplorerConsole() {
             )}
 
             <div className="space-y-2">
-              <div className="flex gap-2">
-                {sessionStatus === "disconnected" || sessionStatus === "logged_out" ? (
+            <div className="flex gap-2">
+              {sessionStatus === "disconnected" || sessionStatus === "logged_out" ? (
                   <Button 
                     onClick={handleConnect} 
                     disabled={loading || !apiKey || !phoneNumberInput.trim()}
@@ -639,24 +676,24 @@ export function WhatsAppExplorerConsole() {
                   >
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                     Connect & Show QR Code
-                  </Button>
-                ) : sessionStatus === "connected" ? (
-                  <>
-                    <Button variant="outline" onClick={handleDisconnect} disabled={loading}>
-                      <Unplug className="mr-2 h-4 w-4" />
-                      Disconnect
-                    </Button>
-                    <Button variant="destructive" onClick={handleLogout} disabled={loading}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout & Clear Auth
-                    </Button>
-                  </>
-                ) : (
+                </Button>
+              ) : sessionStatus === "connected" ? (
+                <>
                   <Button variant="outline" onClick={handleDisconnect} disabled={loading}>
-                    Cancel
+                    <Unplug className="mr-2 h-4 w-4" />
+                    Disconnect
                   </Button>
-                )}
-              </div>
+                  <Button variant="destructive" onClick={handleLogout} disabled={loading}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                      Logout & Clear Auth
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={handleDisconnect} disabled={loading}>
+                  Cancel
+                </Button>
+              )}
+            </div>
 
             </div>
 
@@ -669,7 +706,7 @@ export function WhatsAppExplorerConsole() {
                 <p><strong>3. Connect:</strong> Click "Connect & Show QR Code" to start the connection</p>
                 <p><strong>4. Scan QR Code:</strong> Use WhatsApp to scan the displayed QR code</p>
                 <p className="mt-2 text-muted-foreground">
-                  Note: Phone numbers are not remembered. You must enter a phone number each time you want to connect.
+                  Note: The last connected phone number will be saved and pre-filled for your convenience. You can change it anytime.
                 </p>
               </AlertDescription>
             </Alert>
@@ -678,85 +715,71 @@ export function WhatsAppExplorerConsole() {
       </TabsContent>
 
       {/* Messages Tab */}
-      <TabsContent value="messages">
-        <div className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Send Message</CardTitle>
-              <CardDescription>Send a WhatsApp message to any number</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Recipient Phone Number</Label>
-                  <Input
-                    id="recipient"
-                    placeholder="0821234567 or 27821234567"
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
+      <TabsContent value="messages" className="h-[calc(100vh-200px)]">
+        {sessionId ? (
+          <MessageProvider sessionId={sessionId}>
+            <div className="grid grid-cols-[350px_1fr] gap-4 h-full">
+              {/* Left Sidebar: Threads List + Contacts */}
+              <div className="flex flex-col gap-4 h-full min-h-0">
+                {/* Active Conversations - Takes most space */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <MessageThreads
+                    sessionId={sessionId}
+                    selectedThread={selectedThread}
+                    onThreadSelect={setSelectedThread}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter number starting with <code className="bg-muted px-1 rounded">0</code> (e.g., 0821234567) or with <code className="bg-muted px-1 rounded">27</code> (e.g., 27821234567). 
-                    The system will format it correctly for Baileys (27 format, not +27).
-                  </p>
+                </div>
+                
+                {/* Contacts - Collapsible, smaller section */}
+                <div className="flex-shrink-0 max-h-[200px] overflow-hidden">
+                  <ContactsManager
+                    sessionId={sessionId}
+                    onStartChat={(phoneNumber) => {
+                      // Start chat with this contact - select the thread
+                      setSelectedThread(phoneNumber)
+                    }}
+                  />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="messageContent">Message</Label>
-                <Textarea
-                  id="messageContent"
-                  placeholder="Type your message here..."
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  rows={3}
-                />
+              
+              {/* Right Side: Thread Messages */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {sessionStatus === "connected" && apiKey ? (
+                  <ThreadMessages
+                    sessionId={sessionId}
+                    serverUrl={serverUrl}
+                    apiKey={apiKey}
+                    phoneNumber={selectedThread}
+                    onMessageSent={() => {
+                      // Refresh threads when message is sent
+                      // The components handle their own refresh
+                    }}
+                  />
+                ) : (
+                  <Card className="h-full">
+                    <CardContent className="flex flex-col items-center justify-center h-full py-8 text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        {sessionStatus === "connected" 
+                          ? "Please configure server URL and API key to send messages"
+                          : "Please connect to WhatsApp first to view and send messages"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              <Button
-                onClick={handleSendMessage}
-                disabled={loading || sessionStatus !== "connected" || !recipient || !messageContent}
-              >
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Send Message
-              </Button>
-
-              {sendResult && (
-                <Alert variant={sendResult.success ? "default" : "destructive"}>
-                  {sendResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                  <AlertDescription>{sendResult.message}</AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-
+            </div>
+          </MessageProvider>
+        ) : (
           <Card>
-            <CardHeader>
-              <CardTitle>Message History</CardTitle>
-              <CardDescription>Recent messages (auto-refreshes every 5 seconds when connected)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {messages.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No messages yet</p>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`p-3 rounded-lg ${
-                        msg.fromMe ? "bg-blue-50 ml-8" : "bg-gray-50 mr-8"
-                      }`}
-                    >
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{msg.fromMe ? "You" : msg.remoteJid.split("@")[0]}</span>
-                        <span>{new Date(msg.timestamp).toLocaleString()}</span>
-                      </div>
-                      <div className="text-sm">{msg.content || `[${msg.messageType}]`}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <CardContent className="py-8 text-center">
+              <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Please connect to WhatsApp first to view and send messages
+              </p>
             </CardContent>
           </Card>
-        </div>
+        )}
       </TabsContent>
 
       {/* AI Configuration Tab */}

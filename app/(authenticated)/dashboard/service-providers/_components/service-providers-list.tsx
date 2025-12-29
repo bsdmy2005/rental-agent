@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { deleteServiceProviderAction } from "@/actions/service-providers-actions"
 import Link from "next/link"
-import { Phone, Mail, Eye, MoreVertical, Edit, Trash2, Loader2 } from "lucide-react"
+import { Phone, Mail, Eye, MoreVertical, Edit, Trash2, Loader2, MessageCircle } from "lucide-react"
 import { toast } from "sonner"
 
 interface ServiceProvidersListProps {
@@ -139,6 +139,12 @@ export function ServiceProvidersList({ providers }: ServiceProvidersListProps) {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4" />
                   {provider.phone}
+                </div>
+              )}
+              {provider.whatsappNumber && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MessageCircle className="h-4 w-4" />
+                  {provider.whatsappNumber}
                 </div>
               )}
               {provider.email && (

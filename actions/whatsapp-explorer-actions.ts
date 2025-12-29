@@ -52,7 +52,7 @@ export async function testBaileysConnectionAction(
  */
 export async function getOrCreateSessionAction(
   sessionName: string = "default"
-): Promise<ActionState<{ sessionId: string }>> {
+): Promise<ActionState<{ sessionId: string; phoneNumber: string | null; connectionStatus: string }>> {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -81,7 +81,11 @@ export async function getOrCreateSessionAction(
       return {
         isSuccess: true,
         message: "Session found",
-        data: { sessionId: existingSession.id }
+        data: {
+          sessionId: existingSession.id,
+          phoneNumber: existingSession.phoneNumber,
+          connectionStatus: existingSession.connectionStatus
+        }
       }
     }
 
@@ -99,7 +103,11 @@ export async function getOrCreateSessionAction(
     return {
       isSuccess: true,
       message: "Session created",
-      data: { sessionId: newSession.id }
+      data: {
+        sessionId: newSession.id,
+        phoneNumber: newSession.phoneNumber,
+        connectionStatus: newSession.connectionStatus
+      }
     }
   } catch (error) {
     return {
@@ -134,21 +142,98 @@ export async function getSessionStatusAction(
 }
 
 /**
+ * Update phone number and connection status in database
+ */
+export async function updateSessionPhoneNumberAction(
+  sessionId: string,
+  phoneNumber: string,
+  connectionStatus?: "connected" | "disconnected" | "connecting" | "qr_pending" | "logged_out"
+): Promise<ActionState<void>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "Unauthorized" }
+    }
+
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: (profiles, { eq }) => eq(profiles.clerkUserId, userId)
+    })
+
+    if (!userProfile) {
+      return { isSuccess: false, message: "User profile not found" }
+    }
+
+    // Verify session belongs to user
+    const session = await db.query.whatsappSessions.findFirst({
+      where: (sessions, { and, eq }) =>
+        and(
+          eq(sessions.id, sessionId),
+          eq(sessions.userProfileId, userProfile.id)
+        )
+    })
+
+    if (!session) {
+      return { isSuccess: false, message: "Session not found" }
+    }
+
+    // Update phone number and optionally connection status
+    const updateData: {
+      phoneNumber: string
+      connectionStatus?: "disconnected" | "connecting" | "qr_pending" | "connected" | "logged_out"
+      lastConnectedAt?: Date
+      updatedAt: Date
+    } = {
+      phoneNumber: phoneNumber,
+      updatedAt: new Date()
+    }
+    
+    if (connectionStatus) {
+      updateData.connectionStatus = connectionStatus
+      if (connectionStatus === "connected") {
+        updateData.lastConnectedAt = new Date()
+      }
+    }
+
+    await db
+      .update(whatsappSessionsTable)
+      .set(updateData)
+      .where(eq(whatsappSessionsTable.id, sessionId))
+
+    return {
+      isSuccess: true,
+      message: "Phone number updated",
+      data: undefined
+    }
+  } catch (error) {
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to update phone number"
+    }
+  }
+}
+
+/**
  * Connect a session
  */
 export async function connectSessionAction(
   serverUrl: string,
   apiKey: string,
-  sessionId: string
+  sessionId: string,
+  phoneNumber?: string
 ): Promise<ActionState<{ message: string }>> {
   try {
     const client = getClient(serverUrl, apiKey)
     const result = await client.connect(sessionId)
     if (result.success) {
-      return {
+      // Update phone number in database if provided
+      if (phoneNumber) {
+        await updateSessionPhoneNumberAction(sessionId, phoneNumber)
+      }
+      
+    return {
         isSuccess: true,
-        message: result.message,
-        data: { message: result.message }
+      message: result.message,
+      data: { message: result.message }
       }
     }
     return {
@@ -175,10 +260,20 @@ export async function disconnectSessionAction(
     const client = getClient(serverUrl, apiKey)
     const result = await client.disconnect(sessionId)
     if (result.success) {
-      return {
+      // Update connection status in database
+      await db
+        .update(whatsappSessionsTable)
+        .set({
+          connectionStatus: "disconnected",
+          lastDisconnectedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(whatsappSessionsTable.id, sessionId))
+      
+    return {
         isSuccess: true,
-        message: result.message,
-        data: { message: result.message }
+      message: result.message,
+      data: { message: result.message }
       }
     }
     return {
@@ -194,7 +289,7 @@ export async function disconnectSessionAction(
 }
 
 /**
- * Logout a session (clears auth state)
+ * Logout and clear auth state
  */
 export async function logoutSessionAction(
   serverUrl: string,
@@ -204,33 +299,22 @@ export async function logoutSessionAction(
   try {
     const client = getClient(serverUrl, apiKey)
     const result = await client.logout(sessionId)
-    
-    // Clear phone number from database after successful logout
     if (result.success) {
-      const { userId } = await auth()
-      if (userId) {
-        const userProfile = await db.query.userProfiles.findFirst({
-          where: (profiles, { eq }) => eq(profiles.clerkUserId, userId)
+      // Clear phone number and update status in database
+      await db
+        .update(whatsappSessionsTable)
+        .set({
+          phoneNumber: null,
+          connectionStatus: "logged_out",
+          lastDisconnectedAt: new Date(),
+          updatedAt: new Date()
         })
-        
-        if (userProfile) {
-          await db
-            .update(whatsappSessionsTable)
-            .set({
-              phoneNumber: null,
-              connectionStatus: "logged_out",
-              lastDisconnectedAt: new Date()
-            })
-            .where(eq(whatsappSessionsTable.id, sessionId))
-        }
-      }
-    }
-    
-    if (result.success) {
-      return {
+        .where(eq(whatsappSessionsTable.id, sessionId))
+      
+    return {
         isSuccess: true,
-        message: result.message,
-        data: { message: result.message }
+      message: result.message,
+      data: { message: result.message }
       }
     }
     return {
@@ -284,7 +368,8 @@ export async function forgetPhoneNumberAction(
       .set({
         phoneNumber: null,
         connectionStatus: "disconnected",
-        lastDisconnectedAt: new Date()
+        lastDisconnectedAt: new Date(),
+        updatedAt: new Date()
       })
       .where(eq(whatsappSessionsTable.id, sessionId))
 
@@ -347,19 +432,16 @@ export async function sendMessageAction(
   
   try {
     const client = getClient(serverUrl, apiKey)
-    console.log(`[WhatsApp Explorer Action] Client created, calling sendMessage...`)
-    
     const result = await client.sendMessage(sessionId, recipient, content)
-    
-    console.log(`[WhatsApp Explorer Action] sendMessage completed`)
-    console.log(`[WhatsApp Explorer Action] Result success: ${result.success}`)
-    console.log(`[WhatsApp Explorer Action] Result:`, JSON.stringify(result, null, 2))
+    console.log(`[WhatsApp Explorer Action] Message sent successfully`)
+    console.log(`[WhatsApp Explorer Action] Message ID: ${result.messageId}`)
+    console.log(`[WhatsApp Explorer Action] Timestamp: ${result.timestamp}`)
     
     if (result.success) {
-      return {
+    return {
         isSuccess: true,
-        message: "Message sent",
-        data: result
+      message: "Message sent",
+      data: result
       }
     }
     return {
@@ -368,7 +450,6 @@ export async function sendMessageAction(
     }
   } catch (error) {
     console.error(`[WhatsApp Explorer Action] Error sending message:`, error)
-    console.error(`[WhatsApp Explorer Action] Error details:`, error instanceof Error ? error.stack : String(error))
     return {
       isSuccess: false,
       message: error instanceof Error ? error.message : "Failed to send message"
@@ -383,14 +464,14 @@ export async function getAiConfigAction(
   serverUrl: string,
   apiKey: string,
   sessionId: string
-): Promise<ActionState<{ config: AiConfig | null }>> {
+): Promise<ActionState<{ sessionId: string; config: AiConfig | null }>> {
   try {
     const client = getClient(serverUrl, apiKey)
-    const result = await client.getAiConfig(sessionId)
+    const config = await client.getAiConfig(sessionId)
     return {
       isSuccess: true,
       message: "AI config retrieved",
-      data: { config: result.config }
+      data: config
     }
   } catch (error) {
     return {
@@ -447,10 +528,10 @@ export async function updateAiConfigAction(
     })
     
     if (result.success) {
-      return {
+    return {
         isSuccess: true,
-        message: result.message,
-        data: { message: result.message }
+      message: result.message,
+      data: { message: result.message }
       }
     }
     return {
@@ -512,9 +593,7 @@ export async function testAiResponseAction(
 /**
  * List all sessions for the current user
  */
-export async function listSessionsAction(): Promise<
-  ActionState<Array<{ id: string; sessionName: string; connectionStatus: string; phoneNumber: string | null }>>
-> {
+export async function listSessionsAction(): Promise<ActionState<Array<{ id: string; sessionName: string; connectionStatus: string; phoneNumber: string | null }>>> {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -531,7 +610,7 @@ export async function listSessionsAction(): Promise<
 
     const sessions = await db.query.whatsappSessions.findMany({
       where: (sessions, { eq }) => eq(sessions.userProfileId, userProfile.id),
-      orderBy: (sessions, { desc }) => desc(sessions.createdAt)
+      orderBy: (sessions, { desc }) => [desc(sessions.createdAt)]
     })
 
     return {

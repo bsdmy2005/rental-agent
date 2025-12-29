@@ -37,6 +37,7 @@ export function NewRfqForm({ properties, requestedBy }: NewRfqFormProps) {
     dueDate: "",
     notes: ""
   })
+  const [sendChannel, setSendChannel] = useState<"email" | "whatsapp" | "both">("both")
 
   const selectedProperty = properties.find((p) => p.id === selectedPropertyId)
 
@@ -115,7 +116,8 @@ export function NewRfqForm({ properties, requestedBy }: NewRfqFormProps) {
     try {
       console.log("Creating bulk RFQ with providers:", {
         providerCount: selectedProviderIds.length,
-        providerIds: selectedProviderIds
+        providerIds: selectedProviderIds,
+        channel: sendChannel
       })
 
       const result = await createBulkRfqAction(
@@ -128,7 +130,7 @@ export function NewRfqForm({ properties, requestedBy }: NewRfqFormProps) {
           notes: formData.notes || null
         },
         selectedProviderIds,
-        "email"
+        sendChannel
       )
 
       if (result.isSuccess && result.data) {
@@ -230,6 +232,23 @@ export function NewRfqForm({ properties, requestedBy }: NewRfqFormProps) {
           placeholder="Add any additional information for the service providers..."
           rows={3}
         />
+      </div>
+
+      <div>
+        <Label htmlFor="sendChannel">Send Via</Label>
+        <Select value={sendChannel} onValueChange={(value: "email" | "whatsapp" | "both") => setSendChannel(value)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="both">Email & WhatsApp</SelectItem>
+            <SelectItem value="email">Email Only</SelectItem>
+            <SelectItem value="whatsapp">WhatsApp Only</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose how to send the RFQ to service providers
+        </p>
       </div>
 
       <div>

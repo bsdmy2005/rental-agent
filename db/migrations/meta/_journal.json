@@ -232,6 +232,13 @@
       "when": 1766903459928,
       "tag": "0032_mute_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1766921421885,
+      "tag": "0033_lethal_mindworm",
+      "breakpoints": true
     }
   ]
 }
