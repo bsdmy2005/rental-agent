@@ -1,0 +1,1 @@
+ALTER TABLE "whatsapp_sessions" ADD COLUMN "auto_connect" boolean DEFAULT true NOT NULL;

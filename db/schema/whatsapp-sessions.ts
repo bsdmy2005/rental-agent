@@ -25,6 +25,8 @@ export const whatsappSessionsTable = pgTable("whatsapp_sessions", {
 
   // Configuration
   isActive: boolean("is_active").notNull().default(true),
+  // Auto-connect on server startup (only for primary sessions)
+  autoConnect: boolean("auto_connect").notNull().default(true),
 
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
