@@ -43,6 +43,16 @@ export const whatsappConversationStatesTable = pgTable(
       pendingMessageForNewIncident?: string
       pendingMessageForFollowUp?: string
       lastMessageAt?: string
+      // For incident selection flow
+      pendingMessageId?: string
+      pendingMessageText?: string
+      availableIncidents?: Array<{
+        id: string
+        reference: string
+        title: string
+        reportedAt: string
+      }>
+      selectedIncidentId?: string
     }>(),
 
     // Auto-expiration for abandoned conversations
