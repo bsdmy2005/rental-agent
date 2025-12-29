@@ -40,6 +40,9 @@ export const whatsappConversationStatesTable = pgTable(
       email?: string
       otpCode?: string
       otpExpiresAt?: string
+      pendingMessageForNewIncident?: string
+      pendingMessageForFollowUp?: string
+      lastMessageAt?: string
     }>(),
 
     // Auto-expiration for abandoned conversations

@@ -55,6 +55,19 @@ export class ConnectionManager {
     }
     async connect(sessionId) {
         logger.info({ sessionId }, "Starting connection");
+        // If this is an incident-dispatch server, only allow primary sessions
+        if (env.serviceType === "incident-dispatch") {
+            const sessionResult = await this.pool.query("SELECT session_name FROM whatsapp_sessions WHERE id = $1", [sessionId]);
+            if (!sessionResult.rows[0]) {
+                throw new Error(`Session ${sessionId} not found`);
+            }
+            const sessionName = sessionResult.rows[0].session_name;
+            if (sessionName !== "primary") {
+                logger.warn({ sessionId, sessionName, serviceType: env.serviceType }, "Rejecting connection: Only primary sessions are allowed on incident-dispatch server");
+                throw new Error(`This server only accepts primary sessions. Session '${sessionName}' is not allowed.`);
+            }
+            logger.info({ sessionId, sessionName }, "Primary session validated for incident-dispatch server");
+        }
         // Check if already connected
         const existing = this.sessions.get(sessionId);
         if (existing?.socket && existing.connectionStatus === "connected") {

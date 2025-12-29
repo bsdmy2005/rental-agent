@@ -22,8 +22,8 @@ export default async function WhatsAppExplorerPage() {
         <AlertTitle>Development Tool</AlertTitle>
         <AlertDescription>
           This page is for testing and exploring WhatsApp Baileys integration. Your credentials
-          are only used for the current session. Make sure the Baileys server is running on port 3001.
-          Run <code className="bg-muted px-1 rounded">npm run dev</code> in the whatsapp-baileys-server folder.
+          are only used for the current session. Make sure the WhatsApp Explorer server is running on port 3002.
+          Run <code className="bg-muted px-1 rounded">npm run dev</code> in the whatsapp-explorer-server folder.
         </AlertDescription>
       </Alert>
 

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."whatsapp_conversation_state" ADD VALUE 'awaiting_incident_selection';

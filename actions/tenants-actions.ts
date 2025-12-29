@@ -156,55 +156,78 @@ export async function getTenantByPhoneAction(
   phone: string
 ): Promise<ActionState<SelectTenant & { propertyName?: string }>> {
   try {
-    // Normalize phone for comparison
-    const normalizedPhone = phone.replace(/\D/g, "")
+    // Normalize phone: remove non-digits
+    const digitsOnly = phone.replace(/\D/g, "")
 
-    const tenants = await db
-      .select()
-      .from(tenantsTable)
-      .where(eq(tenantsTable.phone, normalizedPhone))
-      .limit(1)
+    // Generate all possible format variations for South African numbers
+    // WhatsApp sends 27XXXXXXXXX, database might store 0XXXXXXXXX or +27XXXXXXXXX
+    const phoneVariations: string[] = [digitsOnly]
 
-    if (tenants.length === 0) {
-      // Try with different formats
-      const [tenant] = await db
+    if (digitsOnly.startsWith("27") && digitsOnly.length >= 11) {
+      // 27821234567 -> also try 0821234567
+      phoneVariations.push("0" + digitsOnly.substring(2))
+      // Also try with + prefix
+      phoneVariations.push("+" + digitsOnly)
+    } else if (digitsOnly.startsWith("0") && digitsOnly.length >= 10) {
+      // 0821234567 -> also try 27821234567
+      phoneVariations.push("27" + digitsOnly.substring(1))
+      phoneVariations.push("+27" + digitsOnly.substring(1))
+    }
+
+    // Try exact match first with all variations
+    for (const phoneVar of phoneVariations) {
+      const [result] = await db
         .select({
           tenant: tenantsTable,
           propertyName: propertiesTable.name
         })
         .from(tenantsTable)
         .leftJoin(propertiesTable, eq(tenantsTable.propertyId, propertiesTable.id))
-        .where(
-          sql`REPLACE(REPLACE(REPLACE(${tenantsTable.phone}, '+', ''), ' ', ''), '-', '') = ${normalizedPhone}`
-        )
+        .where(eq(tenantsTable.phone, phoneVar))
         .limit(1)
 
-      if (!tenant) {
-        return { isSuccess: false, message: "Tenant not found" }
-      }
-
-      return {
-        isSuccess: true,
-        message: "Tenant found by phone",
-        data: { ...tenant.tenant, propertyName: tenant.propertyName || undefined }
+      if (result) {
+        return {
+          isSuccess: true,
+          message: "Tenant found by phone",
+          data: { ...result.tenant, propertyName: result.propertyName || undefined }
+        }
       }
     }
 
-    // Get property name
-    const [result] = await db
+    // Try flexible SQL matching (strips special chars and compares)
+    // This handles cases like "+27 82 123 4567" stored in database
+    const [tenant] = await db
       .select({
         tenant: tenantsTable,
         propertyName: propertiesTable.name
       })
       .from(tenantsTable)
       .leftJoin(propertiesTable, eq(tenantsTable.propertyId, propertiesTable.id))
-      .where(eq(tenantsTable.id, tenants[0].id))
+      .where(
+        sql`(
+          -- Normalize stored phone: remove +, spaces, dashes, then compare
+          REPLACE(REPLACE(REPLACE(REPLACE(${tenantsTable.phone}, '+', ''), ' ', ''), '-', ''), '(', '')
+          IN (${digitsOnly}, ${phoneVariations[1] || digitsOnly}, ${phoneVariations[2] || digitsOnly})
+          OR
+          -- Also try converting stored 0-prefix to 27-prefix for comparison
+          CASE
+            WHEN ${tenantsTable.phone} LIKE '0%'
+            THEN '27' || SUBSTRING(REPLACE(REPLACE(REPLACE(${tenantsTable.phone}, '+', ''), ' ', ''), '-', ''), 2)
+            ELSE REPLACE(REPLACE(REPLACE(REPLACE(${tenantsTable.phone}, '+', ''), ' ', ''), '-', ''), '(', '')
+          END = ${digitsOnly}
+        )`
+      )
       .limit(1)
+
+    if (!tenant) {
+      return { isSuccess: false, message: "Tenant not found" }
+    }
 
     return {
       isSuccess: true,
       message: "Tenant found by phone",
-      data: { ...result.tenant, propertyName: result.propertyName || undefined }
+      data: { ...tenant.tenant, propertyName: tenant.propertyName || undefined }
     }
   } catch (error) {
     console.error("Error finding tenant by phone:", error)

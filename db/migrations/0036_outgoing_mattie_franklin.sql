@@ -1,0 +1,2 @@
+ALTER TYPE "public"."whatsapp_conversation_state" ADD VALUE 'awaiting_new_incident_confirmation';--> statement-breakpoint
+ALTER TYPE "public"."whatsapp_conversation_state" ADD VALUE 'awaiting_follow_up_confirmation';

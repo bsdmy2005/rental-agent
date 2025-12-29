@@ -2,19 +2,17 @@ import type { WASocket, WAMessage } from "@whiskeysockets/baileys"
 import { Pool } from "pg"
 import { createLogger } from "../utils/logger.js"
 import type { StoredMessage } from "./types.js"
-import { AiResponder } from "../services/ai-responder.js"
 import { env } from "../config/env.js"
 import { normalizePhoneNumber } from "../utils/phone-number.js"
+import { downloadAndUploadMedia } from "../services/media-downloader.js"
 
 const logger = createLogger("message-handler")
 
 export class MessageHandler {
   private pool: Pool
-  private aiResponder: AiResponder
 
   constructor(pool: Pool) {
     this.pool = pool
-    this.aiResponder = new AiResponder()
   }
 
   async sendTextMessage(
@@ -372,6 +370,70 @@ export class MessageHandler {
         throw storeError // Re-throw to mark as failed
       }
 
+      // Handle media attachments (images, videos, etc.)
+      let mediaUrls: Array<{ url: string; type: string; fileName: string }> = []
+      const hasMedia = messageType !== "text" && messageType !== "conversation"
+      
+      logger.debug(
+        {
+          sessionId,
+          messageId,
+          remoteJid,
+          messageType,
+          hasMedia,
+          willProcessMedia: hasMedia
+        },
+        "Step 3a: Checking for media attachments"
+      )
+      
+      if (hasMedia) {
+        logger.info({ sessionId, messageId, remoteJid, messageType }, "Step 3a: Processing media attachment")
+        try {
+          const uploadedMedia = await downloadAndUploadMedia(socket, msg, sessionId)
+          if (uploadedMedia) {
+            mediaUrls = [{
+              url: uploadedMedia.url,
+              type: uploadedMedia.type,
+              fileName: uploadedMedia.fileName
+            }]
+            logger.info(
+              {
+                sessionId,
+                messageId,
+                remoteJid,
+                mediaUrl: uploadedMedia.url,
+                fileName: uploadedMedia.fileName,
+                fileType: uploadedMedia.type
+              },
+              "Media downloaded and uploaded successfully"
+            )
+          } else {
+            logger.warn(
+              {
+                sessionId,
+                messageId,
+                remoteJid,
+                messageType
+              },
+              "Media download/upload returned null"
+            )
+          }
+        } catch (mediaError) {
+          logger.error(
+            {
+              error: mediaError,
+              sessionId,
+              messageId,
+              remoteJid,
+              messageType,
+              errorMessage: mediaError instanceof Error ? mediaError.message : String(mediaError)
+            },
+            "Failed to process media attachment"
+          )
+          // Continue processing even if media fails
+        }
+      }
+
       // Process through conversation state machine (replaces incident-only handling)
       logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Processing through conversation state machine")
       const conversationHandled = await this.processConversation(
@@ -379,8 +441,8 @@ export class MessageHandler {
         remoteJid,
         content || "",
         socket,
-        messageType !== "text", // hasMedia
-        [] // mediaUrls - will be populated when media handling is implemented
+        hasMedia,
+        mediaUrls
       )
 
       if (conversationHandled) {
@@ -388,118 +450,17 @@ export class MessageHandler {
         return
       }
 
-      // Check if AI auto-response is enabled
-      logger.debug({ sessionId, messageId, remoteJid }, "Step 4: Checking AI auto-response configuration")
-      const aiConfig = await this.getAiConfig(sessionId)
-      
+      // Incident-dispatch server: No AI auto-response functionality
+      // Messages are only processed through conversation state machine for incident logging
       logger.debug(
         {
           sessionId,
           messageId,
           remoteJid,
-          aiEnabled: aiConfig?.enabled,
-          hasAiConfig: !!aiConfig,
-          hasContent: !!content
+          reason: "Conversation handler did not process message, and AI auto-response is not available on incident-dispatch server"
         },
-        "AI configuration check completed"
+        "Message processing completed - no further action needed"
       )
-
-      if (aiConfig?.enabled && content) {
-        logger.info(
-          {
-            sessionId,
-            messageId,
-            remoteJid,
-            aiEnabled: true,
-            contentLength: content.length
-          },
-          "AI auto-response enabled - generating response"
-        )
-
-        try {
-          const aiStartTime = Date.now()
-          // API key is read from .env file, not from config
-          const aiResponse = await this.aiResponder.generateResponse(
-            content,
-            aiConfig.systemPrompt,
-            aiConfig.model
-          )
-          const aiDuration = Date.now() - aiStartTime
-
-          if (aiResponse) {
-            logger.info(
-              {
-                sessionId,
-                messageId,
-                remoteJid,
-                aiResponseLength: aiResponse.length,
-                aiDuration,
-                aiResponsePreview: aiResponse.length > 100 ? aiResponse.substring(0, 100) + "..." : aiResponse
-              },
-              "AI response generated successfully - sending response"
-            )
-
-            try {
-              await this.sendTextMessage(sessionId, socket, remoteJid, aiResponse)
-              logger.info(
-                {
-                  sessionId,
-                  messageId,
-                  remoteJid,
-                  aiResponseSent: true
-                },
-                "AI response sent successfully"
-              )
-            } catch (sendError) {
-              logger.error(
-                {
-                  error: sendError,
-                  sessionId,
-                  messageId,
-                  remoteJid,
-                  errorMessage: sendError instanceof Error ? sendError.message : String(sendError),
-                  errorStack: sendError instanceof Error ? sendError.stack : undefined
-                },
-                "FAILED to send AI response"
-              )
-              // Don't throw - message was still processed successfully
-            }
-          } else {
-            logger.warn(
-              {
-                sessionId,
-                messageId,
-                remoteJid,
-                aiResponseGenerated: false
-              },
-              "AI response generation returned null/empty - no response sent"
-            )
-          }
-        } catch (error) {
-          logger.error(
-            {
-              error,
-              sessionId,
-              messageId,
-              remoteJid,
-              errorMessage: error instanceof Error ? error.message : String(error),
-              errorStack: error instanceof Error ? error.stack : undefined
-            },
-            "FAILED to generate AI response"
-          )
-          // Don't throw - message was still received and stored successfully
-        }
-      } else {
-        logger.debug(
-          {
-            sessionId,
-            messageId,
-            remoteJid,
-            reason: !aiConfig?.enabled ? "AI disabled" : !content ? "No content" : "Unknown"
-          },
-          "AI auto-response skipped"
-        )
-      }
 
       const processingDuration = Date.now() - startTime
       logger.info(
@@ -696,7 +657,28 @@ export class MessageHandler {
     mediaUrls: Array<{ url: string; type: string; fileName: string }> = []
   ): Promise<boolean> {
     try {
-      const phoneNumber = remoteJid.split("@")[0]
+      // Extract phone number from remoteJid (format: 27...@s.whatsapp.net)
+      // Ensure consistent format for decryption
+      let phoneNumber = remoteJid.split("@")[0]
+      
+      // Normalize phone number to ensure consistent format (27... without +)
+      // This is critical for decryption and database lookups
+      try {
+        phoneNumber = normalizePhoneNumber(phoneNumber, env.phoneCountryCode)
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            sessionId,
+            remoteJid,
+            originalPhoneNumber: phoneNumber,
+            errorMessage: error instanceof Error ? error.message : String(error)
+          },
+          "Failed to normalize phone number from remoteJid"
+        )
+        // Continue with original phone number if normalization fails
+      }
+      
       const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000"
       const apiKey = env.apiKey
 
@@ -705,6 +687,7 @@ export class MessageHandler {
           sessionId,
           remoteJid,
           phoneNumber,
+          normalizedPhoneNumber: phoneNumber,
           contentLength: content.length,
           hasMedia,
           mediaCount: mediaUrls.length
@@ -728,28 +711,72 @@ export class MessageHandler {
       })
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error")
         logger.error(
-          { sessionId, remoteJid, status: response.status },
+          {
+            sessionId,
+            remoteJid,
+            phoneNumber,
+            status: response.status,
+            statusText: response.statusText,
+            errorText
+          },
           "Failed to call conversation API"
         )
         return false
       }
 
-      const result = await response.json()
+      const result = await response.json() as {
+        success: boolean
+        responseMessage?: string
+        incidentCreated?: boolean
+        incidentId?: string
+        referenceNumber?: string
+      }
 
       if (result.success && result.responseMessage) {
-        await this.sendTextMessage(sessionId, socket, remoteJid, result.responseMessage)
+        // Ensure remoteJid is in correct format for sending response
+        // Format: 27...@s.whatsapp.net
+        const responseJid = remoteJid.includes("@") 
+          ? remoteJid 
+          : `${phoneNumber}@s.whatsapp.net`
+        
+        await this.sendTextMessage(sessionId, socket, responseJid, result.responseMessage)
         logger.info(
-          { sessionId, remoteJid, incidentCreated: result.incidentCreated },
+          {
+            sessionId,
+            remoteJid,
+            phoneNumber,
+            responseJid,
+            incidentCreated: result.incidentCreated,
+            incidentId: result.incidentId
+          },
           "Conversation response sent"
         )
         return true
       }
 
+      logger.debug(
+        {
+          sessionId,
+          remoteJid,
+          phoneNumber,
+          resultSuccess: result.success,
+          hasResponseMessage: !!result.responseMessage
+        },
+        "Conversation API returned but no response message to send"
+      )
       return false
     } catch (error) {
       logger.error(
-        { error, sessionId, remoteJid },
+        {
+          error,
+          sessionId,
+          remoteJid,
+          phoneNumber: remoteJid.split("@")[0],
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined
+        },
         "Error processing conversation"
       )
       return false
@@ -826,7 +853,14 @@ export class MessageHandler {
         return false
       }
 
-      const result = await response.json()
+      const result = await response.json() as {
+        success: boolean
+        shouldRespond?: boolean
+        confirmationMessage?: string
+        responseMessage?: string
+        incidentId?: string
+        error?: string
+      }
 
       if (result.success && result.shouldRespond && result.confirmationMessage) {
         // Send confirmation message
@@ -869,30 +903,4 @@ export class MessageHandler {
     }
   }
 
-  async getAiConfig(sessionId: string): Promise<{
-    enabled: boolean
-    systemPrompt: string
-    model: string
-    // API key is read from .env file, not stored in config
-  } | null> {
-    // AI config is stored in a simple in-memory map for now
-    // In production, this would be in the database
-    return this.aiResponder.getConfig(sessionId)
-  }
-
-  async updateAiConfig(
-    sessionId: string,
-    config: {
-      enabled: boolean
-      systemPrompt: string
-      model: string
-      // API key is read from .env file, not from request
-    }
-  ): Promise<void> {
-    this.aiResponder.setConfig(sessionId, config)
-  }
-
-  getAiResponder(): AiResponder {
-    return this.aiResponder
-  }
 }

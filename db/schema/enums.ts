@@ -193,7 +193,10 @@ export const whatsappConversationStateEnum = pgEnum("whatsapp_conversation_state
   "awaiting_description",
   "awaiting_photos",
   "incident_active",
-  "awaiting_closure_confirmation"
+  "awaiting_closure_confirmation",
+  "awaiting_incident_selection",
+  "awaiting_new_incident_confirmation",
+  "awaiting_follow_up_confirmation"
 ])
 export const incidentAuthorTypeEnum = pgEnum("incident_author_type", [
   "tenant",

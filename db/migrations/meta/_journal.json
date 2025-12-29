@@ -246,6 +246,20 @@
       "when": 1766985804617,
       "tag": "0034_clean_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1767002812518,
+      "tag": "0035_sturdy_ben_urich",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1767004511995,
+      "tag": "0036_outgoing_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

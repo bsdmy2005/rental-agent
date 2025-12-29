@@ -45,14 +45,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert mediaUrls to attachments format expected by state machine
+    // mediaUrls can be either an array of strings (URLs) or array of objects { url, type, fileName }
     const attachments =
       hasMedia && Array.isArray(mediaUrls) && mediaUrls.length > 0
-        ? mediaUrls.map((url: string, index: number) => ({
-            url,
-            type: "image", // Default to image, could be enhanced to detect type
-            fileName: `attachment-${index + 1}`
-          }))
+        ? mediaUrls.map((item: string | { url: string; type: string; fileName: string }, index: number) => {
+            // Handle both formats: string URL or object with url, type, fileName
+            if (typeof item === "string") {
+              return {
+                url: item,
+                type: "image", // Default to image if only URL provided
+                fileName: `attachment-${index + 1}`
+              }
+            } else {
+              return {
+                url: item.url,
+                type: item.type || "image",
+                fileName: item.fileName || `attachment-${index + 1}`
+              }
+            }
+          })
         : undefined
+
+    // Log for debugging
+    if (hasMedia || (attachments && attachments.length > 0)) {
+      console.log(`[Conversation API] Processing message with media:`, {
+        hasMedia,
+        mediaUrlsCount: mediaUrls?.length || 0,
+        attachmentsCount: attachments?.length || 0,
+        attachments: attachments?.map(att => ({ url: att.url, fileName: att.fileName, type: att.type }))
+      })
+    }
 
     const result = await processConversationMessage(
       phoneNumber,

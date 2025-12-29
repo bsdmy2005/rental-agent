@@ -24,6 +24,28 @@ router.post("/:sessionId/connect", async (req, res, next) => {
         const { sessionId } = req.params;
         const manager = ConnectionManager.getInstance();
         logger.info({ sessionId }, "Connect request received");
+        // Validate primary session if this is incident-dispatch server
+        const { env } = await import("../config/env.js");
+        if (env.serviceType === "incident-dispatch") {
+            const { Pool } = await import("pg");
+            const pool = new Pool({ connectionString: env.databaseUrl });
+            const result = await pool.query("SELECT session_name FROM whatsapp_sessions WHERE id = $1", [sessionId]);
+            await pool.end();
+            if (!result.rows[0]) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Session ${sessionId} not found`
+                });
+            }
+            const sessionName = result.rows[0].session_name;
+            if (sessionName !== "primary") {
+                logger.warn({ sessionId, sessionName }, "Rejecting connection: Only primary sessions allowed");
+                return res.status(403).json({
+                    success: false,
+                    message: `This server only accepts primary sessions. Session '${sessionName}' is not allowed.`
+                });
+            }
+        }
         await manager.connect(sessionId);
         res.json({
             success: true,

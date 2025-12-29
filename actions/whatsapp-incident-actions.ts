@@ -18,6 +18,8 @@ import {
   isIncidentReport
 } from "@/lib/whatsapp/incident-handler"
 import { formatIncidentConfirmationMessage, formatErrorMessage, formatIncidentHelpMessage } from "@/lib/whatsapp/message-formatter"
+import { sendIncidentNotificationsAction } from "./notification-actions"
+import { getOpenIncidentsByPhoneNumberQuery } from "@/queries/incidents-queries"
 
 /**
  * Normalize phone number to 27... format (without +)
@@ -55,7 +57,7 @@ export async function createIncidentFromWhatsAppAction(
     const normalizedPhone = normalizePhoneNumber(fromPhoneNumber)
 
     // Check if message is an incident report
-    if (!isIncidentReport(messageText)) {
+    if (!(await isIncidentReport(messageText))) {
       return {
         isSuccess: false,
         message: "Message does not appear to be an incident report. " + formatIncidentHelpMessage()
@@ -91,7 +93,7 @@ export async function createIncidentFromWhatsAppAction(
     const { propertyId, propertyName, tenantId, tenantName } = propertyResult.data
 
     // Parse incident details
-    const parsed = parseIncidentFromWhatsApp(messageText)
+    const parsed = await parseIncidentFromWhatsApp(messageText)
 
     // Validate required fields
     if (!parsed.description && !parsed.title) {
@@ -148,6 +150,11 @@ export async function createIncidentFromWhatsAppAction(
       propertyName
     )
 
+    // Send notifications to agent/landlord (non-blocking)
+    sendIncidentNotificationsAction(newIncident.id).catch(err => {
+      console.error("Error sending incident notifications:", err)
+    })
+
     return {
       isSuccess: true,
       message: "Incident created successfully",
@@ -168,7 +175,7 @@ export async function createIncidentFromWhatsAppAction(
 /**
  * Get help message for incident submission
  */
-export function getIncidentHelpMessageAction(): ActionState<{ message: string }> {
+export async function getIncidentHelpMessageAction(): Promise<ActionState<{ message: string }>> {
   return {
     isSuccess: true,
     message: "Help message retrieved",
@@ -251,14 +258,24 @@ export async function createIncidentFromConversationAction(data: {
 
     // Add attachments if any were provided during the conversation
     if (attachments && attachments.length > 0) {
-      await db.insert(incidentAttachmentsTable).values(
-        attachments.map(att => ({
-          incidentId: newIncident.id,
-          fileUrl: att.url,
-          fileName: att.fileName,
-          fileType: att.type
-        }))
-      )
+      console.log(`[Incident Creation] Adding ${attachments.length} attachment(s) to incident ${newIncident.id}`)
+      console.log(`[Incident Creation] Attachments:`, attachments.map(att => ({
+        url: att.url,
+        fileName: att.fileName,
+        type: att.type
+      })))
+      
+      const attachmentValues = attachments.map(att => ({
+        incidentId: newIncident.id,
+        fileUrl: att.url,
+        fileName: att.fileName || "attachment",
+        fileType: att.type || "image"
+      }))
+      
+      await db.insert(incidentAttachmentsTable).values(attachmentValues)
+      console.log(`[Incident Creation] Successfully saved ${attachmentValues.length} attachment(s) to database`)
+    } else {
+      console.log(`[Incident Creation] No attachments provided for incident ${newIncident.id}`)
     }
 
     // Record submission for rate limiting
@@ -274,7 +291,10 @@ export async function createIncidentFromConversationAction(data: {
       propertyName
     )
 
-    // TODO: Send notifications to agent/landlord
+    // Send notifications to agent/landlord (non-blocking)
+    sendIncidentNotificationsAction(newIncident.id).catch(err => {
+      console.error("Error sending incident notifications:", err)
+    })
 
     return {
       isSuccess: true,
@@ -290,6 +310,30 @@ export async function createIncidentFromConversationAction(data: {
     return {
       isSuccess: false,
       message: error instanceof Error ? error.message : "Failed to create incident"
+    }
+  }
+}
+
+/**
+ * Get open incidents by phone number
+ * Returns incidents that are not closed, formatted for display
+ */
+export async function getOpenIncidentsByPhoneAction(
+  phoneNumber: string
+): Promise<ActionState<SelectIncident[]>> {
+  try {
+    const incidents = await getOpenIncidentsByPhoneNumberQuery(phoneNumber)
+
+    return {
+      isSuccess: true,
+      message: `Found ${incidents.length} open incident${incidents.length !== 1 ? "s" : ""}`,
+      data: incidents
+    }
+  } catch (error) {
+    console.error("Error getting open incidents by phone:", error)
+    return {
+      isSuccess: false,
+      message: "Failed to get open incidents"
     }
   }
 }

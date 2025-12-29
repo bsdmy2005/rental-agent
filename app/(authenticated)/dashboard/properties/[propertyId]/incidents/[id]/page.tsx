@@ -17,6 +17,12 @@ import Image from "next/image"
 import { IncidentManagementControls } from "./_components/incident-management-controls"
 import { IncidentQuotesSection } from "./_components/incident-quotes-section"
 import { CloseIncidentButton } from "./_components/close-incident-button"
+import { IncidentMessageSummary } from "./_components/incident-message-summary"
+import { IncidentTimeline } from "./_components/incident-timeline"
+import { getIncidentTimelineQuery } from "@/queries/incidents-queries"
+import { whatsappSessionsTable } from "@/db/schema"
+import { db } from "@/db"
+import { eq, and } from "drizzle-orm"
 
 export default async function IncidentManagementPage({
   params
@@ -48,6 +54,39 @@ export default async function IncidentManagementPage({
   const quotesResult = await getQuotesByIncidentAction(id)
   const quoteRequestsResult = await getQuoteRequestsByIncidentAction(id)
   const quoteRequests = quoteRequestsResult.isSuccess && quoteRequestsResult.data ? quoteRequestsResult.data : []
+
+  // Fetch timeline for incidents
+  let timelineItems: any[] = []
+  if (incident.submissionMethod === "whatsapp" && incident.submittedPhone) {
+    try {
+      // Find primary session for this user
+      const primarySession = await db.query.whatsappSessions.findFirst({
+        where: (sessions, { and, eq }) =>
+          and(
+            eq(sessions.userProfileId, userProfile.id),
+            eq(sessions.sessionName, "primary")
+          )
+      })
+
+      if (primarySession) {
+        timelineItems = await getIncidentTimelineQuery(
+          id,
+          primarySession.id,
+          incident.submittedPhone
+        )
+      } else {
+        // Still get timeline without messages if no session
+        timelineItems = await getIncidentTimelineQuery(id)
+      }
+    } catch (error) {
+      console.error("Error fetching incident timeline:", error)
+      // Fallback to timeline without messages
+      timelineItems = await getIncidentTimelineQuery(id).catch(() => [])
+    }
+  } else {
+    // For non-WhatsApp incidents, still show timeline (status changes, quotes, etc.)
+    timelineItems = await getIncidentTimelineQuery(id).catch(() => [])
+  }
 
   const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     reported: "secondary",
@@ -176,37 +215,15 @@ export default async function IncidentManagementPage({
         </Card>
       )}
 
-      {incident.attachments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Photos</CardTitle>
-            <CardDescription>Photos attached to this incident</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {incident.attachments.map((attachment) => (
-                <div
-                  key={attachment.id}
-                  className="relative aspect-video rounded-lg overflow-hidden border"
-                >
-                  {attachment.fileType === "image" ? (
-                    <Image
-                      src={attachment.fileUrl}
-                      alt={attachment.fileName}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full bg-muted">
-                      <p className="text-sm text-muted-foreground">{attachment.fileName}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {incident.submissionMethod === "whatsapp" && (
+        <IncidentMessageSummary
+          description={incident.description}
+          submittedPhone={incident.submittedPhone}
+          submittedName={incident.submittedName}
+        />
       )}
+
+      {timelineItems.length > 0 && <IncidentTimeline items={timelineItems} />}
     </div>
   )
 }

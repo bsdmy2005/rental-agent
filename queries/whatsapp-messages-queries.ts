@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { whatsappExplorerMessagesTable, type SelectWhatsappExplorerMessage } from "@/db/schema"
-import { eq, desc, and, sql } from "drizzle-orm"
+import { whatsappExplorerMessagesTable, whatsappSessionsTable, incidentsTable, type SelectWhatsappExplorerMessage } from "@/db/schema"
+import { eq, desc, and, sql, or, ilike, ne } from "drizzle-orm"
 
 /**
  * Extract phone number from remoteJid
@@ -152,5 +152,164 @@ export async function getAllThreadPhoneNumbersQuery(
   }
 
   return Array.from(phoneNumbers)
+}
+
+/**
+ * Get messages for an incident by phone number from primary session
+ * This finds the primary session for the user and gets messages for the incident's phone number
+ */
+export async function getIncidentWhatsAppMessagesQuery(
+  userProfileId: string,
+  phoneNumber: string
+): Promise<SelectWhatsappExplorerMessage[]> {
+  // Normalize phone number (remove + if present, ensure 27... format)
+  const normalizedPhone = phoneNumber.replace(/\D/g, "").replace(/^0/, "27")
+  
+  // Find primary session for this user
+  const primarySession = await db.query.whatsappSessions.findFirst({
+    where: (sessions, { and, eq }) =>
+      and(
+        eq(sessions.userProfileId, userProfileId),
+        eq(sessions.sessionName, "primary")
+      )
+  })
+
+  if (!primarySession) {
+    return []
+  }
+
+  // Get all messages for the primary session
+  const allMessages = await db.query.whatsappExplorerMessages.findMany({
+    where: (messages, { eq }) => eq(messages.sessionId, primarySession.id),
+    orderBy: (messages, { asc }) => [asc(messages.timestamp)]
+  })
+
+  // Filter messages for this phone number (match both normalized and original formats)
+  const threadMessages = allMessages.filter((msg) => {
+    const msgPhone = extractPhoneFromJid(msg.remoteJid)
+    const normalizedMsgPhone = msgPhone.replace(/\D/g, "").replace(/^0/, "27")
+    return normalizedMsgPhone === normalizedPhone || msgPhone === phoneNumber
+  })
+
+  return threadMessages
+}
+
+/**
+ * Get messages related to a specific incident
+ * Filters messages by phone number and timestamp within incident timeframe
+ * Excludes messages that are clearly associated with other incidents
+ */
+export async function getIncidentRelatedMessagesQuery(
+  incidentId: string,
+  phoneNumber: string,
+  sessionId: string,
+  incidentReportedAt: Date,
+  incidentUpdatedAt: Date
+): Promise<SelectWhatsappExplorerMessage[]> {
+  // Normalize phone number (remove + if present, ensure 27... format)
+  const normalizedPhone = phoneNumber.replace(/\D/g, "").replace(/^0/, "27")
+  
+  // Get all messages for the session
+  const allMessages = await db.query.whatsappExplorerMessages.findMany({
+    where: (messages, { eq }) => eq(messages.sessionId, sessionId),
+    orderBy: (messages, { asc }) => [asc(messages.timestamp)]
+  })
+
+  // Get all incidents for this phone number to exclude messages from other incidents
+  const allIncidents = await db
+    .select({
+      id: incidentsTable.id,
+      reportedAt: incidentsTable.reportedAt,
+      updatedAt: incidentsTable.updatedAt
+    })
+    .from(incidentsTable)
+    .where(
+      and(
+        or(
+          eq(incidentsTable.submittedPhone, phoneNumber),
+          eq(incidentsTable.submittedPhone, normalizedPhone),
+          ilike(incidentsTable.submittedPhone, `%${normalizedPhone}%`)
+        ),
+        ne(incidentsTable.id, incidentId) // Exclude current incident
+      )
+    )
+
+  // Define tight time window for this incident
+  // Start: 2 minutes before incident creation (to catch the initial message that created it)
+  // End: 1 hour after incident last update (to catch follow-up messages, but not messages from new incidents)
+  const startTime = new Date(incidentReportedAt.getTime() - 2 * 60 * 1000) // 2 minutes before
+  const maxEndTime = new Date(incidentUpdatedAt.getTime() + 60 * 60 * 1000) // 1 hour after last update
+  const endTime = new Date() > maxEndTime ? maxEndTime : new Date()
+  
+  // Filter messages:
+  // 1. Phone number match (normalized)
+  // 2. Timestamp within incident's tight timeframe
+  // 3. Not closer to another incident's timeframe
+  // 4. Must be after incident creation (or within 2 min before for initial message)
+  const incidentMessages = allMessages.filter((msg) => {
+    const msgPhone = extractPhoneFromJid(msg.remoteJid)
+    const normalizedMsgPhone = msgPhone.replace(/\D/g, "").replace(/^0/, "27")
+    const phoneMatch = normalizedMsgPhone === normalizedPhone || msgPhone === phoneNumber
+    
+    if (!phoneMatch) return false
+    
+    // CRITICAL: Only include messages that are:
+    // - Within 2 minutes BEFORE incident creation (initial message that triggered incident creation)
+    // - OR after incident creation and within 1 hour of last update (follow-up messages)
+    // Exclude ALL other messages (they belong to other incidents)
+    
+    const messageTime = msg.timestamp.getTime()
+    const incidentTime = incidentReportedAt.getTime()
+    const twoMinutesBefore = incidentTime - (2 * 60 * 1000)
+    
+    // Check if message is within the allowed window
+    const isWithinInitialWindow = messageTime >= twoMinutesBefore && messageTime < incidentTime
+    const isAfterIncident = messageTime >= incidentTime && messageTime <= endTime.getTime()
+    
+    if (!isWithinInitialWindow && !isAfterIncident) {
+      return false // Message is outside the allowed time window
+    }
+    
+    // Exclude messages that are clearly closer to another incident
+    for (const otherIncident of allIncidents) {
+      // If message is before this incident was created but after another incident was created,
+      // it definitely belongs to the other incident
+      if (msg.timestamp < incidentReportedAt && msg.timestamp >= otherIncident.reportedAt) {
+        return false
+      }
+      
+      // If message is within 2 minutes before this incident, check if it's also within 2 minutes before another incident
+      // If so, assign it to whichever incident it's closer to
+      if (msg.timestamp < incidentReportedAt) {
+        const twoMinutesBeforeOther = new Date(otherIncident.reportedAt.getTime() - 2 * 60 * 1000)
+        
+        // If message is within 2 minutes before both incidents, check which one it's closer to
+        if (msg.timestamp >= twoMinutesBeforeOther && msg.timestamp < otherIncident.reportedAt) {
+          const timeToThisIncident = incidentReportedAt.getTime() - msg.timestamp.getTime()
+          const timeToOtherIncident = msg.timestamp.getTime() - otherIncident.reportedAt.getTime()
+          
+          // If message is closer to other incident (or same distance), exclude from this incident
+          if (timeToOtherIncident <= timeToThisIncident) {
+            return false
+          }
+        }
+      }
+      
+      // If message is after both incidents were created, check which one it's closer to
+      if (msg.timestamp >= incidentReportedAt && msg.timestamp >= otherIncident.reportedAt) {
+        const distanceToThisIncident = Math.abs(msg.timestamp.getTime() - incidentReportedAt.getTime())
+        const distanceToOtherIncident = Math.abs(msg.timestamp.getTime() - otherIncident.reportedAt.getTime())
+        
+        // If message is closer to other incident (within 5 minutes), exclude it
+        if (distanceToOtherIncident < distanceToThisIncident && distanceToOtherIncident < 5 * 60 * 1000) {
+          return false
+        }
+      }
+    }
+    
+    return true
+  })
+
+  return incidentMessages
 }
 

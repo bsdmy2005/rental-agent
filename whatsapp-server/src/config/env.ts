@@ -30,6 +30,9 @@ export const env = {
   // Phone Number Configuration
   phoneCountryCode: process.env.PHONE_COUNTRY_CODE || "27", // Default: South Africa (27)
 
+  // Service Type Configuration
+  serviceType: process.env.SERVICE_TYPE || "incident-dispatch", // "incident-dispatch" or "explorer"
+
   // Feature flags
   isDevelopment: process.env.NODE_ENV !== "production"
 }

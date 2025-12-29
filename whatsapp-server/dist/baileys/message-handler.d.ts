@@ -1,10 +1,8 @@
 import type { WASocket, WAMessage } from "@whiskeysockets/baileys";
 import { Pool } from "pg";
 import type { StoredMessage } from "./types.js";
-import { AiResponder } from "../services/ai-responder.js";
 export declare class MessageHandler {
     private pool;
-    private aiResponder;
     constructor(pool: Pool);
     sendTextMessage(sessionId: string, socket: WASocket, recipient: string, content: string, retryAttempts?: number, retryDelayMs?: number): Promise<{
         messageId: string;
@@ -15,16 +13,17 @@ export declare class MessageHandler {
     private getMessageType;
     private storeMessage;
     getMessages(sessionId: string, limit?: number, offset?: number): Promise<StoredMessage[]>;
-    getAiConfig(sessionId: string): Promise<{
-        enabled: boolean;
-        systemPrompt: string;
-        model: string;
-    } | null>;
-    updateAiConfig(sessionId: string, config: {
-        enabled: boolean;
-        systemPrompt: string;
-        model: string;
-    }): Promise<void>;
-    getAiResponder(): AiResponder;
+    /**
+     * Process message through conversation state machine
+     * Replaces the old incident-only detection with a full conversation flow
+     * that handles greetings, property identification, incident details, and confirmations
+     */
+    private processConversation;
+    /**
+     * Handle incident if message appears to be an incident report
+     * @deprecated Use processConversation instead - kept for backwards compatibility
+     * Returns true if incident was handled, false otherwise
+     */
+    private handleIncidentIfApplicable;
 }
 //# sourceMappingURL=message-handler.d.ts.map

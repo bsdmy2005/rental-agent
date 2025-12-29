@@ -21,6 +21,8 @@ export const env = {
     messageRetryDelayMs: parseInt(process.env.MESSAGE_RETRY_DELAY_MS || "1000", 10),
     // Phone Number Configuration
     phoneCountryCode: process.env.PHONE_COUNTRY_CODE || "27", // Default: South Africa (27)
+    // Service Type Configuration
+    serviceType: process.env.SERVICE_TYPE || "incident-dispatch", // "incident-dispatch" or "explorer"
     // Feature flags
     isDevelopment: process.env.NODE_ENV !== "production"
 };

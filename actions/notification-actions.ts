@@ -1,5 +1,6 @@
 "use server"
 
+import { ServerClient, Models } from "postmark"
 import { ActionState } from "@/types"
 import {
   getPropertyNotificationRecipients,
@@ -9,6 +10,17 @@ import {
 import { db } from "@/db"
 import { incidentsTable, propertiesTable, incidentAttachmentsTable } from "@/db/schema"
 import { eq } from "drizzle-orm"
+
+/**
+ * Get Postmark client instance
+ */
+function getPostmarkClient(): ServerClient {
+  const apiKey = process.env.POSTMARK_API_KEY || process.env.POSTMARK_SERVER_API_TOKEN
+  if (!apiKey) {
+    throw new Error("POSTMARK_API_KEY or POSTMARK_SERVER_API_TOKEN not found in environment")
+  }
+  return new ServerClient(apiKey)
+}
 
 /**
  * Send notifications for new incident
@@ -73,20 +85,53 @@ export async function sendIncidentNotificationsAction(
     for (const recipient of recipients) {
       // Send email notification if enabled and email is available
       if (recipient.notifyEmail && recipient.email) {
-        const emailContent = formatIncidentEmailNotification(notificationData)
-        // TODO: Implement email sending with your provider (e.g., Resend, SendGrid)
-        console.log(`[Notification] Would send email to ${recipient.email}`)
-        console.log(`[Notification] Email subject: ${emailContent.subject}`)
-        emailsSent++
+        try {
+          const emailContent = formatIncidentEmailNotification(notificationData)
+          const fromEmail = process.env.POSTMARK_FROM_EMAIL || "incidents@yourdomain.com"
+          const postmarkClient = getPostmarkClient()
+
+          await postmarkClient.sendEmail({
+            From: fromEmail,
+            To: recipient.email,
+            Subject: emailContent.subject,
+            HtmlBody: emailContent.html,
+            TextBody: emailContent.text,
+            TrackOpens: true,
+            TrackLinks: Models.LinkTrackingOptions.HtmlAndText
+          })
+
+          console.log(`[Notification] Sent email to ${recipient.email}`)
+          emailsSent++
+        } catch (emailError) {
+          console.error(`[Notification] Failed to send email to ${recipient.email}:`, emailError)
+        }
       }
 
       // Send WhatsApp notification if enabled and phone is available
       if (recipient.notifyWhatsapp && recipient.whatsappPhone) {
-        const whatsappContent = formatIncidentWhatsAppNotification(notificationData)
-        // TODO: Send via Baileys server
-        console.log(`[Notification] Would send WhatsApp to ${recipient.whatsappPhone}`)
-        console.log(`[Notification] WhatsApp message length: ${whatsappContent.length}`)
-        whatsappSent++
+        try {
+          const whatsappContent = formatIncidentWhatsAppNotification(notificationData)
+
+          // Send via Baileys server API
+          const baileysUrl = process.env.BAILEYS_SERVER_URL || "http://localhost:3001"
+          const response = await fetch(`${baileysUrl}/api/send-message`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: recipient.whatsappPhone,
+              message: whatsappContent
+            })
+          })
+
+          if (response.ok) {
+            console.log(`[Notification] Sent WhatsApp to ${recipient.whatsappPhone}`)
+            whatsappSent++
+          } else {
+            console.error(`[Notification] Failed to send WhatsApp to ${recipient.whatsappPhone}`)
+          }
+        } catch (whatsappError) {
+          console.error(`[Notification] Failed to send WhatsApp to ${recipient.whatsappPhone}:`, whatsappError)
+        }
       }
     }
 

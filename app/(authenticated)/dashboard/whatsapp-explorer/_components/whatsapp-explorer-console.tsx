@@ -50,7 +50,12 @@ type ConnectionStatus = "disconnected" | "connecting" | "qr_pending" | "connecte
 
 export function WhatsAppExplorerConsole() {
   // Configuration state
-  const [serverUrl, setServerUrl] = useState("http://localhost:3001")
+  // Default to explorer server URL (can be overridden via environment variable)
+  const [serverUrl, setServerUrl] = useState(
+    typeof window !== "undefined" && (window as any).WHATSAPP_EXPLORER_SERVER_URL
+      ? (window as any).WHATSAPP_EXPLORER_SERVER_URL
+      : "http://localhost:3002"
+  )
   const [apiKey, setApiKey] = useState("")
   const [connectionTestResult, setConnectionTestResult] = useState<{
     success: boolean

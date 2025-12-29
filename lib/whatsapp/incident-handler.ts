@@ -107,14 +107,14 @@ export async function recordSubmission(
 /**
  * Parse incident details from WhatsApp message
  */
-export function parseIncidentFromWhatsApp(messageText: string): ParsedIncidentMessage {
+export async function parseIncidentFromWhatsApp(messageText: string): Promise<ParsedIncidentMessage> {
   return parseIncidentMessage(messageText)
 }
 
 /**
  * Check if message is an incident report
  */
-export function isIncidentReport(messageText: string): boolean {
+export async function isIncidentReport(messageText: string): Promise<boolean> {
   return isIncidentMessage(messageText)
 }
 

@@ -24,13 +24,18 @@ import {
 import { getTenantByPhoneAction } from "@/actions/tenants-actions"
 import { sendOtpAction, verifyOtpAction } from "@/actions/otp-actions"
 // Note: createIncidentFromConversationAction will be created in Task 4.2
-import { createIncidentFromConversationAction } from "@/actions/whatsapp-incident-actions"
+import { createIncidentFromConversationAction, getOpenIncidentsByPhoneAction } from "@/actions/whatsapp-incident-actions"
 import { validatePropertyCodeAction } from "@/actions/property-codes-actions"
 import {
   isIncidentMessage,
   parseIncidentMessage,
   extractPropertyCode
 } from "@/lib/whatsapp/message-parser"
+import { parseIncidentFromWhatsApp } from "@/lib/whatsapp/incident-handler"
+import { classifyMessageIntent } from "@/lib/whatsapp/ai-intent-classifier"
+import { db } from "@/db"
+import { incidentsTable } from "@/db/schema"
+import { eq } from "drizzle-orm"
 
 /**
  * Valid conversation states for the incident reporting flow
@@ -44,6 +49,9 @@ export type ConversationState =
   | "awaiting_photos"
   | "incident_active"
   | "awaiting_closure_confirmation"
+  | "awaiting_incident_selection"
+  | "awaiting_new_incident_confirmation"
+  | "awaiting_follow_up_confirmation"
 
 /**
  * Response returned by the conversation state machine
@@ -72,6 +80,9 @@ export interface ConversationContext {
   email?: string
   otpCode?: string
   otpExpiresAt?: string
+  pendingMessageForNewIncident?: string
+  pendingMessageForFollowUp?: string
+  lastMessageAt?: string
 }
 
 // -----------------------------------------------------------------------------
@@ -180,6 +191,74 @@ function isNegative(text: string): boolean {
 }
 
 /**
+ * Check if text is a help request
+ *
+ * @param text - The text to check
+ * @returns true if text indicates a help request
+ */
+function isHelpRequest(text: string): boolean {
+  const helpKeywords = ["help", "commands", "what can i do", "options", "?", "menu", "assist"]
+  const lowerText = text.toLowerCase().trim()
+  return helpKeywords.some((keyword) => lowerText.includes(keyword))
+}
+
+/**
+ * Get context-specific help message
+ *
+ * @param state - Current conversation state
+ * @param hasOpenIncidents - Whether user has open incidents
+ * @param incidentReference - Optional incident reference number for active incidents
+ * @returns Help message string
+ */
+function getHelpMessage(
+  state: ConversationState,
+  hasOpenIncidents: boolean,
+  incidentReference?: string
+): string {
+  switch (state) {
+    case "idle":
+      return `Available actions:
+• Report new incident - Describe your problem with property code
+• Attach to existing - Reply 'no' when asked about new incident
+• View open incidents - Send any message to see your open incidents
+• Help - Type "help" anytime`
+
+    case "incident_active":
+      return `Available actions for ${incidentReference || "your incident"}:
+• Add update - Just send a message
+• Add photo - Send an image
+• Close incident - Type "close"
+• New incident - Type "new issue"
+• Help - Type "help"`
+
+    case "awaiting_incident_selection":
+      return `Select incident number, type 'new' to create a new incident, or 'cancel' to exit.`
+
+    case "awaiting_new_incident_confirmation":
+    case "awaiting_follow_up_confirmation":
+      return `You're being asked to confirm:
+• Reply 'yes' to create new incident
+• Reply 'no' to attach to existing incident
+• Reply 'help' to see this menu again`
+
+    case "awaiting_property":
+      return `Please provide your property code (e.g., PROP-ABC123). Type 'cancel' to exit.`
+
+    case "awaiting_description":
+      return `Please describe the issue in detail. Type 'cancel' to exit.`
+
+    case "awaiting_photos":
+      return `Please send photos of the issue (if any), or type 'skip' to continue without photos.`
+
+    case "awaiting_closure_confirmation":
+      return `Reply 'yes' to close the incident, or 'no' to keep it open.`
+
+    default:
+      return `Type "help" for assistance. You can report incidents, view open incidents, or get help.`
+  }
+}
+
+/**
  * Generate a human-readable reference number from incident ID
  *
  * @param incidentId - The UUID of the incident
@@ -262,7 +341,8 @@ export async function processConversationMessage(
           normalizedPhone,
           trimmedText,
           context,
-          currentState.incidentId || undefined
+          currentState.incidentId || undefined,
+          attachments
         )
 
       case "awaiting_closure_confirmation":
@@ -271,6 +351,27 @@ export async function processConversationMessage(
           trimmedText,
           context,
           currentState.incidentId || undefined
+        )
+
+      case "awaiting_incident_selection":
+        return await handleAwaitingIncidentSelectionState(
+          normalizedPhone,
+          trimmedText,
+          context
+        )
+
+      case "awaiting_new_incident_confirmation":
+        return await handleAwaitingNewIncidentConfirmationState(
+          normalizedPhone,
+          trimmedText,
+          context
+        )
+
+      case "awaiting_follow_up_confirmation":
+        return await handleAwaitingFollowUpConfirmationState(
+          normalizedPhone,
+          trimmedText,
+          context
         )
 
       default:
@@ -312,14 +413,130 @@ async function handleIdleState(
   messageText: string,
   context: ConversationContext
 ): Promise<ConversationResponse> {
-  // Check if this looks like an incident report
-  if (!isIncidentMessage(messageText)) {
+  // Check for help request first
+  if (isHelpRequest(messageText)) {
+    const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+    const hasOpenIncidents =
+      incidentsResult.isSuccess &&
+      incidentsResult.data &&
+      incidentsResult.data.length > 0
+    return {
+      message: getHelpMessage("idle", hasOpenIncidents),
+      incidentCreated: false
+    }
+  }
+
+  // Check if user has open incidents
+  const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+  const hasOpenIncidents =
+    incidentsResult.isSuccess && incidentsResult.data && incidentsResult.data.length > 0
+
+  // If user has open incidents, use AI to classify intent
+  if (hasOpenIncidents && incidentsResult.data) {
+    const existingIncidents = incidentsResult.data.map(inc => ({
+      id: inc.id,
+      title: inc.title,
+      description: inc.description,
+      reportedAt: inc.reportedAt
+    }))
+
+    const classificationResult = await classifyMessageIntent(messageText, existingIncidents)
+    
+    if (classificationResult.isSuccess && classificationResult.data) {
+      const classification = classificationResult.data
+      
+      // If AI suggests asking for clarification or is unclear, always ask
+      if (classification.suggestedAction === "ask_clarification" || classification.intent === "unclear" || classification.confidence < 0.7) {
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_new_incident_confirmation",
+          context: {
+            pendingMessageForNewIncident: messageText,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+
+        return {
+          message:
+            `I'm not sure if this is a new incident or an update to an existing one.\n\n` +
+            `Are you logging a new incident? Reply 'yes' for new, 'no' to attach to existing, or 'help' for options.`,
+          incidentCreated: false
+        }
+      }
+      
+      // If AI suggests it's a new incident with high confidence
+      if (classification.suggestedAction === "create_new" && classification.confidence >= 0.7) {
+        // Store message and ask for confirmation (always confirm, even with AI)
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_new_incident_confirmation",
+          context: {
+            pendingMessageForNewIncident: messageText,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+
+        return {
+          message:
+            `This looks like a new incident. Are you logging a new incident? Reply 'yes' for new, 'no' to attach to existing, or 'help' for options.`,
+          incidentCreated: false
+        }
+      }
+      
+      // If AI suggests it's a follow-up with high confidence
+      if (classification.suggestedAction === "attach_to_existing" && classification.confidence >= 0.7) {
+        // Still ask for confirmation - show the existing incidents
+        const incidents = incidentsResult.data
+        const incidentsList = incidents
+          .map((incident, index) => {
+            const ref = generateReferenceNumber(incident.id)
+            return `${index + 1}. ${ref} - ${incident.title}`
+          })
+          .join("\n")
+
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_follow_up_confirmation",
+          context: {
+            pendingMessageForFollowUp: messageText,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+
+        return {
+          message:
+            `This looks like it might be related to an existing incident. Which incident should this be attached to?\n\n${incidentsList}\n\n` +
+            `Reply with the number, or 'new' to create a new incident, or 'cancel' to exit.`,
+          incidentCreated: false
+        }
+      }
+    }
+    
+    // Fallback: if AI classification fails, ask for confirmation
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_new_incident_confirmation",
+      context: {
+        pendingMessageForNewIncident: messageText,
+        lastMessageAt: new Date().toISOString()
+      } as ConversationContext
+    })
+
     return {
       message:
-        "Hi! I can help you report a property issue. Please describe your problem, " +
-        "and include your property code if you have one (e.g., PROP-ABC123).\n\n" +
-        "Example: 'PROP-ABC123 - The kitchen tap is leaking'",
+        "Are you logging a new incident? Reply 'yes' for new, 'no' to attach to existing, or 'help' for options.",
       incidentCreated: false
+    }
+  }
+
+  // If no open incidents and message doesn't look like an incident report, show help
+  if (!hasOpenIncidents) {
+    const isClearIncidentReport = isIncidentMessage(messageText)
+    if (!isClearIncidentReport) {
+      // No open incidents - show help message
+      return {
+        message:
+          "Hi! I can help you report a property issue. Please describe your problem, " +
+          "and include your property code if you have one (e.g., PROP-ABC123).\n\n" +
+          "Example: 'PROP-ABC123 - The kitchen tap is leaking'",
+        incidentCreated: false
+      }
     }
   }
 
@@ -435,6 +652,14 @@ async function handleAwaitingEmailState(
   messageText: string,
   context: ConversationContext
 ): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    return {
+      message: getHelpMessage("awaiting_email", false),
+      incidentCreated: false
+    }
+  }
+
   // Check if user wants to use property code instead
   const propertyCode = extractPropertyCode(messageText)
   if (propertyCode) {
@@ -655,6 +880,14 @@ async function handleAwaitingDescriptionState(
   context: ConversationContext,
   attachments?: Array<{ url: string; type: string; fileName: string }>
 ): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    return {
+      message: getHelpMessage("awaiting_description", false),
+      incidentCreated: false
+    }
+  }
+
   // Check for cancellation
   if (isNegative(messageText) || messageText.toLowerCase() === "cancel") {
     await resetConversationStateAction(phoneNumber)
@@ -675,16 +908,23 @@ async function handleAwaitingDescriptionState(
     }
   }
 
-  // Create the incident
-  return await createIncidentFromState(
-    phoneNumber,
-    {
+  // Update context with description
+  await updateConversationStateAction(phoneNumber, {
+    state: "awaiting_photos",
+    context: {
       ...context,
       partialDescription: messageText,
-      pendingAttachments: attachments
-    },
-    attachments
-  )
+      pendingAttachments: attachments || []
+    }
+  })
+
+  // Ask for photos
+  return {
+    message:
+      "Thank you for the description. Can you please attach a picture if you have one? " +
+      "This will help us better understand the issue. You can send a photo now, or type 'skip' to continue without one.",
+    incidentCreated: false
+  }
 }
 
 /**
@@ -699,33 +939,6 @@ async function handleAwaitingPhotosState(
 ): Promise<ConversationResponse> {
   const lowerText = messageText.toLowerCase().trim()
 
-  // Check if user wants to skip photos
-  if (
-    lowerText === "skip" ||
-    lowerText === "no" ||
-    lowerText === "done" ||
-    lowerText.includes("no photo")
-  ) {
-    // Complete without photos
-    await updateConversationStateAction(phoneNumber, {
-      state: "incident_active",
-      context
-    })
-
-    const referenceNumber = context.tenantId
-      ? generateReferenceNumber(context.tenantId)
-      : "TBD"
-
-    return {
-      message:
-        `Incident report submitted successfully! Reference: ${referenceNumber}\n\n` +
-        `You can reply to this conversation to add more details or photos. ` +
-        `Type "close" when the issue is resolved.`,
-      incidentCreated: true,
-      referenceNumber
-    }
-  }
-
   // Handle photo attachments
   if (attachments && attachments.length > 0) {
     const updatedAttachments = [
@@ -733,42 +946,190 @@ async function handleAwaitingPhotosState(
       ...attachments
     ]
 
-    await updateConversationStateAction(phoneNumber, {
-      state: "incident_active",
-      context: {
+    // Create incident with photos
+    return await createIncidentFromState(
+      phoneNumber,
+      {
         ...context,
         pendingAttachments: updatedAttachments
-      }
-    })
-
-    // TODO: Attach photos to incident
-
-    return {
-      message:
-        `Photo(s) received and attached to your incident report. ` +
-        `You can send more photos or type "done" to finish.`,
-      incidentCreated: false
-    }
+      },
+      updatedAttachments
+    )
   }
 
+  // Check if user wants to skip photos or finish
+  if (
+    lowerText === "skip" ||
+    lowerText === "no" ||
+    lowerText === "done" ||
+    lowerText.includes("no photo") ||
+    lowerText === "finish"
+  ) {
+    // Create incident without photos
+    return await createIncidentFromState(
+      phoneNumber,
+      context,
+      context.pendingAttachments || []
+    )
+  }
+
+  // Still waiting for photos
   return {
     message:
-      'Send a photo of the issue, or type "skip" if you don\'t have one. ' +
-      'You can always add photos later by replying to this conversation.',
+      'Please send a photo of the issue, or type "skip" to continue without one.',
     incidentCreated: false
   }
 }
 
 /**
  * Handle messages in the incident_active state.
- * Handles follow-up messages and closure requests.
+ * Handles follow-up messages, attachments, and closure requests.
  */
 async function handleIncidentActiveState(
   phoneNumber: string,
   messageText: string,
   context: ConversationContext,
-  incidentId?: string
+  incidentId?: string,
+  attachments?: Array<{ url: string; type: string; fileName: string }>
 ): Promise<ConversationResponse> {
+  // Check for help request first
+  if (isHelpRequest(messageText)) {
+    const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : undefined
+    return {
+      message: getHelpMessage("incident_active", true, referenceNumber),
+      incidentCreated: false,
+      incidentId
+    }
+  }
+
+  // Check if incident is closed
+  if (incidentId) {
+    try {
+      const [incident] = await db
+        .select()
+        .from(incidentsTable)
+        .where(eq(incidentsTable.id, incidentId))
+        .limit(1)
+
+      if (incident && incident.status === "closed") {
+        // Parse message for property code and description
+        const parsed = await parseIncidentFromWhatsApp(messageText)
+        const propertyCode = extractPropertyCode(messageText)
+        
+        // Try to identify tenant
+        const tenantResult = await getTenantByPhoneAction(phoneNumber)
+        let propertyName = ""
+        let tenantName = ""
+        
+        if (tenantResult.isSuccess && tenantResult.data) {
+          propertyName = tenantResult.data.propertyName || ""
+          tenantName = tenantResult.data.name || ""
+        } else if (propertyCode) {
+          const propertyResult = await validatePropertyCodeAction(propertyCode)
+          if (propertyResult.isSuccess && propertyResult.data) {
+            propertyName = propertyResult.data.propertyName || ""
+          }
+        }
+        
+        // Build preview message
+        const previewParts: string[] = []
+        if (propertyName) previewParts.push(`Property: ${propertyName}`)
+        if (parsed.description) {
+          const descPreview = parsed.description.length > 50 
+            ? parsed.description.substring(0, 50) + "..."
+            : parsed.description
+          previewParts.push(`Description: ${descPreview}`)
+        }
+        
+        const preview = previewParts.length > 0 
+          ? `I found: ${previewParts.join(", ")}. `
+          : ""
+        
+        // Store message in context
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_new_incident_confirmation",
+          context: {
+            pendingMessageForNewIncident: messageText,
+            propertyId: tenantResult.isSuccess && tenantResult.data ? tenantResult.data.propertyId : undefined,
+            propertyName,
+            tenantId: tenantResult.isSuccess && tenantResult.data ? tenantResult.data.id : undefined,
+            tenantName,
+            partialDescription: parsed.description,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+        
+        // Incident is closed - show list of open incidents
+        const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+        
+        if (incidentsResult.isSuccess && incidentsResult.data && incidentsResult.data.length > 0) {
+          const incidents = incidentsResult.data
+          const incidentsList = incidents
+            .map((inc, index) => {
+              const ref = generateReferenceNumber(inc.id)
+              return `${index + 1}. ${ref} - ${inc.title} (${inc.status})`
+            })
+            .join("\n")
+
+          return {
+            message:
+              `The incident you were messaging about is now closed. ${preview}Create new incident? (yes/no)\n\n` +
+              `Or attach to existing:\n${incidentsList}\n\n` +
+              `Reply 'yes' for new, 'no' to attach to existing, or select a number.`,
+            incidentCreated: false
+          }
+        } else {
+          // No open incidents - ask to create new
+          return {
+            message:
+              `The incident you were messaging about is now closed. ${preview}Create new incident? (yes/no)`,
+            incidentCreated: false
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[State Machine] Error checking incident status for ${incidentId}:`, error)
+      // Continue with normal flow if check fails
+    }
+  }
+
+  // Handle attachments if provided
+  if (attachments && attachments.length > 0 && incidentId) {
+    console.log(`[State Machine] Adding ${attachments.length} attachment(s) to existing incident ${incidentId}`)
+    
+    try {
+      const { uploadIncidentAttachmentAction } = await import("@/actions/incidents-actions")
+      
+      // Add each attachment to the incident
+      for (const attachment of attachments) {
+        const result = await uploadIncidentAttachmentAction({
+          incidentId,
+          fileUrl: attachment.url,
+          fileName: attachment.fileName || "attachment",
+          fileType: attachment.type || "image"
+        })
+        
+        if (!result.isSuccess) {
+          console.error(`[State Machine] Failed to add attachment to incident ${incidentId}:`, result.message)
+        } else {
+          console.log(`[State Machine] Successfully added attachment ${attachment.fileName} to incident ${incidentId}`)
+        }
+      }
+      
+      const referenceNumber = generateReferenceNumber(incidentId)
+      return {
+        message:
+          `Photo${attachments.length > 1 ? "s" : ""} added to ${referenceNumber}. ` +
+          `Our team will review it${attachments.length > 1 ? "them" : ""} shortly.`,
+        incidentCreated: false,
+        incidentId
+      }
+    } catch (error) {
+      console.error(`[State Machine] Error adding attachments to incident ${incidentId}:`, error)
+      // Continue with normal message handling even if attachment upload fails
+    }
+  }
+
   // Check for closure request
   if (isClosureRequest(messageText)) {
     await updateConversationStateAction(phoneNumber, {
@@ -787,7 +1148,7 @@ async function handleIncidentActiveState(
     }
   }
 
-  // Check for new incident
+  // Check for explicit new incident request
   if (messageText.toLowerCase().includes("new issue") || messageText.toLowerCase().includes("new problem")) {
     await resetConversationStateAction(phoneNumber)
     return {
@@ -798,18 +1159,157 @@ async function handleIncidentActiveState(
     }
   }
 
-  // Otherwise, this is a follow-up message
-  // TODO: Add message to incident timeline
+  // Get current incident details and all open incidents for AI classification
+  let currentIncident: { id: string; title: string; description: string; reportedAt: Date } | null = null
+  if (incidentId) {
+    try {
+      const [incident] = await db
+        .select()
+        .from(incidentsTable)
+        .where(eq(incidentsTable.id, incidentId))
+        .limit(1)
+      
+      if (incident) {
+        currentIncident = {
+          id: incident.id,
+          title: incident.title,
+          description: incident.description,
+          reportedAt: incident.reportedAt
+        }
+      }
+    } catch (error) {
+      console.error(`[State Machine] Error fetching current incident:`, error)
+    }
+  }
 
+  // Get all open incidents for this phone number
+  const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+  const openIncidents = incidentsResult.isSuccess && incidentsResult.data 
+    ? incidentsResult.data.map(inc => ({
+        id: inc.id,
+        title: inc.title,
+        description: inc.description,
+        reportedAt: inc.reportedAt
+      }))
+    : []
+
+  // Use AI to classify if this is a new incident or follow-up
+  const classificationResult = await classifyMessageIntent(messageText, openIncidents)
+  
+  if (classificationResult.isSuccess && classificationResult.data) {
+    const classification = classificationResult.data
+    
+    // If AI suggests it's a new incident (even with active incident), ask for confirmation
+    if (classification.suggestedAction === "create_new" || 
+        (classification.intent === "new_incident" && classification.confidence >= 0.6)) {
+      // Store message and transition to confirmation
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_new_incident_confirmation",
+        context: {
+          pendingMessageForNewIncident: messageText,
+          lastMessageAt: new Date().toISOString()
+        } as ConversationContext
+      })
+
+      const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : "your incident"
+      return {
+        message:
+          `This looks like a new incident, but you're currently messaging about ${referenceNumber}. ` +
+          `Are you logging a new incident? Reply 'yes' for new, 'no' to attach to existing, or 'help' for options.`,
+        incidentCreated: false,
+        incidentId
+      }
+    }
+    
+    // If AI suggests it's a follow-up with high confidence, still ask for confirmation
+    if (classification.suggestedAction === "attach_to_existing" && classification.confidence >= 0.7) {
+      // Show list of incidents and ask which one
+      if (openIncidents.length > 1) {
+        const incidentsList = openIncidents
+          .map((incident, index) => {
+            const ref = generateReferenceNumber(incident.id)
+            return `${index + 1}. ${ref} - ${incident.title}`
+          })
+          .join("\n")
+
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_incident_selection",
+          context: {
+            pendingMessageForFollowUp: messageText,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+
+        return {
+          message:
+            `Which incident should this be attached to?\n\n${incidentsList}\n\n` +
+            `Reply with the number, or 'new' to create a new incident, or 'cancel' to exit.`,
+          incidentCreated: false,
+          incidentId
+        }
+      } else if (openIncidents.length === 1 && incidentId === openIncidents[0].id) {
+        // Only one open incident and it's the current one - ask for confirmation
+        const referenceNumber = generateReferenceNumber(incidentId)
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_follow_up_confirmation",
+          context: {
+            pendingMessageForFollowUp: messageText,
+            lastMessageAt: new Date().toISOString()
+          } as ConversationContext
+        })
+
+        return {
+          message:
+            `Add this message to ${referenceNumber}? Reply 'yes' to confirm, 'no' to create a new incident, or 'help' for options.`,
+          incidentCreated: false,
+          incidentId
+        }
+      }
+    }
+  }
+
+  // Default: Always ask for confirmation if unclear
   const referenceNumber = incidentId ? generateReferenceNumber(incidentId) : "your incident"
+  
+  if (openIncidents.length > 1) {
+    const incidentsList = openIncidents
+      .map((incident, index) => {
+        const ref = generateReferenceNumber(incident.id)
+        return `${index + 1}. ${ref} - ${incident.title}`
+      })
+      .join("\n")
 
-  return {
-    message:
-      `Message added to ${referenceNumber}. ` +
-      `Our team will review it shortly. ` +
-      `Type "close" when the issue is resolved, or "new issue" to report something else.`,
-    incidentCreated: false,
-    incidentId
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_incident_selection",
+      context: {
+        pendingMessageForFollowUp: messageText,
+        lastMessageAt: new Date().toISOString()
+      } as ConversationContext
+    })
+
+    return {
+      message:
+        `Which incident should this be attached to?\n\n${incidentsList}\n\n` +
+        `Reply with the number, or 'new' to create a new incident, or 'cancel' to exit.`,
+      incidentCreated: false,
+      incidentId
+    }
+  } else {
+    // Ask for confirmation
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_follow_up_confirmation",
+      context: {
+        pendingMessageForFollowUp: messageText,
+        lastMessageAt: new Date().toISOString()
+      } as ConversationContext
+    })
+
+    return {
+      message:
+        `Add this message to ${referenceNumber}? Reply 'yes' to confirm, 'no' to create a new incident, or 'help' for options.`,
+      incidentCreated: false,
+      incidentId
+    }
   }
 }
 
@@ -823,6 +1323,15 @@ async function handleAwaitingClosureState(
   context: ConversationContext,
   incidentId?: string
 ): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    return {
+      message: getHelpMessage("awaiting_closure_confirmation", false),
+      incidentCreated: false,
+      incidentId
+    }
+  }
+
   if (isAffirmative(messageText)) {
     // Close the incident
     // TODO: Update incident status to closed
@@ -861,6 +1370,445 @@ async function handleAwaitingClosureState(
       'Please reply "yes" to close the incident or "no" to keep it open.',
     incidentCreated: false,
     incidentId
+  }
+}
+
+/**
+ * Handle messages in the awaiting_incident_selection state.
+ * Shows list of open incidents and handles user selection.
+ */
+async function handleAwaitingIncidentSelectionState(
+  phoneNumber: string,
+  messageText: string,
+  context: ConversationContext
+): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+    const hasOpenIncidents =
+      incidentsResult.isSuccess &&
+      incidentsResult.data &&
+      incidentsResult.data.length > 0
+    return {
+      message: getHelpMessage("awaiting_incident_selection", hasOpenIncidents),
+      incidentCreated: false
+    }
+  }
+
+  const lowerText = messageText.toLowerCase().trim()
+
+  // Check for cancellation
+  if (isNegative(messageText) || lowerText === "cancel") {
+    await resetConversationStateAction(phoneNumber)
+    return {
+      message:
+        "Selection cancelled. You can start a new incident report anytime by describing your issue.",
+      incidentCreated: false
+    }
+  }
+
+  // Check if user wants to create new incident
+  if (lowerText === "new" || lowerText === "create new" || lowerText.includes("new incident")) {
+    // Reset state and start new incident flow
+    await resetConversationStateAction(phoneNumber)
+    
+    // Try to identify tenant by phone number
+    const tenantResult = await getTenantByPhoneAction(phoneNumber)
+    
+    if (tenantResult.isSuccess && tenantResult.data) {
+      // Tenant identified - go to description
+      const tenant = tenantResult.data
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_description",
+        context: {
+          tenantId: tenant.id,
+          propertyId: tenant.propertyId,
+          propertyName: tenant.propertyName,
+          tenantName: tenant.name
+        }
+      })
+      
+      return {
+        message:
+          `Starting new incident report for ${tenant.propertyName || "your property"}. ` +
+          `Please describe the issue in detail.`,
+        incidentCreated: false
+      }
+    } else {
+      // No tenant - go to property code
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_property",
+        context: {}
+      })
+      
+      return {
+        message:
+          "Starting new incident report. Please enter your property code (e.g., PROP-ABC123).",
+        incidentCreated: false
+      }
+    }
+  }
+
+  // Try to parse as number (incident selection)
+  const selectedNumber = parseInt(lowerText, 10)
+  
+  if (!isNaN(selectedNumber) && selectedNumber > 0) {
+    // Get open incidents
+    const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+    
+    if (!incidentsResult.isSuccess || !incidentsResult.data || incidentsResult.data.length === 0) {
+      return {
+        message:
+          "No open incidents found. Type 'new' to create a new incident or 'cancel' to exit.",
+        incidentCreated: false
+      }
+    }
+
+    const incidents = incidentsResult.data
+    
+    if (selectedNumber > incidents.length) {
+      return {
+        message:
+          `Invalid selection. Please choose a number between 1 and ${incidents.length}, ` +
+          `type 'new' to create a new incident, or 'cancel' to exit.`,
+        incidentCreated: false
+      }
+    }
+
+    // Get selected incident
+    const selectedIncident = incidents[selectedNumber - 1]
+    const referenceNumber = generateReferenceNumber(selectedIncident.id)
+    
+    // If there's a pending message, add it to the incident
+    const pendingMessage = context.pendingMessageForFollowUp
+    if (pendingMessage) {
+      // Update incident's updatedAt to include this message in the time window
+      await db
+        .update(incidentsTable)
+        .set({ updatedAt: new Date() })
+        .where(eq(incidentsTable.id, selectedIncident.id))
+    }
+
+    // Update state to incident_active with selected incident
+    await updateConversationStateAction(phoneNumber, {
+      state: "incident_active",
+      incidentId: selectedIncident.id,
+      context: {
+        ...context,
+        propertyId: selectedIncident.propertyId,
+        tenantId: selectedIncident.tenantId || undefined,
+        pendingMessageForFollowUp: undefined // Clear pending message
+      }
+    })
+
+    if (pendingMessage) {
+      return {
+        message:
+          `Message added to ${referenceNumber}. Our team will review it shortly. ` +
+          `You can now add updates, photos, or ask questions about this incident. ` +
+          `Type "close" when the issue is resolved.`,
+        incidentCreated: false,
+        incidentId: selectedIncident.id,
+        referenceNumber
+      }
+    }
+
+    return {
+      message:
+        `You've selected ${referenceNumber}: ${selectedIncident.title}\n\n` +
+        `You can now add updates, photos, or ask questions about this incident. ` +
+        `Type "close" when the issue is resolved.`,
+      incidentCreated: false,
+      incidentId: selectedIncident.id,
+      referenceNumber
+    }
+  }
+
+  // If we reach here, user input is invalid
+  // Get open incidents to show list again
+  const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+  
+  if (!incidentsResult.isSuccess || !incidentsResult.data || incidentsResult.data.length === 0) {
+    return {
+      message:
+        "No open incidents found. Type 'new' to create a new incident or 'cancel' to exit.",
+      incidentCreated: false
+    }
+  }
+
+  const incidents = incidentsResult.data
+  const incidentsList = incidents
+    .map((incident, index) => {
+      const ref = generateReferenceNumber(incident.id)
+      return `${index + 1}. ${ref} - ${incident.title} (${incident.status})`
+    })
+    .join("\n")
+
+  return {
+    message:
+      `Please select an incident by number, or type 'new' to create a new one:\n\n${incidentsList}\n\n` +
+      `Reply with the number (1-${incidents.length}), 'new', or 'cancel'.`,
+    incidentCreated: false
+  }
+}
+
+/**
+ * Handle messages in the awaiting_new_incident_confirmation state.
+ * Handles yes/no responses for creating a new incident.
+ */
+async function handleAwaitingNewIncidentConfirmationState(
+  phoneNumber: string,
+  messageText: string,
+  context: ConversationContext
+): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    return {
+      message: getHelpMessage("awaiting_new_incident_confirmation", false),
+      incidentCreated: false
+    }
+  }
+
+  const lowerText = messageText.toLowerCase().trim()
+
+  if (isAffirmative(messageText)) {
+    // User wants to create new incident - parse stored message
+    const storedMessage = context.pendingMessageForNewIncident || messageText
+    
+    // Try to identify tenant by phone number
+    const tenantResult = await getTenantByPhoneAction(phoneNumber)
+    
+    if (tenantResult.isSuccess && tenantResult.data) {
+      // Tenant identified - parse message and create incident
+      const tenant = tenantResult.data
+      const parsed = await parseIncidentFromWhatsApp(storedMessage)
+      
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_description",
+        context: {
+          tenantId: tenant.id,
+          propertyId: tenant.propertyId,
+          propertyName: tenant.propertyName,
+          tenantName: tenant.name,
+          partialDescription: parsed.description || storedMessage
+        }
+      })
+      
+      // If we have enough description, create incident directly
+      if (parsed.description && parsed.description.length >= 10) {
+        return await createIncidentFromState(phoneNumber, {
+          tenantId: tenant.id,
+          propertyId: tenant.propertyId,
+          propertyName: tenant.propertyName,
+          tenantName: tenant.name,
+          partialDescription: parsed.description
+        })
+      }
+      
+      return {
+        message:
+          `Hi ${tenant.name}! Creating new incident for ${tenant.propertyName || "your property"}. ` +
+          `Please describe the issue in detail.`,
+        incidentCreated: false
+      }
+    }
+    
+    // No tenant identified - check for property code
+    const propertyCode = extractPropertyCode(storedMessage)
+    
+    if (propertyCode) {
+      const propertyResult = await validatePropertyCodeAction(propertyCode)
+      
+      if (propertyResult.isSuccess && propertyResult.data) {
+        const property = propertyResult.data
+        const parsed = await parseIncidentFromWhatsApp(storedMessage)
+        
+        await updateConversationStateAction(phoneNumber, {
+          state: "awaiting_description",
+          context: {
+            propertyId: property.propertyId,
+            propertyName: property.propertyName,
+            partialDescription: parsed.description || storedMessage
+          }
+        })
+        
+        if (parsed.description && parsed.description.length >= 10) {
+          return await createIncidentFromState(phoneNumber, {
+            propertyId: property.propertyId,
+            propertyName: property.propertyName,
+            partialDescription: parsed.description
+          })
+        }
+        
+        return {
+          message:
+            `Property ${property.propertyName} confirmed. ` +
+            `Please describe your issue in detail.`,
+          incidentCreated: false
+        }
+      }
+    }
+    
+    // No tenant or property code - start property code flow
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_property",
+      context: {
+        partialDescription: storedMessage
+      }
+    })
+    
+    return {
+      message:
+        "Please enter your property code (e.g., PROP-ABC123) to create the incident.",
+      incidentCreated: false
+    }
+  }
+  
+  if (isNegative(messageText)) {
+    // User doesn't want new incident - transition to follow-up confirmation
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_follow_up_confirmation",
+      context: {
+        ...context,
+        pendingMessageForFollowUp: context.pendingMessageForNewIncident || messageText
+      } as ConversationContext
+    })
+    
+    return {
+      message:
+        "Are you attaching this to an existing incident? Reply 'yes' to see your open incidents, or 'no' to cancel.",
+      incidentCreated: false
+    }
+  }
+  
+  // Invalid input - show question again
+  return {
+    message:
+      "Are you logging a new incident? Reply 'yes' for new, 'no' to attach to existing, or 'help' for options.",
+    incidentCreated: false
+  }
+}
+
+/**
+ * Handle messages in the awaiting_follow_up_confirmation state.
+ * Handles yes/no responses for attaching to existing incidents.
+ */
+async function handleAwaitingFollowUpConfirmationState(
+  phoneNumber: string,
+  messageText: string,
+  context: ConversationContext
+): Promise<ConversationResponse> {
+  // Check for help request
+  if (isHelpRequest(messageText)) {
+    return {
+      message: getHelpMessage("awaiting_follow_up_confirmation", false),
+      incidentCreated: false
+    }
+  }
+
+  const lowerText = messageText.toLowerCase().trim()
+
+  if (isAffirmative(messageText)) {
+    // User confirmed - need to determine which incident to attach to
+    const incidentsResult = await getOpenIncidentsByPhoneAction(phoneNumber)
+    
+    if (incidentsResult.isSuccess && incidentsResult.data && incidentsResult.data.length > 0) {
+      const incidents = incidentsResult.data
+      
+      // If there's only one incident, attach to it directly
+      if (incidents.length === 1) {
+        const incident = incidents[0]
+        const storedMessage = context.pendingMessageForFollowUp || messageText
+        
+        // Update incident's updatedAt to include this message in the time window
+        await db
+          .update(incidentsTable)
+          .set({ updatedAt: new Date() })
+          .where(eq(incidentsTable.id, incident.id))
+        
+        // Transition to incident_active state
+        await updateConversationStateAction(phoneNumber, {
+          state: "incident_active",
+          incidentId: incident.id,
+          context: {
+            propertyId: incident.propertyId,
+            tenantId: incident.tenantId || undefined,
+            pendingMessageForFollowUp: undefined
+          }
+        })
+        
+        const referenceNumber = generateReferenceNumber(incident.id)
+        return {
+          message:
+            `Message added to ${referenceNumber}. Our team will review it shortly. ` +
+            `Type "close" when the issue is resolved, or "new issue" to report something else.`,
+          incidentCreated: false,
+          incidentId: incident.id
+        }
+      }
+      
+      // Multiple incidents - show list for selection
+      const incidentsList = incidents
+        .map((incident, index) => {
+          const ref = generateReferenceNumber(incident.id)
+          return `${index + 1}. ${ref} - ${incident.title} (${incident.status})`
+        })
+        .join("\n")
+
+      // Transition to selection state
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_incident_selection",
+        context: {
+          ...context,
+          pendingMessageForFollowUp: context.pendingMessageForFollowUp || messageText
+        } as ConversationContext
+      })
+
+      return {
+        message:
+          `Which incident should this be attached to? Reply with the number, or 'new' to create new, or 'cancel'.\n\n${incidentsList}`,
+        incidentCreated: false
+      }
+    } else {
+      // No open incidents - ask if they want to create new
+      await updateConversationStateAction(phoneNumber, {
+        state: "awaiting_new_incident_confirmation",
+        context: {
+          ...context,
+          pendingMessageForNewIncident: context.pendingMessageForFollowUp || messageText
+        } as ConversationContext
+      })
+      
+      return {
+        message:
+          "You don't have open incidents. Should I create a new one? (yes/no)",
+        incidentCreated: false
+      }
+    }
+  }
+  
+  if (isNegative(messageText)) {
+    // User doesn't want to attach - offer to create new
+    await updateConversationStateAction(phoneNumber, {
+      state: "awaiting_new_incident_confirmation",
+      context: {
+        ...context,
+        pendingMessageForNewIncident: context.pendingMessageForFollowUp || messageText
+      } as ConversationContext
+    })
+    
+    return {
+      message:
+        "Should I create a new incident? Reply 'yes' for new, or 'cancel' to exit.",
+      incidentCreated: false
+    }
+  }
+  
+  // Invalid input
+  return {
+    message:
+      "Are you attaching this to an existing incident? Reply 'yes' to see your open incidents, or 'no' to cancel.",
+    incidentCreated: false
   }
 }
 
@@ -911,6 +1859,11 @@ async function createIncidentFromState(
   }
 
   try {
+    console.log(`[State Machine] Creating incident with ${attachments?.length || 0} attachment(s)`)
+    if (attachments && attachments.length > 0) {
+      console.log(`[State Machine] Attachment URLs:`, attachments.map(att => att.url))
+    }
+    
     // Create the incident using the server action
     const result = await createIncidentFromConversationAction({
       propertyId: context.propertyId,

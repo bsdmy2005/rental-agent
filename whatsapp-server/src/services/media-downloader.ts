@@ -1,15 +1,17 @@
 import { downloadMediaMessage, WAMessage, WASocket } from "@whiskeysockets/baileys"
 import { createLogger } from "../utils/logger.js"
 import { env } from "../config/env.js"
-import FormData from "form-data"
 
 const logger = createLogger("media-downloader")
 
 /** Response from the Next.js media upload API */
 interface MediaUploadResponse {
+  success: boolean
   url: string
   fileName: string
   fileType: string
+  storagePath: string
+  error?: string
 }
 
 export interface UploadedMedia {
@@ -24,7 +26,7 @@ export interface UploadedMedia {
  * This service handles the complete media transfer flow:
  * 1. Downloads media buffer from WhatsApp using Baileys
  * 2. Determines the appropriate MIME type and filename
- * 3. Uploads the media to the Next.js media API endpoint
+ * 3. Uploads the media to the Next.js media API endpoint as base64 JSON
  *
  * @param socket - The Baileys WASocket instance (currently unused but may be needed for future enhancements)
  * @param message - The WhatsApp message containing media
@@ -49,7 +51,10 @@ export async function downloadAndUploadMedia(
       return null
     }
 
-    logger.debug({ messageId, bufferSize: buffer.length }, "Media buffer downloaded")
+    // Ensure buffer is a Buffer instance
+    const mediaBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+
+    logger.debug({ messageId, bufferSize: mediaBuffer.length }, "Media buffer downloaded")
 
     // Determine file type and name based on message type
     const msg = message.message
@@ -75,26 +80,36 @@ export async function downloadAndUploadMedia(
 
     logger.debug({ messageId, mimeType, fileName }, "Media metadata determined")
 
-    // Upload to Next.js API
+    // Convert buffer to base64
+    const base64Data = mediaBuffer.toString("base64")
+
+    logger.debug(
+      { messageId, base64Length: base64Data.length, uploadUrl: `${env.nextjsAppUrl}/api/whatsapp/media` },
+      "Uploading media to Next.js as JSON"
+    )
+
+    // Upload to Next.js API as JSON with base64 data
     const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000"
-    const formData = new FormData()
-    formData.append("file", buffer, {
-      filename: fileName,
-      contentType: mimeType
+    const requestBody = JSON.stringify({
+      fileData: base64Data,
+      fileName,
+      mimeType,
+      sessionId,
+      messageId
     })
-    formData.append("sessionId", sessionId)
-    formData.append("messageId", messageId)
-
-    logger.debug({ messageId, uploadUrl: `${nextjsUrl}/api/whatsapp/media` }, "Uploading media to Next.js")
-
+    
+    logger.debug(
+      { messageId, bodyLength: requestBody.length, headers: { "Content-Type": "application/json", "x-api-key": "***" } },
+      "Sending media upload request"
+    )
+    
     const response = await fetch(`${nextjsUrl}/api/whatsapp/media`, {
       method: "POST",
       headers: {
-        "x-api-key": env.apiKey,
-        ...formData.getHeaders()
+        "Content-Type": "application/json; charset=utf-8",
+        "x-api-key": env.apiKey
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      body: formData as any
+      body: requestBody
     })
 
     if (!response.ok) {
@@ -107,6 +122,11 @@ export async function downloadAndUploadMedia(
     }
 
     const result = (await response.json()) as MediaUploadResponse
+
+    if (!result.success) {
+      logger.error({ messageId, error: result.error }, "Media upload failed")
+      return null
+    }
 
     logger.info({ messageId, url: result.url, fileName: result.fileName }, "Media uploaded successfully")
 

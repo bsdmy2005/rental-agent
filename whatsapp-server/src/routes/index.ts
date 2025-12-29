@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express"
 import sessionsRouter from "./sessions.js"
 import messagesRouter from "./messages.js"
-import aiRouter from "./ai.js"
 
 const router = Router()
 
@@ -20,7 +19,6 @@ router.use("/sessions", sessionsRouter)
 // Message routes (mounted under sessions for consistency)
 router.use("/sessions", messagesRouter)
 
-// AI routes (mounted under sessions for consistency)
-router.use("/sessions", aiRouter)
+// Note: AI routes removed - AI functionality is only available in the explorer server
 
 export default router

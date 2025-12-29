@@ -11,7 +11,18 @@
       "Bash(npm install)",
       "Bash(npx tsc:*)",
       "Bash(npm install:*)",
-      "Skill(superpowers:brainstorming)"
+      "Skill(superpowers:brainstorming)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(schema\\): add conversation state and author type enums\n\nAdd whatsappConversationStateEnum for tracking WhatsApp conversation\nflow states \\(idle, awaiting_email, awaiting_otp, awaiting_property,\nawaiting_description, awaiting_photos, incident_active, and\nawaiting_closure_confirmation\\).\n\nAdd incidentAuthorTypeEnum for tracking who made comments on incidents\n\\(tenant, agent, landlord, system\\).\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm run types:*)",
+      "Bash(git commit:*)",
+      "Bash(npx drizzle-kit generate)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI status --porcelain)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI log --oneline -5)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI add app/api/whatsapp/conversation/route.ts)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI commit -m \"$\\(cat <<''EOF''\nfeat\\(api\\): add conversation processing endpoint\n\nAdd API route for processing WhatsApp messages through the conversation\nstate machine. This endpoint is called by the Baileys server for all\nincoming messages and handles tenant identification, verification, and\nincident creation flows.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx eslint:*)",
+      "Bash(npm run lint:*)"
     ]
   },
   "enabledPlugins": {

@@ -1,5 +1,6 @@
 "use server"
 
+import { ServerClient } from "postmark"
 import { ActionState } from "@/types"
 import {
   generateOtp,
@@ -14,8 +15,18 @@ import {
 import { getTenantByEmailAction, updateTenantPhoneAction } from "./tenants-actions"
 
 /**
- * Send an email using the configured email provider.
- * Currently logs to console for development; replace with your email provider.
+ * Get Postmark client instance
+ */
+function getPostmarkClient(): ServerClient {
+  const apiKey = process.env.POSTMARK_API_KEY || process.env.POSTMARK_SERVER_API_TOKEN
+  if (!apiKey) {
+    throw new Error("POSTMARK_API_KEY or POSTMARK_SERVER_API_TOKEN not found in environment")
+  }
+  return new ServerClient(apiKey)
+}
+
+/**
+ * Send an email using Postmark.
  *
  * @param to - Recipient email address
  * @param subject - Email subject line
@@ -30,19 +41,19 @@ async function sendEmail(
   html: string
 ): Promise<boolean> {
   try {
-    // TODO: Replace with your email provider
-    // Example with Postmark:
-    // const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY!)
-    // await client.sendEmail({
-    //   From: process.env.EMAIL_FROM!,
-    //   To: to,
-    //   Subject: subject,
-    //   TextBody: text,
-    //   HtmlBody: html
-    // })
+    const fromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@yourdomain.com"
+    const postmarkClient = getPostmarkClient()
 
-    console.log(`[OTP Email] Would send to ${to}: ${subject}`)
-    console.log(`[OTP Email] Code in text: ${text}`)
+    await postmarkClient.sendEmail({
+      From: fromEmail,
+      To: to,
+      Subject: subject,
+      TextBody: text,
+      HtmlBody: html,
+      TrackOpens: true
+    })
+
+    console.log(`[OTP Email] Sent to ${to}: ${subject}`)
     return true
   } catch (error) {
     console.error("Error sending OTP email:", error)

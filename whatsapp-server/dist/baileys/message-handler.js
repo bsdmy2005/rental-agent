@@ -1,14 +1,12 @@
 import { createLogger } from "../utils/logger.js";
-import { AiResponder } from "../services/ai-responder.js";
 import { env } from "../config/env.js";
 import { normalizePhoneNumber } from "../utils/phone-number.js";
+import { downloadAndUploadMedia } from "../services/media-downloader.js";
 const logger = createLogger("message-handler");
 export class MessageHandler {
     pool;
-    aiResponder;
     constructor(pool) {
         this.pool = pool;
-        this.aiResponder = new AiResponder();
     }
     async sendTextMessage(sessionId, socket, recipient, content, retryAttempts = env.messageRetryAttempts, retryDelayMs = env.messageRetryDelayMs) {
         const startTime = Date.now();
@@ -280,89 +278,72 @@ export class MessageHandler {
                 }, "FAILED to store message in database");
                 throw storeError; // Re-throw to mark as failed
             }
-            // Check if AI auto-response is enabled
-            logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Checking AI auto-response configuration");
-            const aiConfig = await this.getAiConfig(sessionId);
+            // Handle media attachments (images, videos, etc.)
+            let mediaUrls = [];
+            const hasMedia = messageType !== "text" && messageType !== "conversation";
             logger.debug({
                 sessionId,
                 messageId,
                 remoteJid,
-                aiEnabled: aiConfig?.enabled,
-                hasAiConfig: !!aiConfig,
-                hasContent: !!content
-            }, "AI configuration check completed");
-            if (aiConfig?.enabled && content) {
-                logger.info({
-                    sessionId,
-                    messageId,
-                    remoteJid,
-                    aiEnabled: true,
-                    contentLength: content.length
-                }, "AI auto-response enabled - generating response");
+                messageType,
+                hasMedia,
+                willProcessMedia: hasMedia
+            }, "Step 3a: Checking for media attachments");
+            if (hasMedia) {
+                logger.info({ sessionId, messageId, remoteJid, messageType }, "Step 3a: Processing media attachment");
                 try {
-                    const aiStartTime = Date.now();
-                    // API key is read from .env file, not from config
-                    const aiResponse = await this.aiResponder.generateResponse(content, aiConfig.systemPrompt, aiConfig.model);
-                    const aiDuration = Date.now() - aiStartTime;
-                    if (aiResponse) {
+                    const uploadedMedia = await downloadAndUploadMedia(socket, msg, sessionId);
+                    if (uploadedMedia) {
+                        mediaUrls = [{
+                                url: uploadedMedia.url,
+                                type: uploadedMedia.type,
+                                fileName: uploadedMedia.fileName
+                            }];
                         logger.info({
                             sessionId,
                             messageId,
                             remoteJid,
-                            aiResponseLength: aiResponse.length,
-                            aiDuration,
-                            aiResponsePreview: aiResponse.length > 100 ? aiResponse.substring(0, 100) + "..." : aiResponse
-                        }, "AI response generated successfully - sending response");
-                        try {
-                            await this.sendTextMessage(sessionId, socket, remoteJid, aiResponse);
-                            logger.info({
-                                sessionId,
-                                messageId,
-                                remoteJid,
-                                aiResponseSent: true
-                            }, "AI response sent successfully");
-                        }
-                        catch (sendError) {
-                            logger.error({
-                                error: sendError,
-                                sessionId,
-                                messageId,
-                                remoteJid,
-                                errorMessage: sendError instanceof Error ? sendError.message : String(sendError),
-                                errorStack: sendError instanceof Error ? sendError.stack : undefined
-                            }, "FAILED to send AI response");
-                            // Don't throw - message was still processed successfully
-                        }
+                            mediaUrl: uploadedMedia.url,
+                            fileName: uploadedMedia.fileName,
+                            fileType: uploadedMedia.type
+                        }, "Media downloaded and uploaded successfully");
                     }
                     else {
                         logger.warn({
                             sessionId,
                             messageId,
                             remoteJid,
-                            aiResponseGenerated: false
-                        }, "AI response generation returned null/empty - no response sent");
+                            messageType
+                        }, "Media download/upload returned null");
                     }
                 }
-                catch (error) {
+                catch (mediaError) {
                     logger.error({
-                        error,
+                        error: mediaError,
                         sessionId,
                         messageId,
                         remoteJid,
-                        errorMessage: error instanceof Error ? error.message : String(error),
-                        errorStack: error instanceof Error ? error.stack : undefined
-                    }, "FAILED to generate AI response");
-                    // Don't throw - message was still received and stored successfully
+                        messageType,
+                        errorMessage: mediaError instanceof Error ? mediaError.message : String(mediaError)
+                    }, "Failed to process media attachment");
+                    // Continue processing even if media fails
                 }
             }
-            else {
-                logger.debug({
-                    sessionId,
-                    messageId,
-                    remoteJid,
-                    reason: !aiConfig?.enabled ? "AI disabled" : !content ? "No content" : "Unknown"
-                }, "AI auto-response skipped");
+            // Process through conversation state machine (replaces incident-only handling)
+            logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Processing through conversation state machine");
+            const conversationHandled = await this.processConversation(sessionId, remoteJid, content || "", socket, hasMedia, mediaUrls);
+            if (conversationHandled) {
+                logger.info({ sessionId, messageId, remoteJid }, "Message handled by conversation system");
+                return;
             }
+            // Incident-dispatch server: No AI auto-response functionality
+            // Messages are only processed through conversation state machine for incident logging
+            logger.debug({
+                sessionId,
+                messageId,
+                remoteJid,
+                reason: "Conversation handler did not process message, and AI auto-response is not available on incident-dispatch server"
+            }, "Message processing completed - no further action needed");
             const processingDuration = Date.now() - startTime;
             logger.info({
                 sessionId,
@@ -515,16 +496,190 @@ export class MessageHandler {
        LIMIT $2 OFFSET $3`, [sessionId, limit, offset]);
         return result.rows;
     }
-    async getAiConfig(sessionId) {
-        // AI config is stored in a simple in-memory map for now
-        // In production, this would be in the database
-        return this.aiResponder.getConfig(sessionId);
+    /**
+     * Process message through conversation state machine
+     * Replaces the old incident-only detection with a full conversation flow
+     * that handles greetings, property identification, incident details, and confirmations
+     */
+    async processConversation(sessionId, remoteJid, content, socket, hasMedia = false, mediaUrls = []) {
+        try {
+            // Extract phone number from remoteJid (format: 27...@s.whatsapp.net)
+            // Ensure consistent format for decryption
+            let phoneNumber = remoteJid.split("@")[0];
+            // Normalize phone number to ensure consistent format (27... without +)
+            // This is critical for decryption and database lookups
+            try {
+                phoneNumber = normalizePhoneNumber(phoneNumber, env.phoneCountryCode);
+            }
+            catch (error) {
+                logger.error({
+                    error,
+                    sessionId,
+                    remoteJid,
+                    originalPhoneNumber: phoneNumber,
+                    errorMessage: error instanceof Error ? error.message : String(error)
+                }, "Failed to normalize phone number from remoteJid");
+                // Continue with original phone number if normalization fails
+            }
+            const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000";
+            const apiKey = env.apiKey;
+            logger.info({
+                sessionId,
+                remoteJid,
+                phoneNumber,
+                normalizedPhoneNumber: phoneNumber,
+                contentLength: content.length,
+                hasMedia,
+                mediaCount: mediaUrls.length
+            }, "Processing message through conversation state machine");
+            const response = await fetch(`${nextjsUrl}/api/whatsapp/conversation`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": apiKey
+                },
+                body: JSON.stringify({
+                    phoneNumber,
+                    messageText: content,
+                    sessionId,
+                    hasMedia,
+                    mediaUrls
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => "Unknown error");
+                logger.error({
+                    sessionId,
+                    remoteJid,
+                    phoneNumber,
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorText
+                }, "Failed to call conversation API");
+                return false;
+            }
+            const result = await response.json();
+            if (result.success && result.responseMessage) {
+                // Ensure remoteJid is in correct format for sending response
+                // Format: 27...@s.whatsapp.net
+                const responseJid = remoteJid.includes("@")
+                    ? remoteJid
+                    : `${phoneNumber}@s.whatsapp.net`;
+                await this.sendTextMessage(sessionId, socket, responseJid, result.responseMessage);
+                logger.info({
+                    sessionId,
+                    remoteJid,
+                    phoneNumber,
+                    responseJid,
+                    incidentCreated: result.incidentCreated,
+                    incidentId: result.incidentId
+                }, "Conversation response sent");
+                return true;
+            }
+            logger.debug({
+                sessionId,
+                remoteJid,
+                phoneNumber,
+                resultSuccess: result.success,
+                hasResponseMessage: !!result.responseMessage
+            }, "Conversation API returned but no response message to send");
+            return false;
+        }
+        catch (error) {
+            logger.error({
+                error,
+                sessionId,
+                remoteJid,
+                phoneNumber: remoteJid.split("@")[0],
+                errorMessage: error instanceof Error ? error.message : String(error),
+                errorStack: error instanceof Error ? error.stack : undefined
+            }, "Error processing conversation");
+            return false;
+        }
     }
-    async updateAiConfig(sessionId, config) {
-        this.aiResponder.setConfig(sessionId, config);
-    }
-    getAiResponder() {
-        return this.aiResponder;
+    /**
+     * Handle incident if message appears to be an incident report
+     * @deprecated Use processConversation instead - kept for backwards compatibility
+     * Returns true if incident was handled, false otherwise
+     */
+    async handleIncidentIfApplicable(sessionId, remoteJid, content, socket) {
+        if (!content) {
+            return false;
+        }
+        try {
+            // Extract phone number from remoteJid (format: 27788307321@s.whatsapp.net)
+            const phoneNumber = remoteJid.split("@")[0];
+            // Check if message looks like an incident report
+            // Simple check: contains property code or incident keywords
+            const hasPropertyCode = /\bPROP-[A-Z0-9]{6}\b/i.test(content);
+            const hasIncidentKeywords = /broken|leak|leaking|damage|issue|problem|repair|fix|maintenance|urgent|emergency/i.test(content);
+            if (!hasPropertyCode && !hasIncidentKeywords) {
+                return false;
+            }
+            logger.info({
+                sessionId,
+                remoteJid,
+                phoneNumber,
+                hasPropertyCode,
+                hasIncidentKeywords,
+                contentLength: content.length
+            }, "Potential incident report detected - forwarding to Next.js API");
+            // Call Next.js API to handle incident
+            const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000";
+            const apiKey = env.apiKey;
+            const response = await fetch(`${nextjsUrl}/api/whatsapp/incidents`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": apiKey
+                },
+                body: JSON.stringify({
+                    messageText: content,
+                    fromPhoneNumber: phoneNumber,
+                    sessionId
+                })
+            });
+            if (!response.ok) {
+                logger.error({
+                    sessionId,
+                    remoteJid,
+                    status: response.status,
+                    statusText: response.statusText
+                }, "Failed to call incident API");
+                return false;
+            }
+            const result = await response.json();
+            if (result.success && result.shouldRespond && result.confirmationMessage) {
+                // Send confirmation message
+                await this.sendTextMessage(sessionId, socket, remoteJid, result.confirmationMessage);
+                logger.info({
+                    sessionId,
+                    remoteJid,
+                    incidentId: result.incidentId
+                }, "Incident created and confirmation sent");
+                return true;
+            }
+            else if (result.shouldRespond && result.responseMessage) {
+                // Send error/help message
+                await this.sendTextMessage(sessionId, socket, remoteJid, result.responseMessage);
+                logger.info({
+                    sessionId,
+                    remoteJid,
+                    error: result.error
+                }, "Incident handling failed, sent error message");
+                return true;
+            }
+            return false;
+        }
+        catch (error) {
+            logger.error({
+                error,
+                sessionId,
+                remoteJid,
+                errorMessage: error instanceof Error ? error.message : String(error)
+            }, "Error handling incident");
+            return false;
+        }
     }
 }
 //# sourceMappingURL=message-handler.js.map
