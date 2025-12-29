@@ -28,6 +28,10 @@ import {
   getOpenIncidentsByPhoneAction,
   closeIncidentFromWhatsAppAction
 } from "@/actions/whatsapp-incident-actions"
+import {
+  linkMessageToIncidentAction,
+  getMessageDbIdAction
+} from "@/actions/whatsapp-messages-actions"
 import { validatePropertyCodeAction } from "@/actions/property-codes-actions"
 import {
   isIncidentMessage,
