@@ -78,6 +78,37 @@ export class ConnectionManager {
     }
   }
 
+  /**
+   * Get status of all active sessions (for health check)
+   */
+  getAllSessionsStatus(): Array<{
+    sessionId: string
+    connectionStatus: ConnectionStatus
+    phoneNumber: string | null
+    lastConnectedAt: Date | null
+    socketAlive: boolean
+  }> {
+    const results: Array<{
+      sessionId: string
+      connectionStatus: ConnectionStatus
+      phoneNumber: string | null
+      lastConnectedAt: Date | null
+      socketAlive: boolean
+    }> = []
+
+    for (const [sessionId, session] of this.sessions) {
+      results.push({
+        sessionId,
+        connectionStatus: session.connectionStatus,
+        phoneNumber: session.phoneNumber,
+        lastConnectedAt: null, // Will be populated from DB in health route
+        socketAlive: session.socket !== null && session.connectionStatus === "connected"
+      })
+    }
+
+    return results
+  }
+
   async connect(sessionId: string): Promise<void> {
     logger.info({ sessionId }, "Starting connection")
 
