@@ -372,26 +372,19 @@ export class MessageHandler {
         throw storeError // Re-throw to mark as failed
       }
 
-      // Check if this is an incident report (before AI response)
-      logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Checking if message is an incident report")
-      const incidentHandled = await this.handleIncidentIfApplicable(
+      // Process through conversation state machine (replaces incident-only handling)
+      logger.debug({ sessionId, messageId, remoteJid }, "Step 3: Processing through conversation state machine")
+      const conversationHandled = await this.processConversation(
         sessionId,
         remoteJid,
-        content,
-        socket
+        content || "",
+        socket,
+        messageType !== "text", // hasMedia
+        [] // mediaUrls - will be populated when media handling is implemented
       )
 
-      // If incident was handled, skip AI response (incident handler sends its own response)
-      if (incidentHandled) {
-        logger.info(
-          {
-            sessionId,
-            messageId,
-            remoteJid,
-            incidentHandled: true
-          },
-          "Incident handled - skipping AI response"
-        )
+      if (conversationHandled) {
+        logger.info({ sessionId, messageId, remoteJid }, "Message handled by conversation system")
         return
       }
 
@@ -690,7 +683,82 @@ export class MessageHandler {
   }
 
   /**
+   * Process message through conversation state machine
+   * Replaces the old incident-only detection with a full conversation flow
+   * that handles greetings, property identification, incident details, and confirmations
+   */
+  private async processConversation(
+    sessionId: string,
+    remoteJid: string,
+    content: string,
+    socket: WASocket,
+    hasMedia: boolean = false,
+    mediaUrls: Array<{ url: string; type: string; fileName: string }> = []
+  ): Promise<boolean> {
+    try {
+      const phoneNumber = remoteJid.split("@")[0]
+      const nextjsUrl = env.nextjsAppUrl || "http://localhost:3000"
+      const apiKey = env.apiKey
+
+      logger.info(
+        {
+          sessionId,
+          remoteJid,
+          phoneNumber,
+          contentLength: content.length,
+          hasMedia,
+          mediaCount: mediaUrls.length
+        },
+        "Processing message through conversation state machine"
+      )
+
+      const response = await fetch(`${nextjsUrl}/api/whatsapp/conversation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey
+        },
+        body: JSON.stringify({
+          phoneNumber,
+          messageText: content,
+          sessionId,
+          hasMedia,
+          mediaUrls
+        })
+      })
+
+      if (!response.ok) {
+        logger.error(
+          { sessionId, remoteJid, status: response.status },
+          "Failed to call conversation API"
+        )
+        return false
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.responseMessage) {
+        await this.sendTextMessage(sessionId, socket, remoteJid, result.responseMessage)
+        logger.info(
+          { sessionId, remoteJid, incidentCreated: result.incidentCreated },
+          "Conversation response sent"
+        )
+        return true
+      }
+
+      return false
+    } catch (error) {
+      logger.error(
+        { error, sessionId, remoteJid },
+        "Error processing conversation"
+      )
+      return false
+    }
+  }
+
+  /**
    * Handle incident if message appears to be an incident report
+   * @deprecated Use processConversation instead - kept for backwards compatibility
    * Returns true if incident was handled, false otherwise
    */
   private async handleIncidentIfApplicable(
@@ -706,7 +774,7 @@ export class MessageHandler {
     try {
       // Extract phone number from remoteJid (format: 27788307321@s.whatsapp.net)
       const phoneNumber = remoteJid.split("@")[0]
-      
+
       // Check if message looks like an incident report
       // Simple check: contains property code or incident keywords
       const hasPropertyCode = /\bPROP-[A-Z0-9]{6}\b/i.test(content)
