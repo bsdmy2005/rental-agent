@@ -142,6 +142,16 @@ class WhatsAppBaileysClient {
   }
 
   /**
+   * Reconnect a session (disconnect and reconnect)
+   * Used to recover from connection issues
+   */
+  async reconnect(sessionId: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/sessions/${sessionId}/reconnect`, {
+      method: "POST"
+    })
+  }
+
+  /**
    * Logout and clear auth state for a session
    */
   async logout(sessionId: string): Promise<{ success: boolean; message: string }> {
