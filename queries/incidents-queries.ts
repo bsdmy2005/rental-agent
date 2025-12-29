@@ -250,16 +250,23 @@ export async function getIncidentTimelineQuery(
   // Track photo URLs to avoid duplicates between messages and attachments
   const photoUrlsFromMessages = new Set<string>()
 
-  // Get WhatsApp messages if sessionId and phoneNumber provided
+  // Get WhatsApp messages - prefer explicitly linked messages, fall back to time-window
   if (sessionId && phoneNumber) {
-    const { getIncidentRelatedMessagesQuery } = await import("@/queries/whatsapp-messages-queries")
-    const messages = await getIncidentRelatedMessagesQuery(
-      incidentId,
-      phoneNumber,
-      sessionId,
-      incident.reportedAt,
-      incident.updatedAt
-    )
+    const { getMessagesForIncidentQuery, getIncidentRelatedMessagesQuery } = await import("@/queries/whatsapp-messages-queries")
+
+    // First try the new explicit linking query
+    let messages = await getMessagesForIncidentQuery(incidentId)
+
+    // Fall back to time-window query for backward compatibility (older messages)
+    if (messages.length === 0) {
+      messages = await getIncidentRelatedMessagesQuery(
+        incidentId,
+        phoneNumber,
+        sessionId,
+        incident.reportedAt,
+        incident.updatedAt
+      )
+    }
 
     for (const message of messages) {
       // Add message to timeline
