@@ -185,4 +185,20 @@ export const whatsappConnectionStatusEnum = pgEnum("whatsapp_connection_status",
   "connected",
   "logged_out"
 ])
+export const whatsappConversationStateEnum = pgEnum("whatsapp_conversation_state", [
+  "idle",
+  "awaiting_email",
+  "awaiting_otp",
+  "awaiting_property",
+  "awaiting_description",
+  "awaiting_photos",
+  "incident_active",
+  "awaiting_closure_confirmation"
+])
+export const incidentAuthorTypeEnum = pgEnum("incident_author_type", [
+  "tenant",
+  "agent",
+  "landlord",
+  "system"
+])
 
