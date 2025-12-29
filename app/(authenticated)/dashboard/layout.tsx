@@ -42,7 +42,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardClientLayout userData={userData} userType={userProfile.userType}>
+    <DashboardClientLayout
+      userData={userData}
+      userType={userProfile.userType}
+      userProfileId={userProfile.id}
+    >
       {children}
     </DashboardClientLayout>
   )

@@ -13,6 +13,7 @@ import {
 import { NavMain } from "../_components/nav-main"
 import { NavUser } from "../_components/nav-user"
 import { getNavigationForUserType } from "@/lib/navigation-config"
+import { WhatsAppStatusBadge } from "./whatsapp-status-badge"
 
 export function AppSidebar({
   userData,
@@ -52,6 +53,7 @@ export function AppSidebar({
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
+        <WhatsAppStatusBadge />
         <NavUser user={data.user} userType={userType} />
       </SidebarFooter>
       <SidebarRail />
