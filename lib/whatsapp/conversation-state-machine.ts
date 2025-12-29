@@ -23,8 +23,11 @@ import {
 } from "@/actions/conversation-state-actions"
 import { getTenantByPhoneAction } from "@/actions/tenants-actions"
 import { sendOtpAction, verifyOtpAction } from "@/actions/otp-actions"
-// Note: createIncidentFromConversationAction will be created in Task 4.2
-import { createIncidentFromConversationAction, getOpenIncidentsByPhoneAction } from "@/actions/whatsapp-incident-actions"
+import {
+  createIncidentFromConversationAction,
+  getOpenIncidentsByPhoneAction,
+  closeIncidentFromWhatsAppAction
+} from "@/actions/whatsapp-incident-actions"
 import { validatePropertyCodeAction } from "@/actions/property-codes-actions"
 import {
   isIncidentMessage,
@@ -52,6 +55,7 @@ export type ConversationState =
   | "awaiting_incident_selection"
   | "awaiting_new_incident_confirmation"
   | "awaiting_follow_up_confirmation"
+  | "awaiting_update_or_closure"
 
 /**
  * Response returned by the conversation state machine
@@ -83,6 +87,16 @@ export interface ConversationContext {
   pendingMessageForNewIncident?: string
   pendingMessageForFollowUp?: string
   lastMessageAt?: string
+  // For incident selection flow
+  pendingMessageId?: string
+  pendingMessageText?: string
+  availableIncidents?: Array<{
+    id: string
+    reference: string
+    title: string
+    reportedAt: string
+  }>
+  selectedIncidentId?: string
 }
 
 // -----------------------------------------------------------------------------
@@ -1334,7 +1348,16 @@ async function handleAwaitingClosureState(
 
   if (isAffirmative(messageText)) {
     // Close the incident
-    // TODO: Update incident status to closed
+    if (incidentId) {
+      const closeResult = await closeIncidentFromWhatsAppAction(incidentId, phoneNumber)
+      if (!closeResult.isSuccess) {
+        return {
+          message: "Sorry, there was a problem closing your incident. Please try again.",
+          incidentCreated: false,
+          incidentId
+        }
+      }
+    }
 
     await resetConversationStateAction(phoneNumber)
 
