@@ -91,6 +91,8 @@ export function WhatsAppStatusProvider({
   const lightPollRef = useRef<NodeJS.Timeout | null>(null)
   const deepPollRef = useRef<NodeJS.Timeout | null>(null)
   const isVisibleRef = useRef(true)
+  const sessionIdRef = useRef<string | null>(null)
+  const isCheckingRef = useRef(false)
 
   /**
    * Check WhatsApp health status
@@ -99,6 +101,9 @@ export function WhatsAppStatusProvider({
    */
   const checkHealth = useCallback(
     async (deep: boolean = false) => {
+      // Prevent concurrent checks using ref
+      if (isCheckingRef.current) return
+      isCheckingRef.current = true
       setState(prev => ({ ...prev, isChecking: true }))
 
       try {
@@ -108,6 +113,9 @@ export function WhatsAppStatusProvider({
         const sessionId = sessionResult.isSuccess
           ? sessionResult.data?.sessionId || null
           : null
+
+        // Keep sessionIdRef synchronized for reconnect callback
+        sessionIdRef.current = sessionId
 
         // Get health status (light or deep)
         const healthResult = deep
@@ -189,6 +197,8 @@ export function WhatsAppStatusProvider({
           lastChecked: new Date(),
           isChecking: false
         }))
+      } finally {
+        isCheckingRef.current = false
       }
     },
     [userProfileId]
@@ -197,9 +207,18 @@ export function WhatsAppStatusProvider({
   /**
    * Trigger reconnection for the current session
    * Sets status to reconnecting and initiates server-side reconnect
+   * Uses sessionIdRef to avoid stale closure issues
    */
   const reconnect = useCallback(async () => {
-    if (!state.sessionId) return
+    const currentSessionId = sessionIdRef.current
+    if (!currentSessionId) {
+      setState(prev => ({
+        ...prev,
+        lastError:
+          "No active session to reconnect. Please set up WhatsApp first."
+      }))
+      return
+    }
 
     setState(prev => ({
       ...prev,
@@ -207,7 +226,7 @@ export function WhatsAppStatusProvider({
       connectionStatus: "reconnecting"
     }))
 
-    const result = await reconnectWhatsAppSessionAction(state.sessionId)
+    const result = await reconnectWhatsAppSessionAction(currentSessionId)
 
     if (!result.isSuccess) {
       setState(prev => ({
@@ -220,7 +239,7 @@ export function WhatsAppStatusProvider({
 
     // Poll immediately after reconnect attempt to get updated status
     await checkHealth(false)
-  }, [state.sessionId, checkHealth])
+  }, [checkHealth])
 
   /**
    * Force refresh status with deep health check
@@ -257,7 +276,8 @@ export function WhatsAppStatusProvider({
     const handleVisibilityChange = () => {
       isVisibleRef.current = document.visibilityState === "visible"
 
-      if (isVisibleRef.current) {
+      // Only trigger check if tab becomes visible and not already checking
+      if (isVisibleRef.current && !isCheckingRef.current) {
         // Immediate check when tab becomes visible
         checkHealth(false)
       }
