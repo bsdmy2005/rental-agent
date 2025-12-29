@@ -71,7 +71,16 @@ app.use(errorHandler)
 // Graceful shutdown
 async function shutdown() {
   logger.info("Shutting down...")
+
   const manager = ConnectionManager.getInstance()
+
+  // Update all sessions to disconnected in database before closing
+  try {
+    await manager.updateAllSessionsToDisconnected()
+  } catch (error) {
+    logger.error({ error }, "Failed to update session statuses during shutdown")
+  }
+
   await manager.close()
   process.exit(0)
 }

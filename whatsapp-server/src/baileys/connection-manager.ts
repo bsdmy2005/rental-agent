@@ -566,6 +566,28 @@ export class ConnectionManager {
     await this.pool.query(query, params)
   }
 
+  /**
+   * Update all active sessions to disconnected status in database
+   * Called during graceful shutdown
+   */
+  async updateAllSessionsToDisconnected(): Promise<void> {
+    const sessionIds = Array.from(this.sessions.keys())
+
+    if (sessionIds.length === 0) {
+      return
+    }
+
+    logger.info({ count: sessionIds.length }, "Updating sessions to disconnected for shutdown")
+
+    await this.pool.query(`
+      UPDATE whatsapp_sessions
+      SET connection_status = 'disconnected',
+          last_disconnected_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ANY($1)
+    `, [sessionIds])
+  }
+
   async close(): Promise<void> {
     for (const [sessionId, session] of this.sessions) {
       if (session.socket) {
