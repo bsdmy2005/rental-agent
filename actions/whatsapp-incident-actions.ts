@@ -1,7 +1,12 @@
 "use server"
 
 import { db } from "@/db"
-import { incidentsTable, incidentStatusHistoryTable } from "@/db/schema"
+import {
+  incidentsTable,
+  incidentStatusHistoryTable,
+  propertiesTable,
+  incidentAttachmentsTable
+} from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { ActionState } from "@/types"
 import type { SelectIncident } from "@/db/schema"
@@ -169,6 +174,122 @@ export function getIncidentHelpMessageAction(): ActionState<{ message: string }>
     message: "Help message retrieved",
     data: {
       message: formatIncidentHelpMessage()
+    }
+  }
+}
+
+/**
+ * Create incident from conversation state
+ * Used by the conversation state machine when a user completes the incident reporting flow
+ *
+ * @param data - The incident data collected during the conversation
+ * @param data.propertyId - UUID of the property where the incident occurred
+ * @param data.tenantId - Optional UUID of the tenant if identified
+ * @param data.tenantName - Optional name of the tenant
+ * @param data.description - Description of the incident
+ * @param data.phoneNumber - Phone number of the person reporting
+ * @param data.attachments - Optional array of attachments (photos, documents)
+ * @returns ActionState with incident ID, reference number, and confirmation message
+ */
+export async function createIncidentFromConversationAction(data: {
+  propertyId: string
+  tenantId?: string
+  tenantName?: string
+  description: string
+  phoneNumber: string
+  attachments?: Array<{ url: string; type: string; fileName: string }>
+}): Promise<
+  ActionState<{
+    incidentId: string
+    referenceNumber: string
+    confirmationMessage: string
+  }>
+> {
+  try {
+    const { propertyId, tenantId, tenantName, description, phoneNumber, attachments } =
+      data
+
+    // Get property name for confirmation message
+    const [property] = await db
+      .select({ name: propertiesTable.name })
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, propertyId))
+      .limit(1)
+
+    const propertyName = property?.name || "Unknown Property"
+
+    // Create incident record
+    const [newIncident] = await db
+      .insert(incidentsTable)
+      .values({
+        propertyId,
+        tenantId: tenantId || null,
+        title: description.substring(0, 100),
+        description,
+        priority: "medium",
+        status: "reported",
+        submissionMethod: "whatsapp",
+        submittedPhone: phoneNumber,
+        submittedName: tenantName || null,
+        isVerified: !!tenantId
+      })
+      .returning()
+
+    if (!newIncident) {
+      return { isSuccess: false, message: "Failed to create incident" }
+    }
+
+    // Create initial status history entry for audit trail
+    await db.insert(incidentStatusHistoryTable).values({
+      incidentId: newIncident.id,
+      status: newIncident.status,
+      changedBy: null,
+      notes: tenantName
+        ? `Incident reported by ${tenantName} via WhatsApp`
+        : "Incident reported via WhatsApp"
+    })
+
+    // Add attachments if any were provided during the conversation
+    if (attachments && attachments.length > 0) {
+      await db.insert(incidentAttachmentsTable).values(
+        attachments.map(att => ({
+          incidentId: newIncident.id,
+          fileUrl: att.url,
+          fileName: att.fileName,
+          fileType: att.type
+        }))
+      )
+    }
+
+    // Record submission for rate limiting
+    await recordSubmission(phoneNumber)
+
+    // Generate reference number using first 8 characters of UUID
+    const referenceNumber = `INC-${newIncident.id.substring(0, 8).toUpperCase()}`
+
+    // Format confirmation message to send back to user
+    const confirmationMessage = formatIncidentConfirmationMessage(
+      newIncident.id,
+      referenceNumber,
+      propertyName
+    )
+
+    // TODO: Send notifications to agent/landlord
+
+    return {
+      isSuccess: true,
+      message: "Incident created successfully",
+      data: {
+        incidentId: newIncident.id,
+        referenceNumber,
+        confirmationMessage
+      }
+    }
+  } catch (error) {
+    console.error("Error creating incident from conversation:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to create incident"
     }
   }
 }

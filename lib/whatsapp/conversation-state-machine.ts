@@ -915,9 +915,9 @@ async function createIncidentFromState(
     const result = await createIncidentFromConversationAction({
       propertyId: context.propertyId,
       tenantId: context.tenantId,
+      tenantName: context.tenantName,
       description: context.partialDescription,
-      submittedPhone: phoneNumber,
-      submittedName: context.tenantName,
+      phoneNumber,
       attachments
     })
 
@@ -931,12 +931,12 @@ async function createIncidentFromState(
     }
 
     const incident = result.data
-    const referenceNumber = generateReferenceNumber(incident.id)
+    const referenceNumber = incident.referenceNumber
 
     // Update state to incident_active
     await updateConversationStateAction(phoneNumber, {
       state: "incident_active",
-      incidentId: incident.id,
+      incidentId: incident.incidentId,
       context: {
         ...context,
         pendingAttachments: undefined // Clear attachments after creation
@@ -958,7 +958,7 @@ async function createIncidentFromState(
         `You can add more details by replying to this conversation. ` +
         `Type "close" when the issue is resolved.${photoPrompt}`,
       incidentCreated: true,
-      incidentId: incident.id,
+      incidentId: incident.incidentId,
       referenceNumber
     }
   } catch (error) {
