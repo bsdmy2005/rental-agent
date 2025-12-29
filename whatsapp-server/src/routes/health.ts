@@ -24,33 +24,37 @@ export function getServerUptime(): number {
  * Lightweight health check - no auth required
  * Used for frequent polling (every 30s)
  */
-lightRouter.get("/", async (_req: Request, res: Response) => {
-  const manager = ConnectionManager.getInstance()
-  const sessions = manager.getAllSessionsStatus()
+lightRouter.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const manager = ConnectionManager.getInstance()
+    const sessions = manager.getAllSessionsStatus()
 
-  const connected = sessions.filter(s => s.connectionStatus === "connected").length
-  const connecting = sessions.filter(s => s.connectionStatus === "connecting" || s.connectionStatus === "qr_pending").length
-  const disconnected = sessions.filter(s => s.connectionStatus === "disconnected" || s.connectionStatus === "logged_out").length
+    const connected = sessions.filter(s => s.connectionStatus === "connected").length
+    const connecting = sessions.filter(s => s.connectionStatus === "connecting" || s.connectionStatus === "qr_pending").length
+    const disconnected = sessions.filter(s => s.connectionStatus === "disconnected" || s.connectionStatus === "logged_out").length
 
-  // Determine overall status
-  let status: "ok" | "degraded" | "error" = "ok"
-  if (disconnected > 0 && connected === 0) {
-    status = "error"
-  } else if (disconnected > 0 || connecting > 0) {
-    status = "degraded"
-  }
-
-  res.json({
-    status,
-    timestamp: new Date().toISOString(),
-    uptime: getServerUptime(),
-    sessions: {
-      total: sessions.length,
-      connected,
-      connecting,
-      disconnected
+    // Determine overall status
+    let status: "ok" | "degraded" | "error" = "ok"
+    if (disconnected > 0 && connected === 0) {
+      status = "error"
+    } else if (disconnected > 0 || connecting > 0) {
+      status = "degraded"
     }
-  })
+
+    res.json({
+      status,
+      timestamp: new Date().toISOString(),
+      uptime: getServerUptime(),
+      sessions: {
+        total: sessions.length,
+        connected,
+        connecting,
+        disconnected
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
 })
 
 /**
@@ -58,9 +62,10 @@ lightRouter.get("/", async (_req: Request, res: Response) => {
  * Used for less frequent polling (every 5min)
  */
 deepRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
+  const pool = new Pool({ connectionString: env.databaseUrl })
+
   try {
     const manager = ConnectionManager.getInstance()
-    const pool = new Pool({ connectionString: env.databaseUrl })
 
     // Test database connection
     const dbStart = Date.now()
@@ -98,8 +103,6 @@ deepRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
       }
     }
 
-    await pool.end()
-
     // Determine overall status
     let status: "ok" | "degraded" | "error" = "ok"
     if (!dbConnected) {
@@ -136,5 +139,7 @@ deepRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
     })
   } catch (error) {
     next(error)
+  } finally {
+    await pool.end()
   }
 })

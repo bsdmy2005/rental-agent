@@ -338,3 +338,57 @@ export async function getOpenIncidentsByPhoneAction(
   }
 }
 
+/**
+ * Close an incident from WhatsApp (tenant-initiated closure)
+ * Updates incident status to resolved and creates status history entry
+ *
+ * @param incidentId - UUID of the incident to close
+ * @param phoneNumber - Phone number of the tenant closing the incident
+ * @returns ActionState with success status
+ */
+export async function closeIncidentFromWhatsAppAction(
+  incidentId: string,
+  phoneNumber: string
+): Promise<ActionState<{ referenceNumber: string }>> {
+  try {
+    // Update incident status to resolved
+    const [updatedIncident] = await db
+      .update(incidentsTable)
+      .set({
+        status: "resolved",
+        resolvedAt: new Date()
+      })
+      .where(eq(incidentsTable.id, incidentId))
+      .returning()
+
+    if (!updatedIncident) {
+      return {
+        isSuccess: false,
+        message: "Incident not found"
+      }
+    }
+
+    // Create status history entry
+    await db.insert(incidentStatusHistoryTable).values({
+      incidentId,
+      status: "resolved",
+      changedBy: null, // No user profile for WhatsApp closure
+      notes: `Incident resolved by tenant via WhatsApp (${phoneNumber})`
+    })
+
+    const referenceNumber = `INC-${incidentId.substring(0, 8).toUpperCase()}`
+
+    return {
+      isSuccess: true,
+      message: "Incident closed successfully",
+      data: { referenceNumber }
+    }
+  } catch (error) {
+    console.error("Error closing incident from WhatsApp:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to close incident"
+    }
+  }
+}
+

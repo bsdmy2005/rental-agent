@@ -110,6 +110,10 @@ export async function sendQuoteRequestViaBaileys(
     })
 
     // Get property (required for both incident-linked and standalone RFQs)
+    if (!quoteRequest.propertyId) {
+      return { success: false, message: "Property ID is required" }
+    }
+
     const [property] = await db
       .select()
       .from(propertiesTable)
@@ -164,7 +168,7 @@ export async function sendQuoteRequestViaBaileys(
     
     console.log(`[RFQ WhatsApp] ✓ Service provider found:`, {
       id: provider.id,
-      name: provider.name,
+      name: provider.businessName || provider.contactName,
       whatsappNumber: provider.whatsappNumber,
       email: provider.email
     })
@@ -201,7 +205,7 @@ export async function sendQuoteRequestViaBaileys(
       dueDate: quoteRequest.dueDate || undefined,
       rfqCode: quoteRequest.rfqCode || undefined,
       onlineSubmissionUrl,
-      attachmentCount: 0, // TODO: Add attachment support if needed
+      attachmentCount: 0, 
       priority: incident?.priority || undefined
     })
     

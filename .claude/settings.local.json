@@ -22,7 +22,11 @@
       "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI add app/api/whatsapp/conversation/route.ts)",
       "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI commit -m \"$\\(cat <<''EOF''\nfeat\\(api\\): add conversation processing endpoint\n\nAdd API route for processing WhatsApp messages through the conversation\nstate machine. This endpoint is called by the Baileys server for all\nincoming messages and handles tenant identification, verification, and\nincident creation flows.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx eslint:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(git rev-parse:*)",
+      "Bash(cat:*)"
     ]
   },
   "enabledPlugins": {
