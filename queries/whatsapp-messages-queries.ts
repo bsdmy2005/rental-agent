@@ -313,3 +313,16 @@ export async function getIncidentRelatedMessagesQuery(
   return incidentMessages
 }
 
+/**
+ * Get all messages explicitly linked to an incident
+ * This is the new approach - no time-window inference, just direct incidentId match
+ */
+export async function getMessagesForIncidentQuery(
+  incidentId: string
+): Promise<SelectWhatsappExplorerMessage[]> {
+  return db
+    .select()
+    .from(whatsappExplorerMessagesTable)
+    .where(eq(whatsappExplorerMessagesTable.incidentId, incidentId))
+    .orderBy(sql`${whatsappExplorerMessagesTable.timestamp} ASC`)
+}
