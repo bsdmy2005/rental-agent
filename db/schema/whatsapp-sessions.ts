@@ -1,5 +1,6 @@
 import { boolean, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { userProfilesTable } from "./user-profiles"
+import { incidentsTable } from "./incidents"
 import { whatsappConnectionStatusEnum } from "./enums"
 
 export const whatsappSessionsTable = pgTable("whatsapp_sessions", {
@@ -53,7 +54,19 @@ export const whatsappExplorerMessagesTable = pgTable("whatsapp_explorer_messages
 
   // Timestamps
   timestamp: timestamp("timestamp").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // Explicit incident linking (user-confirmed)
+  incidentId: uuid("incident_id").references(() => incidentsTable.id, {
+    onDelete: "set null"
+  }),
+
+  // Message classification for audit/display
+  // Values: "incident_report", "follow_up", "closure_confirmation", "general", null
+  messageClassification: text("message_classification"),
+
+  // When classification was set
+  classifiedAt: timestamp("classified_at")
 })
 
 export type InsertWhatsappSession = typeof whatsappSessionsTable.$inferInsert
