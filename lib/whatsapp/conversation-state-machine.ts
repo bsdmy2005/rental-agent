@@ -1505,46 +1505,33 @@ async function handleAwaitingIncidentSelectionState(
     // Get selected incident
     const selectedIncident = incidents[selectedNumber - 1]
     const referenceNumber = generateReferenceNumber(selectedIncident.id)
-    
-    // If there's a pending message, add it to the incident
-    const pendingMessage = context.pendingMessageForFollowUp
-    if (pendingMessage) {
-      // Update incident's updatedAt to include this message in the time window
-      await db
-        .update(incidentsTable)
-        .set({ updatedAt: new Date() })
-        .where(eq(incidentsTable.id, selectedIncident.id))
+
+    // Link the pending message to this incident if we have one
+    if (context.pendingMessageId) {
+      await linkMessageToIncidentAction(
+        context.pendingMessageId,
+        selectedIncident.id,
+        "follow_up"
+      )
     }
 
-    // Update state to incident_active with selected incident
+    // Transition to asking if this is an update or closure
     await updateConversationStateAction(phoneNumber, {
-      state: "incident_active",
+      state: "awaiting_update_or_closure",
       incidentId: selectedIncident.id,
       context: {
         ...context,
-        propertyId: selectedIncident.propertyId,
-        tenantId: selectedIncident.tenantId || undefined,
-        pendingMessageForFollowUp: undefined // Clear pending message
+        selectedIncidentId: selectedIncident.id,
+        availableIncidents: undefined,
+        pendingMessageForFollowUp: undefined
       }
     })
 
-    if (pendingMessage) {
-      return {
-        message:
-          `Message added to ${referenceNumber}. Our team will review it shortly. ` +
-          `You can now add updates, photos, or ask questions about this incident. ` +
-          `Type "close" when the issue is resolved.`,
-        incidentCreated: false,
-        incidentId: selectedIncident.id,
-        referenceNumber
-      }
-    }
-
     return {
       message:
-        `You've selected ${referenceNumber}: ${selectedIncident.title}\n\n` +
-        `You can now add updates, photos, or ask questions about this incident. ` +
-        `Type "close" when the issue is resolved.`,
+        `Got it, this is about ${referenceNumber} (${selectedIncident.title}).\n\n` +
+        `Is this issue now resolved, or is this an update?\n` +
+        `Reply 'resolved' or 'update'.`,
       incidentCreated: false,
       incidentId: selectedIncident.id,
       referenceNumber
