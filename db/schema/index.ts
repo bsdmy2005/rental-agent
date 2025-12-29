@@ -59,4 +59,5 @@ export * from "./whatsapp-sessions"
 export * from "./whatsapp-contacts"
 export * from "./whatsapp-incident-rate-limits"
 export * from "./whatsapp-conversation-states"
+export * from "./notification-preferences"
 
