@@ -54,7 +54,13 @@ export function WhatsAppStatusDot() {
    */
   const formatPhoneNumber = (phone: string) => {
     if (phone.length < 8) return phone
-    return `+${phone.slice(0, 2)} ${"*".repeat(4)} ${phone.slice(-4)}`
+
+    // Normalize: remove + if present
+    const normalized = phone.replace(/^\+/, "")
+    const countryCode = normalized.slice(0, 2)
+    const lastFour = normalized.slice(-4)
+
+    return `+${countryCode} ${"*".repeat(4)} ${lastFour}`
   }
 
   return (
@@ -128,10 +134,11 @@ export function WhatsAppStatusDot() {
               variant="outline"
               onClick={refresh}
               disabled={isChecking}
+              title="Refresh status"
             >
               <RefreshCw className={cn("h-3 w-3", isChecking && "animate-spin")} />
             </Button>
-            <Button size="sm" variant="ghost" asChild>
+            <Button size="sm" variant="ghost" asChild title="WhatsApp settings">
               <Link href="/dashboard/settings/whatsapp">
                 <Settings className="h-3 w-3" />
               </Link>
