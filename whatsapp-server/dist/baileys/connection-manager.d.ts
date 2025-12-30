@@ -15,9 +15,23 @@ export declare class ConnectionManager {
         phoneNumber: string | null;
         lastError: string | null;
     }>;
+    /**
+     * Get status of all active sessions (for health check)
+     */
+    getAllSessionsStatus(): Array<{
+        sessionId: string;
+        connectionStatus: ConnectionStatus;
+        phoneNumber: string | null;
+        lastConnectedAt: Date | null;
+        socketAlive: boolean;
+    }>;
     connect(sessionId: string): Promise<void>;
     private setupEventHandlers;
     disconnect(sessionId: string): Promise<void>;
+    /**
+     * Reconnect a session (disconnect then connect)
+     */
+    reconnect(sessionId: string): Promise<void>;
     logout(sessionId: string): Promise<void>;
     sendMessage(sessionId: string, recipient: string, content: string): Promise<{
         messageId: string;
@@ -32,6 +46,20 @@ export declare class ConnectionManager {
     private updateSession;
     private updateSessionError;
     private updateDbStatus;
+    /**
+     * Update all active sessions to disconnected status in database
+     * Called during graceful shutdown
+     */
+    updateAllSessionsToDisconnected(): Promise<void>;
     close(): Promise<void>;
+    /**
+     * Auto-connect all primary sessions that have auth state
+     * Called on server startup
+     */
+    autoConnectPrimarySessions(): Promise<{
+        attempted: number;
+        connected: number;
+        failed: string[];
+    }>;
 }
 //# sourceMappingURL=connection-manager.d.ts.map

@@ -93,17 +93,17 @@ export function WhatsAppStatusBadge() {
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
       <CollapsibleTrigger asChild>
         <button
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
           aria-label="WhatsApp status details"
         >
-          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          <MessageCircle className="h-4 w-4 min-h-[16px] min-w-[16px] text-muted-foreground flex-shrink-0" />
           <div
             className={cn(
-              "h-2 w-2 rounded-full",
+              "h-2.5 w-2.5 min-h-[10px] min-w-[10px] rounded-full flex-shrink-0",
               isConnected ? "bg-green-500" : "bg-red-500"
             )}
           />
-          <span className="flex-1 text-left text-muted-foreground">
+          <span className="flex-1 text-left text-muted-foreground truncate">
             WhatsApp {isConnected ? "Online" : "Offline"}
           </span>
           <ChevronDown

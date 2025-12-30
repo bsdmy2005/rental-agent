@@ -53,6 +53,22 @@ export class ConnectionManager {
             lastError: null
         };
     }
+    /**
+     * Get status of all active sessions (for health check)
+     */
+    getAllSessionsStatus() {
+        const results = [];
+        for (const [sessionId, session] of this.sessions) {
+            results.push({
+                sessionId,
+                connectionStatus: session.connectionStatus,
+                phoneNumber: session.phoneNumber,
+                lastConnectedAt: null, // Will be populated from DB in health route
+                socketAlive: session.socket !== null && session.connectionStatus === "connected"
+            });
+        }
+        return results;
+    }
     async connect(sessionId) {
         logger.info({ sessionId }, "Starting connection");
         // If this is an incident-dispatch server, only allow primary sessions
@@ -298,6 +314,18 @@ export class ConnectionManager {
             await this.pool.query("UPDATE whatsapp_sessions SET last_disconnected_at = NOW() WHERE id = $1", [sessionId]);
         }
     }
+    /**
+     * Reconnect a session (disconnect then connect)
+     */
+    async reconnect(sessionId) {
+        logger.info({ sessionId }, "Reconnecting session");
+        // Disconnect if currently connected (properly updating DB state)
+        await this.disconnect(sessionId);
+        // Small delay before reconnecting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Reconnect
+        await this.connect(sessionId);
+    }
     async logout(sessionId) {
         const session = this.sessions.get(sessionId);
         if (session?.socket) {
@@ -384,6 +412,24 @@ export class ConnectionManager {
             : [status, sessionId];
         await this.pool.query(query, params);
     }
+    /**
+     * Update all active sessions to disconnected status in database
+     * Called during graceful shutdown
+     */
+    async updateAllSessionsToDisconnected() {
+        const sessionIds = Array.from(this.sessions.keys());
+        if (sessionIds.length === 0) {
+            return;
+        }
+        logger.info({ count: sessionIds.length }, "Updating sessions to disconnected for shutdown");
+        await this.pool.query(`
+      UPDATE whatsapp_sessions
+      SET connection_status = 'disconnected',
+          last_disconnected_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ANY($1)
+    `, [sessionIds]);
+    }
     async close() {
         for (const [sessionId, session] of this.sessions) {
             if (session.socket) {
@@ -393,6 +439,45 @@ export class ConnectionManager {
         this.sessions.clear();
         await this.authState.close();
         await this.pool.end();
+    }
+    /**
+     * Auto-connect all primary sessions that have auth state
+     * Called on server startup
+     */
+    async autoConnectPrimarySessions() {
+        logger.info("Starting auto-connect for primary sessions");
+        const result = await this.pool.query(`
+      SELECT id, session_name, phone_number
+      FROM whatsapp_sessions
+      WHERE session_name = 'primary'
+        AND auth_state IS NOT NULL
+        AND is_active = true
+        AND auto_connect = true
+    `);
+        const sessions = result.rows;
+        logger.info({ count: sessions.length }, "Found primary sessions to auto-connect");
+        const failed = [];
+        let connected = 0;
+        for (let i = 0; i < sessions.length; i++) {
+            const session = sessions[i];
+            logger.info({ sessionId: session.id, phoneNumber: session.phone_number, index: i + 1, total: sessions.length }, "Auto-connecting session");
+            try {
+                await this.connect(session.id);
+                connected++;
+                logger.info({ sessionId: session.id }, "Auto-connect successful");
+            }
+            catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                logger.error({ sessionId: session.id, error: errorMsg }, "Auto-connect failed");
+                failed.push(session.id);
+            }
+            // Stagger connections to avoid overwhelming WhatsApp
+            if (i < sessions.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+        logger.info({ attempted: sessions.length, connected, failed: failed.length }, "Auto-connect complete");
+        return { attempted: sessions.length, connected, failed };
     }
 }
 //# sourceMappingURL=connection-manager.js.map

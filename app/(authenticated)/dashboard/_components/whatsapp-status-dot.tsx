@@ -2,11 +2,6 @@
 
 import { useWhatsAppStatus } from "../_context/whatsapp-status-context"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@/components/ui/tooltip"
-import {
   Popover,
   PopoverContent,
   PopoverTrigger
@@ -65,28 +60,24 @@ export function WhatsAppStatusDot() {
 
   return (
     <Popover>
-      <Tooltip>
-        <PopoverTrigger asChild>
-          <TooltipTrigger asChild>
-            <button
-              className={cn(
-                "h-2.5 w-2.5 rounded-full transition-all duration-300",
-                isConnected
-                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-                  : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]",
-                isChecking && "animate-pulse"
-              )}
-              aria-label={`WhatsApp ${isConnected ? "connected" : "disconnected"}`}
-            />
-          </TooltipTrigger>
-        </PopoverTrigger>
-        <TooltipContent side="bottom">
-          <p>WhatsApp: {isConnected ? "Connected" : "Disconnected"}</p>
-          {!isConnected && (
-            <p className="text-xs text-muted-foreground">Click for details</p>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "relative h-5 w-5 min-h-[20px] min-w-[20px] rounded-full transition-all duration-300 cursor-pointer hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center justify-center flex-shrink-0",
+            isConnected
+              ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] focus:ring-green-500"
+              : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] focus:ring-red-500",
+            isChecking && "animate-pulse"
           )}
-        </TooltipContent>
-      </Tooltip>
+          aria-label={`WhatsApp ${isConnected ? "connected" : "disconnected"}`}
+          title={`WhatsApp: ${isConnected ? "Connected" : "Disconnected"}. Click for details.`}
+          type="button"
+        >
+          <span className="sr-only">
+            WhatsApp {isConnected ? "Connected" : "Disconnected"}
+          </span>
+        </button>
+      </PopoverTrigger>
 
       <PopoverContent className="w-72" align="end">
         <div className="space-y-3">

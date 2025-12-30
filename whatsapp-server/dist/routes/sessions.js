@@ -91,5 +91,22 @@ router.post("/:sessionId/logout", async (req, res, next) => {
         next(error);
     }
 });
+// Reconnect session (disconnect and reconnect)
+router.post("/:sessionId/reconnect", async (req, res, next) => {
+    try {
+        const { sessionId } = req.params;
+        const manager = ConnectionManager.getInstance();
+        logger.info({ sessionId }, "Reconnect request received");
+        await manager.reconnect(sessionId);
+        res.json({
+            success: true,
+            message: "Reconnection initiated",
+            sessionId
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
 export default router;
 //# sourceMappingURL=sessions.js.map

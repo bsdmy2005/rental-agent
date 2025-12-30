@@ -5,6 +5,7 @@ import { createLogger } from "./utils/logger.js";
 import { apiKeyAuth } from "./middleware/auth.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import routes from "./routes/index.js";
+import { lightRouter as healthLightRouter, deepRouter as healthDeepRouter } from "./routes/health.js";
 import { ConnectionManager } from "./baileys/connection-manager.js";
 const logger = createLogger("server");
 // Validate environment variables
@@ -40,16 +41,12 @@ app.use((req, res, next) => {
     });
     next();
 });
-// Health check (no auth required)
-app.get("/health", (_req, res) => {
-    res.json({
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        service: "whatsapp-baileys-server"
-    });
-});
+// Lightweight health check (no auth required) - must be before apiKeyAuth middleware
+app.use("/health", healthLightRouter);
 // API key authentication for all other routes
 app.use(apiKeyAuth);
+// Deep health check (requires auth) - must be after apiKeyAuth middleware
+app.use("/health/deep", healthDeepRouter);
 // API routes
 app.use(routes);
 // Error handling
@@ -59,14 +56,30 @@ app.use(errorHandler);
 async function shutdown() {
     logger.info("Shutting down...");
     const manager = ConnectionManager.getInstance();
+    // Update all sessions to disconnected in database before closing
+    try {
+        await manager.updateAllSessionsToDisconnected();
+    }
+    catch (error) {
+        logger.error({ error }, "Failed to update session statuses during shutdown");
+    }
     await manager.close();
     process.exit(0);
 }
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 // Start server
-app.listen(env.port, () => {
+app.listen(env.port, async () => {
     logger.info({ port: env.port }, "WhatsApp Baileys Server started");
     logger.info({ nextjsAppUrl: env.nextjsAppUrl }, "CORS configured for");
+    // Auto-connect primary sessions after server starts
+    try {
+        const manager = ConnectionManager.getInstance();
+        const result = await manager.autoConnectPrimarySessions();
+        logger.info({ attempted: result.attempted, connected: result.connected, failed: result.failed.length }, "Auto-connect complete");
+    }
+    catch (error) {
+        logger.error({ error }, "Auto-connect failed");
+    }
 });
 //# sourceMappingURL=index.js.map

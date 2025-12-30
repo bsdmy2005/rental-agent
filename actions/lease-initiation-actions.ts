@@ -215,28 +215,29 @@ export async function initiateLeaseAction(
     if (userProfile.userType === "landlord") {
       const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
       if (landlord) {
-        landlordName = landlordName ?? landlord.companyName ?? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Landlord"
+        landlordName = landlordName ?? landlord.companyName ?? (`${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Landlord")
         landlordIdNumber = landlordIdNumber ?? landlord.registrationNumber ?? landlord.taxId ?? ""
         landlordAddress = landlordAddress ?? landlord.address ?? ""
         landlordEmail = landlordEmail ?? landlord.contactEmail ?? userProfile.email
         landlordPhone = landlordPhone ?? landlord.contactPhone ?? userProfile.phone ?? ""
       } else {
         // Fallback to user profile
-        landlordName = landlordName ?? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Landlord"
+        landlordName = landlordName ?? (`${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Landlord")
         landlordEmail = landlordEmail ?? userProfile.email
         landlordPhone = landlordPhone ?? userProfile.phone ?? ""
       }
     } else if (userProfile.userType === "rental_agent") {
       const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
       if (rentalAgent) {
-        landlordName = landlordName ?? rentalAgent.agencyName ?? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Rental Agent"
+        landlordName = landlordName ?? rentalAgent.agencyName ?? (`${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Rental Agent")
+        
         landlordIdNumber = landlordIdNumber ?? rentalAgent.licenseNumber ?? ""
         landlordAddress = landlordAddress ?? rentalAgent.address ?? ""
         landlordEmail = landlordEmail ?? rentalAgent.contactEmail ?? userProfile.email
         landlordPhone = landlordPhone ?? rentalAgent.contactPhone ?? userProfile.phone ?? ""
       } else {
         // Fallback to user profile
-        landlordName = landlordName ?? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Rental Agent"
+        landlordName = landlordName ?? (`${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Rental Agent")
         landlordEmail = landlordEmail ?? userProfile.email
         landlordPhone = landlordPhone ?? userProfile.phone ?? ""
       }
@@ -452,7 +453,7 @@ export async function signLeaseAsTenantAction(
     return {
       isSuccess: true,
       message: "Lease signed successfully",
-      data: updatedLease
+      data: updatedLease as SelectLeaseAgreement
     }
   } catch (error) {
     console.error("Error signing lease as tenant:", error)
@@ -516,7 +517,7 @@ export async function signLeaseAsLandlordAction(
     return {
       isSuccess: true,
       message: "Lease signed successfully",
-      data: updatedLease
+      data: updatedLease as SelectLeaseAgreement
     }
   } catch (error) {
     console.error("Error signing lease as landlord:", error)

@@ -163,6 +163,42 @@ export class ConnectionManager {
 
       logger.debug({ sessionId, hasCreds: !!state.creds, hasKeys: !!state.keys }, "Creating Baileys socket")
       
+      // Create a custom logger for Baileys that downgrades PreKeyErrors to warnings
+      const baileysLogger = logger.child({ level: "debug" })
+      const originalError = baileysLogger.error.bind(baileysLogger)
+      baileysLogger.error = (objOrMsg?: any, msg?: string) => {
+        // Handle different call patterns: error(obj, msg) or error(msg)
+        const obj = typeof objOrMsg === "object" && objOrMsg !== null ? objOrMsg : {}
+        const message = typeof objOrMsg === "string" ? objOrMsg : (msg || "")
+        
+        // Check if this is a PreKeyError and downgrade it to a warning
+        const errorMsg = obj?.err?.message || 
+                        obj?.err?.name || 
+                        obj?.message || 
+                        message || 
+                        ""
+        const isPreKeyError = errorMsg.includes("PreKeyError") || 
+                             errorMsg.includes("Invalid PreKey ID") ||
+                             errorMsg.includes("Missing SignedPreKey") ||
+                             obj?.err?.name === "PreKeyError" ||
+                             (obj?.err?.type === "PreKeyError")
+        
+        if (isPreKeyError) {
+          // Downgrade PreKeyErrors to warnings - they're often not critical
+          baileysLogger.warn(
+            {
+              ...(typeof objOrMsg === "object" ? objOrMsg : {}),
+              downgradedFromError: true,
+              note: "PreKeyError downgraded to warning - often non-critical, session may recover"
+            },
+            message || "PreKeyError during decryption (non-critical)"
+          )
+        } else {
+          // Log other errors normally
+          originalError(objOrMsg, msg)
+        }
+      }
+      
       const socket = makeWASocket({
         version,
         auth: {
@@ -170,7 +206,7 @@ export class ConnectionManager {
           keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
         printQRInTerminal: false,
-        logger: logger.child({ level: "debug" }), // Use debug level for Baileys internal logs
+        logger: baileysLogger,
         defaultQueryTimeoutMs: env.baileysTimeoutMs
       })
 
@@ -355,62 +391,100 @@ export class ConnectionManager {
       )
 
       for (const msg of upsert.messages) {
-        const messageType = msg.message ? Object.keys(msg.message)[0] : "unknown"
-        const hasProtocolMessage = !!(msg as any).messageStubType || !!(msg as any).protocolMessage
-        
-        logger.debug(
-          {
-            sessionId,
-            messageId: msg.key.id,
-            remoteJid: msg.key.remoteJid,
-            fromMe: msg.key.fromMe,
-            participant: msg.key.participant,
-            messageType,
-            upsertType: upsert.type,
-            hasMessage: !!msg.message,
-            hasProtocolMessage,
-            messageStubType: (msg as any).messageStubType,
-            // Log full message structure for debugging
-            messageStructure: msg.message ? Object.keys(msg.message) : []
-          },
-          "Processing individual message from upsert"
-        )
-
-        // Only process incoming messages that are notifications (not protocol messages or receipts)
-        // Protocol messages and receipts don't have user content, so we skip them
-        if (!msg.key.fromMe && upsert.type === "notify" && !hasProtocolMessage) {
-          logger.info(
-            {
-              sessionId,
-              messageId: msg.key.id,
-              remoteJid: msg.key.remoteJid,
-              fromMe: false,
-              messageType,
-              hasMessage: !!msg.message
-            },
-            "Incoming message detected - routing to message handler"
-          )
-          await this.messageHandler.handleIncomingMessage(sessionId, msg, socket)
-        } else {
-          const skipReason = msg.key.fromMe 
-            ? "fromMe=true, skipping" 
-            : upsert.type !== "notify"
-            ? `upsertType=${upsert.type}, only processing 'notify'`
-            : hasProtocolMessage
-            ? "protocol message or receipt, skipping"
-            : "unknown reason"
-            
+        try {
+          const messageType = msg.message ? Object.keys(msg.message)[0] : "unknown"
+          const hasProtocolMessage = !!(msg as any).messageStubType || !!(msg as any).protocolMessage
+          
           logger.debug(
             {
               sessionId,
               messageId: msg.key.id,
+              remoteJid: msg.key.remoteJid,
               fromMe: msg.key.fromMe,
+              participant: msg.key.participant,
+              messageType,
               upsertType: upsert.type,
+              hasMessage: !!msg.message,
               hasProtocolMessage,
-              reason: skipReason
+              messageStubType: (msg as any).messageStubType,
+              // Log full message structure for debugging
+              messageStructure: msg.message ? Object.keys(msg.message) : []
             },
-            "Skipping message (not an incoming notify message)"
+            "Processing individual message from upsert"
           )
+
+          // Only process incoming messages that are notifications (not protocol messages or receipts)
+          // Protocol messages and receipts don't have user content, so we skip them
+          if (!msg.key.fromMe && upsert.type === "notify" && !hasProtocolMessage) {
+            logger.info(
+              {
+                sessionId,
+                messageId: msg.key.id,
+                remoteJid: msg.key.remoteJid,
+                fromMe: false,
+                messageType,
+                hasMessage: !!msg.message
+              },
+              "Incoming message detected - routing to message handler"
+            )
+            await this.messageHandler.handleIncomingMessage(sessionId, msg, socket)
+          } else {
+            const skipReason = msg.key.fromMe 
+              ? "fromMe=true, skipping" 
+              : upsert.type !== "notify"
+              ? `upsertType=${upsert.type}, only processing 'notify'`
+              : hasProtocolMessage
+              ? "protocol message or receipt, skipping"
+              : "unknown reason"
+              
+            logger.debug(
+              {
+                sessionId,
+                messageId: msg.key.id,
+                fromMe: msg.key.fromMe,
+                upsertType: upsert.type,
+                hasProtocolMessage,
+                reason: skipReason
+              },
+              "Skipping message (not an incoming notify message)"
+            )
+          }
+        } catch (error) {
+          // Handle decryption errors gracefully - PreKeyErrors are often recoverable
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          const isPreKeyError = errorMessage.includes("PreKeyError") || 
+                               errorMessage.includes("Invalid PreKey ID") ||
+                               errorMessage.includes("Missing SignedPreKey")
+          
+          if (isPreKeyError) {
+            // PreKeyErrors are often not critical - the message might be a protocol message
+            // or the session might recover on the next message
+            logger.warn(
+              {
+                sessionId,
+                messageId: msg.key.id,
+                remoteJid: msg.key.remoteJid,
+                error: errorMessage,
+                errorType: error?.constructor?.name,
+                note: "PreKeyError during decryption - message may be a protocol message or session will recover"
+              },
+              "PreKeyError during message decryption (non-critical)"
+            )
+          } else {
+            // Other errors should be logged as errors
+            logger.error(
+              {
+                sessionId,
+                messageId: msg.key.id,
+                remoteJid: msg.key.remoteJid,
+                error,
+                errorMessage,
+                errorType: error?.constructor?.name,
+                errorStack: error instanceof Error ? error.stack : undefined
+              },
+              "Error processing message from upsert"
+            )
+          }
         }
       }
     })

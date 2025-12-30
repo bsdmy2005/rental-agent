@@ -79,7 +79,7 @@ export function WhatsAppStatusProvider({
   >({
     status: "disconnected",
     serverReachable: false,
-    connectionStatus: "unknown",
+    connectionStatus: "disconnected",
     phoneNumber: null,
     sessionId: null,
     lastChecked: null,
@@ -123,6 +123,16 @@ export function WhatsAppStatusProvider({
           : await getWhatsAppHealthAction()
 
         if (!healthResult.isSuccess || !healthResult.data) {
+          // Debug logging in development
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[WhatsApp Status] Health check failed:", {
+              isSuccess: healthResult.isSuccess,
+              message: healthResult.message,
+              hasData: !!healthResult.data,
+              deep
+            })
+          }
+
           setState(prev => ({
             ...prev,
             status: "disconnected",
@@ -172,8 +182,27 @@ export function WhatsAppStatusProvider({
         }
 
         // Determine binary status for UI indicator
+        // Prioritize connectionStatus === "connected" as the source of truth
+        // This ensures that if the connection status is "connected", we show green
+        // even if other checks might fail
         const status: "connected" | "disconnected" =
-          serverReachable && hasConnectedSession ? "connected" : "disconnected"
+          connectionStatus === "connected" || (serverReachable && hasConnectedSession)
+            ? "connected"
+            : "disconnected"
+
+        // Debug logging in development
+        if (process.env.NODE_ENV === "development") {
+          console.log("[WhatsApp Status] Health check result:", {
+            deep,
+            serverReachable,
+            hasConnectedSession,
+            connectionStatus,
+            status,
+            phoneNumber,
+            sessionId,
+            uptime: healthResult.data.uptime
+          })
+        }
 
         setState(prev => ({
           ...prev,
@@ -188,12 +217,23 @@ export function WhatsAppStatusProvider({
           uptime: healthResult.data.uptime
         }))
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        
+        // Debug logging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("[WhatsApp Status] Health check error:", {
+            error: errorMessage,
+            deep,
+            userProfileId
+          })
+        }
+
         setState(prev => ({
           ...prev,
           status: "disconnected",
           serverReachable: false,
           connectionStatus: "error",
-          lastError: error instanceof Error ? error.message : "Unknown error",
+          lastError: errorMessage,
           lastChecked: new Date(),
           isChecking: false
         }))
