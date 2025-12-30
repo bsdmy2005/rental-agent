@@ -15,7 +15,6 @@ import { assignIncidentAction, updateIncidentStatusAction } from "@/actions/inci
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import type { SelectIncident } from "@/db/schema"
-import { QuoteRequestForm } from "./quote-request-form"
 
 interface IncidentManagementControlsProps {
   incident: SelectIncident
@@ -118,16 +117,6 @@ export function IncidentManagementControls({
           {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Assign to Me
         </Button>
-      )}
-
-      {(incident.status === "assigned" || incident.status === "in_progress") && (
-        <QuoteRequestForm
-          incidentId={incident.id}
-          propertyId={propertyId}
-          propertySuburb={propertySuburb}
-          propertyProvince={propertyProvince}
-          requestedBy={currentUserId}
-        />
       )}
     </div>
   )

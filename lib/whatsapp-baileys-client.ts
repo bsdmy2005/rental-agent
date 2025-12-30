@@ -203,6 +203,35 @@ class WhatsAppBaileysClient {
   }
 
   /**
+   * Send a media message (image or document)
+   */
+  async sendMediaMessage(
+    sessionId: string,
+    recipient: string,
+    mediaUrl: string,
+    mediaType: "image" | "document" = "image",
+    caption?: string
+  ): Promise<SendMessageResult> {
+    const timestamp = new Date().toISOString()
+    console.log(`[WhatsApp Baileys Client] ${timestamp} - Sending media message`)
+    console.log(`[WhatsApp Baileys Client] Session ID: ${sessionId}`)
+    console.log(`[WhatsApp Baileys Client] Recipient: ${recipient}`)
+    console.log(`[WhatsApp Baileys Client] Media URL: ${mediaUrl}`)
+    console.log(`[WhatsApp Baileys Client] Media Type: ${mediaType}`)
+    
+    const result = await this.request<SendMessageResult>(`/sessions/${sessionId}/media`, {
+      method: "POST",
+      body: JSON.stringify({ recipient, mediaUrl, mediaType, caption })
+    })
+    
+    console.log(`[WhatsApp Baileys Client] Media message sent successfully`)
+    console.log(`[WhatsApp Baileys Client] Message ID: ${result.messageId}`)
+    console.log(`[WhatsApp Baileys Client] Timestamp: ${result.timestamp}`)
+    
+    return result
+  }
+
+  /**
    * Get AI configuration for a session
    */
   async getAiConfig(sessionId: string): Promise<{ sessionId: string; config: AiConfig | null }> {

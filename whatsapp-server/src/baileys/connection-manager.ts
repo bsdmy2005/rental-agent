@@ -575,6 +575,41 @@ export class ConnectionManager {
     return this.messageHandler.sendTextMessage(sessionId, session.socket, recipient, content)
   }
 
+  async sendMediaMessage(
+    sessionId: string,
+    recipient: string,
+    mediaUrl: string,
+    mediaType: "image" | "document" = "image",
+    caption?: string
+  ): Promise<{ messageId: string; timestamp: Date }> {
+    const session = this.sessions.get(sessionId)
+    if (!session?.socket) {
+      throw new Error("Not connected")
+    }
+
+    if (session.connectionStatus !== "connected") {
+      throw new Error(`Connection not ready: ${session.connectionStatus}`)
+    }
+
+    if (!session.socket.user) {
+      throw new Error("Socket is not authenticated")
+    }
+
+    try {
+      await this.verifyConnectionHealth(sessionId, session.socket)
+    } catch (error) {
+      logger.warn(
+        {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error)
+        },
+        "Connection health check failed - will attempt to send anyway"
+      )
+    }
+
+    return this.messageHandler.sendMediaMessage(sessionId, session.socket, recipient, mediaUrl, mediaType, caption)
+  }
+
   /**
    * Verifies the socket connection is healthy by sending a presence update
    * This "warms up" the connection before sending actual messages

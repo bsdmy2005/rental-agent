@@ -282,6 +282,133 @@ export class MessageHandler {
     throw lastError || new Error("Failed to send message after all retry attempts")
   }
 
+  async sendMediaMessage(
+    sessionId: string,
+    socket: WASocket,
+    recipient: string,
+    mediaUrl: string,
+    mediaType: "image" | "document" = "image",
+    caption?: string,
+    retryAttempts: number = env.messageRetryAttempts,
+    retryDelayMs: number = env.messageRetryDelayMs
+  ): Promise<{ messageId: string; timestamp: Date }> {
+    const startTime = Date.now()
+    
+    // Normalize phone number and format JID
+    let normalizedRecipient: string
+    let jid: string
+    
+    if (recipient.includes("@")) {
+      jid = recipient
+      normalizedRecipient = recipient.split("@")[0]
+    } else {
+      try {
+        normalizedRecipient = normalizePhoneNumber(recipient, env.phoneCountryCode)
+        jid = `${normalizedRecipient}@s.whatsapp.net`
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            sessionId,
+            recipient,
+            errorMessage: error instanceof Error ? error.message : String(error)
+          },
+          "Failed to normalize phone number"
+        )
+        throw error
+      }
+    }
+
+    logger.info(
+      {
+        sessionId,
+        recipient: jid,
+        mediaUrl,
+        mediaType,
+        caption,
+        retryAttempts
+      },
+      "OUTGOING MEDIA MESSAGE SEND - Starting send attempt"
+    )
+
+    let lastError: unknown
+
+    for (let attempt = 1; attempt <= retryAttempts; attempt++) {
+      try {
+        if (!socket.user) {
+          throw new Error("Socket is not authenticated")
+        }
+
+        logger.debug({ sessionId, recipient: jid, attempt }, `Send media attempt ${attempt}/${retryAttempts}`)
+        const sendStartTime = Date.now()
+        
+        let result
+        if (mediaType === "image") {
+          result = await socket.sendMessage(jid, {
+            image: { url: mediaUrl },
+            caption: caption || undefined
+          })
+        } else {
+          // For documents/PDFs
+          result = await socket.sendMessage(jid, {
+            document: { url: mediaUrl },
+            mimetype: "application/pdf",
+            fileName: caption || "document.pdf"
+          })
+        }
+
+        const sendDuration = Date.now() - sendStartTime
+        const messageId = result?.key?.id || `media-${Date.now()}`
+        const timestamp = new Date()
+
+        logger.info(
+          {
+            sessionId,
+            recipient: jid,
+            messageId,
+            mediaUrl,
+            mediaType,
+            sendDuration,
+            totalDuration: Date.now() - startTime,
+            attempt
+          },
+          "OUTGOING MEDIA MESSAGE SENT - Success"
+        )
+
+        return { messageId, timestamp }
+      } catch (error) {
+        lastError = error
+        logger.warn(
+          {
+            error,
+            sessionId,
+            recipient: jid,
+            attempt,
+            maxAttempts: retryAttempts,
+            errorMessage: error instanceof Error ? error.message : String(error)
+          },
+          `Send media attempt ${attempt}/${retryAttempts} FAILED`
+        )
+
+        if (attempt < retryAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+        }
+      }
+    }
+
+    logger.error(
+      {
+        error: lastError,
+        sessionId,
+        recipient: jid,
+        totalAttempts: retryAttempts,
+        totalDuration: Date.now() - startTime
+      },
+      "OUTGOING MEDIA MESSAGE SEND FAILED - All retry attempts exhausted"
+    )
+    throw lastError || new Error("Failed to send media message after all retry attempts")
+  }
+
   async handleIncomingMessage(
     sessionId: string,
     msg: WAMessage,

@@ -37,6 +37,10 @@ export declare class ConnectionManager {
         messageId: string;
         timestamp: Date;
     }>;
+    sendMediaMessage(sessionId: string, recipient: string, mediaUrl: string, mediaType?: "image" | "document", caption?: string): Promise<{
+        messageId: string;
+        timestamp: Date;
+    }>;
     /**
      * Verifies the socket connection is healthy by sending a presence update
      * This "warms up" the connection before sending actual messages

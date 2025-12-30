@@ -150,4 +150,104 @@ router.post("/:sessionId/messages", async (req: Request, res: Response, next: Ne
   }
 })
 
+// Send media message
+router.post("/:sessionId/media", async (req: Request, res: Response, next: NextFunction) => {
+  const requestStartTime = Date.now()
+  
+  try {
+    const { sessionId } = req.params
+    const { recipient, mediaUrl, mediaType, caption } = req.body
+
+    logger.info(
+      {
+        sessionId,
+        recipient,
+        mediaUrl,
+        mediaType,
+        caption,
+        requestId: req.headers["x-request-id"] || "unknown"
+      },
+      "API REQUEST RECEIVED - Send media message request"
+    )
+
+    if (!recipient) {
+      logger.warn({ sessionId, reason: "recipient missing" }, "Send media request validation FAILED")
+      res.status(400).json({ error: "Recipient is required" })
+      return
+    }
+
+    if (!mediaUrl) {
+      logger.warn({ sessionId, reason: "mediaUrl missing" }, "Send media request validation FAILED")
+      res.status(400).json({ error: "Media URL is required" })
+      return
+    }
+
+    const manager = ConnectionManager.getInstance()
+    const status = await manager.getSessionStatus(sessionId)
+    
+    if (status.connectionStatus !== "connected") {
+      logger.warn(
+        {
+          sessionId,
+          recipient,
+          connectionStatus: status.connectionStatus
+        },
+        "Send media request FAILED - Session not connected"
+      )
+      res.status(400).json({
+        error: "Not connected",
+        connectionStatus: status.connectionStatus
+      })
+      return
+    }
+
+    const sendStartTime = Date.now()
+    const result = await manager.sendMediaMessage(
+      sessionId,
+      recipient,
+      mediaUrl,
+      mediaType || "image",
+      caption
+    )
+    const sendDuration = Date.now() - sendStartTime
+    const totalDuration = Date.now() - requestStartTime
+
+    logger.info(
+      {
+        sessionId,
+        recipient,
+        messageId: result.messageId,
+        timestamp: result.timestamp.toISOString(),
+        sendDuration,
+        totalDuration,
+        success: true
+      },
+      "API REQUEST COMPLETED - Media message sent successfully"
+    )
+
+    res.json({
+      success: true,
+      messageId: result.messageId,
+      timestamp: result.timestamp,
+      recipient,
+      mediaUrl
+    })
+  } catch (error) {
+    const totalDuration = Date.now() - requestStartTime
+    logger.error(
+      {
+        error,
+        sessionId: req.params.sessionId,
+        recipient: req.body?.recipient,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        totalDuration,
+        success: false
+      },
+      "API REQUEST FAILED - Error sending media message"
+    )
+    next(error)
+  }
+})
+
 export default router

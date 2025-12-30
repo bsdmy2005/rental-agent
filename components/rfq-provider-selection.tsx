@@ -27,7 +27,7 @@ export function RfqProviderSelection({
   selectedProviderIds,
   onSelectionChange
 }: RfqProviderSelectionProps) {
-  const [selectionMethod, setSelectionMethod] = useState<SelectionMethod>("specific")
+  const [selectionMethod, setSelectionMethod] = useState<SelectionMethod | null>(null)
   const [selectedAreas, setSelectedAreas] = useState<SelectedArea[]>([])
   const [allProviders, setAllProviders] = useState<SelectServiceProvider[]>([])
   const [areaProviders, setAreaProviders] = useState<SelectServiceProvider[]>([])
@@ -58,14 +58,14 @@ export function RfqProviderSelection({
     if (selectionMethod === "specific" && step === 2) {
       loadAllProviders(searchQuery)
     }
-  }, [selectionMethod, step])
+  }, [selectionMethod, step, searchQuery])
 
   // Load providers by area when areas are selected
   useEffect(() => {
     if (selectionMethod === "area" && selectedAreas.length > 0 && step === 2) {
       loadProvidersByArea(searchQuery)
     }
-  }, [selectedAreas, selectionMethod, step])
+  }, [selectedAreas, selectionMethod, step, searchQuery])
 
   // Trigger search when query changes
   useEffect(() => {
@@ -133,10 +133,19 @@ export function RfqProviderSelection({
 
   function handleMethodChange(method: SelectionMethod) {
     setSelectionMethod(method)
-    setStep(2)
     setSelectedAreas([])
     setAreaProviders([])
+    setAllProviders([])
+    setSearchQuery("")
     onSelectionChange([])
+    
+    // For "specific" method, go directly to step 2 to show providers
+    // For "area" and "all_in_area", stay on step 2 to select areas first
+    if (method === "specific") {
+      setStep(2)
+    } else {
+      setStep(2)
+    }
   }
 
   function handleProviderToggle(providerId: string) {
@@ -202,7 +211,7 @@ export function RfqProviderSelection({
         <div className="space-y-4">
           <Label>How would you like to select providers?</Label>
           <RadioGroup
-            value={selectionMethod}
+            value={selectionMethod || ""}
             onValueChange={(value) => handleMethodChange(value as SelectionMethod)}
           >
             <div className="flex items-center space-x-2">
@@ -232,7 +241,12 @@ export function RfqProviderSelection({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Select Providers</Label>
-            <Button variant="outline" size="sm" onClick={() => setStep(1)}>
+            <Button variant="outline" size="sm" onClick={() => {
+              setStep(1)
+              setSelectionMethod(null)
+              setAllProviders([])
+              setSearchQuery("")
+            }}>
               Back
             </Button>
           </div>
@@ -252,10 +266,10 @@ export function RfqProviderSelection({
             </div>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
-              {providersToShow.length === 0 ? (
+              {allProviders.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No providers available</p>
               ) : (
-                providersToShow.map((provider) => (
+                allProviders.map((provider) => (
                   <div key={provider.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={provider.id}
@@ -286,7 +300,12 @@ export function RfqProviderSelection({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Select Areas</Label>
-            <Button variant="outline" size="sm" onClick={() => setStep(1)}>
+            <Button variant="outline" size="sm" onClick={() => {
+              setStep(1)
+              setSelectionMethod(null)
+              setSelectedAreas([])
+              setAreaProviders([])
+            }}>
               Back
             </Button>
           </div>
@@ -304,7 +323,11 @@ export function RfqProviderSelection({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Select Providers</Label>
-            <Button variant="outline" size="sm" onClick={() => setStep(2)}>
+            <Button variant="outline" size="sm" onClick={() => {
+              setStep(2)
+              setAreaProviders([])
+              setSearchQuery("")
+            }}>
               Back
             </Button>
           </div>
@@ -324,10 +347,10 @@ export function RfqProviderSelection({
             </div>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
-              {providersToShow.length === 0 ? (
+              {areaProviders.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No providers available</p>
               ) : (
-                providersToShow.map((provider) => (
+                areaProviders.map((provider) => (
                   <div key={provider.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={provider.id}
@@ -358,7 +381,13 @@ export function RfqProviderSelection({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Select Areas</Label>
-            <Button variant="outline" size="sm" onClick={() => setStep(1)}>
+            <Button variant="outline" size="sm" onClick={() => {
+              setStep(1)
+              setSelectionMethod(null)
+              setSelectedAreas([])
+              setAreaProviders([])
+              onSelectionChange([])
+            }}>
               Back
             </Button>
           </div>
@@ -367,7 +396,7 @@ export function RfqProviderSelection({
       )}
 
       {/* Step 3/4: Review Selection */}
-      {(step === 3 || step === 4) && (
+      {(step === 3 || step === 4) && selectionMethod && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Selected Providers ({selectedProviderIds.length})</Label>
@@ -377,6 +406,8 @@ export function RfqProviderSelection({
               onClick={() => {
                 if (selectionMethod === "area") {
                   setStep(3)
+                } else if (selectionMethod === "specific") {
+                  setStep(2)
                 } else {
                   setStep(2)
                 }

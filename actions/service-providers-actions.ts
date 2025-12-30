@@ -211,6 +211,54 @@ export async function getServiceProvidersByAreaAction(
   }
 }
 
+/**
+ * Get service providers that can service the property associated with an incident
+ */
+export async function getServiceProvidersForIncidentAction(
+  incidentId: string
+): Promise<ActionState<SelectServiceProvider[]>> {
+  try {
+    // Get incident with property
+    const [incident] = await db
+      .select({
+        propertyId: incidentsTable.propertyId
+      })
+      .from(incidentsTable)
+      .where(eq(incidentsTable.id, incidentId))
+      .limit(1)
+
+    if (!incident) {
+      return { isSuccess: false, message: "Incident not found" }
+    }
+
+    // Get property details
+    const [property] = await db
+      .select({
+        suburb: propertiesTable.suburb,
+        province: propertiesTable.province
+      })
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, incident.propertyId))
+      .limit(1)
+
+    if (!property) {
+      return { isSuccess: false, message: "Property not found" }
+    }
+
+    // Get providers by property location
+    const providersResult = await getServiceProvidersByAreaAction(
+      property.suburb,
+      undefined, // city - not used in current implementation
+      property.province
+    )
+
+    return providersResult
+  } catch (error) {
+    console.error("Error getting service providers for incident:", error)
+    return { isSuccess: false, message: "Failed to get service providers for incident" }
+  }
+}
+
 export async function updateServiceProviderAction(
   providerId: string,
   data: Partial<InsertServiceProvider>,
@@ -904,6 +952,7 @@ export async function processQuoteEmailReplyAction(
  */
 export async function createStandaloneRfqAction(
   propertyId: string,
+  serviceProviderId: string,
   title: string,
   description: string,
   requestedBy: string,
@@ -916,6 +965,7 @@ export async function createStandaloneRfqAction(
       .insert(quoteRequestsTable)
       .values({
         propertyId,
+        serviceProviderId,
         title,
         description,
         requestedBy,
@@ -996,7 +1046,10 @@ export async function createBulkRfqAction(
     notes?: string | null
   },
   providerIds: string[],
-  channel: "email" | "whatsapp" | "both" = "email"
+  channel: "email" | "whatsapp" | "both" = "email",
+  options?: {
+    incidentAttachments?: Array<{ fileUrl: string; fileName: string; fileType: string }>
+  }
 ): Promise<ActionState<{ rfqId: string; quoteRequestIds: string[]; rfqCode: string | null }>> {
   console.log(`[RFQ Creation] ========================================`)
   console.log(`[RFQ Creation] Starting bulk RFQ creation`)
@@ -1059,6 +1112,63 @@ export async function createBulkRfqAction(
     const quoteRequestIds: string[] = [firstQuoteRequest.id]
     const generatedCodes: string[] = firstRfqCode ? [firstRfqCode] : []
     let sentCount = 0
+
+    // Copy incident attachments to RFQ attachments BEFORE sending messages
+    // This ensures attachments are available when WhatsApp/Email services check for them
+    if (firstRfqCode && options?.incidentAttachments && options.incidentAttachments.length > 0) {
+      try {
+        const { copyIncidentAttachmentsToRfqAction } = await import("@/actions/rfq-attachments-actions")
+        const { downloadPDFFromSupabase, uploadPDFToSupabase } = await import("@/lib/storage/supabase-storage")
+        const { createRfqAttachmentAction } = await import("@/actions/rfq-attachments-actions")
+        
+        let copiedCount = 0
+        let failedCount = 0
+        
+        for (const incidentAttachment of options.incidentAttachments) {
+          try {
+            // Download attachment from Supabase
+            const fileBuffer = await downloadPDFFromSupabase(incidentAttachment.fileUrl)
+
+            // Sanitize filename
+            const sanitizedFileName = incidentAttachment.fileName.replace(/[^a-zA-Z0-9.-]/g, "_")
+            const timestamp = Date.now()
+            const rfqFilePath = `rfqs/${firstRfqCode}/${timestamp}-${sanitizedFileName}`
+
+            // Upload to RFQ storage path
+            const newFileUrl = await uploadPDFToSupabase(fileBuffer, rfqFilePath)
+
+            // Create RFQ attachment record
+            const result = await createRfqAttachmentAction({
+              rfqCode: firstRfqCode,
+              fileUrl: newFileUrl,
+              fileName: incidentAttachment.fileName,
+              fileType: incidentAttachment.fileType === "pdf" ? "pdf" : "image",
+              fileSize: fileBuffer.length,
+              uploadedBy: rfqData.requestedBy
+            })
+
+            if (result.isSuccess) {
+              copiedCount++
+              console.log(`[RFQ Attachments] ✓ Copied attachment: ${incidentAttachment.fileName}`)
+            } else {
+              failedCount++
+              console.error(`[RFQ Attachments] ✗ Failed to create RFQ attachment record: ${incidentAttachment.fileName}`, result.message)
+            }
+          } catch (error) {
+            failedCount++
+            console.error(`[RFQ Attachments] ✗ Error copying attachment ${incidentAttachment.fileName}:`, error)
+          }
+        }
+        
+        console.log(`[RFQ Creation] Copied ${copiedCount} of ${options.incidentAttachments.length} attachment(s) to RFQ before sending`)
+        if (failedCount > 0) {
+          console.warn(`[RFQ Creation] Failed to copy ${failedCount} attachment(s)`)
+        }
+      } catch (attachmentError) {
+        // Log error but don't fail the RFQ creation
+        console.error("[RFQ Creation] Error copying incident attachments to RFQ:", attachmentError)
+      }
+    }
 
     // Send RFQ to first provider
     try {

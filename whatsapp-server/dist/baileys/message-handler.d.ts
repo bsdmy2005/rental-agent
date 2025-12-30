@@ -8,6 +8,10 @@ export declare class MessageHandler {
         messageId: string;
         timestamp: Date;
     }>;
+    sendMediaMessage(sessionId: string, socket: WASocket, recipient: string, mediaUrl: string, mediaType?: "image" | "document", caption?: string, retryAttempts?: number, retryDelayMs?: number): Promise<{
+        messageId: string;
+        timestamp: Date;
+    }>;
     handleIncomingMessage(sessionId: string, msg: WAMessage, socket: WASocket): Promise<void>;
     private extractMessageContent;
     private getMessageType;

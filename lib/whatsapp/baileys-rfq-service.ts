@@ -2,7 +2,7 @@
 
 import { db } from "@/db"
 import { quoteRequestsTable, serviceProvidersTable, incidentsTable, propertiesTable, tenantsTable } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and, isNotNull } from "drizzle-orm"
 import { createWhatsAppBaileysClientFromEnv } from "@/lib/whatsapp-baileys-client"
 import { formatRfqMessageForWhatsApp } from "./message-formatter"
 import { ensurePrimarySessionConnectedAction, isWhatsAppEnabledAction } from "@/actions/whatsapp-primary-session-actions"
@@ -184,8 +184,57 @@ export async function sendQuoteRequestViaBaileys(
     const propertyAddress = `${property.streetAddress || ""}, ${property.suburb || ""}, ${property.province || ""}`.trim().replace(/^,\s*|,\s*$/g, "")
 
     // Determine title and description
-    const requestTitle = incident?.title || quoteRequest.title || "Maintenance Request"
-    const requestDescription = incident?.description || quoteRequest.description || "Please provide a quote for the requested work."
+    // Use quoteRequest first (contains transformed text), then fallback to incident (original text)
+    const requestTitle = quoteRequest.title || incident?.title || "Maintenance Request"
+    const requestDescription = quoteRequest.description || incident?.description || "Please provide a quote for the requested work."
+
+    // Get RFQ attachments
+    // In bulk RFQs, attachments are stored with the first provider's rfqCode,
+    // but we need to attach them to all providers' messages.
+    // So we look for related quote requests (same incidentId) and use any of their rfqCodes to fetch attachments.
+    let attachmentCount = 0
+    let attachmentUrls: string[] = []
+    let rfqCodeForAttachments: string | null = quoteRequest.rfqCode || null
+
+    // If this quote request doesn't have an rfqCode, find a related one that does (for bulk RFQs)
+    if (!rfqCodeForAttachments && quoteRequest.incidentId) {
+      try {
+        // If linked to an incident, find other quote requests for the same incident that have attachments
+        const [relatedRequest] = await db
+          .select({ rfqCode: quoteRequestsTable.rfqCode })
+          .from(quoteRequestsTable)
+          .where(
+            and(
+              eq(quoteRequestsTable.incidentId, quoteRequest.incidentId),
+              isNotNull(quoteRequestsTable.rfqCode)
+            )
+          )
+          .limit(1)
+
+        if (relatedRequest?.rfqCode) {
+          rfqCodeForAttachments = relatedRequest.rfqCode
+        }
+      } catch (error) {
+        console.error("[RFQ WhatsApp] Error finding related quote request for attachments:", error)
+      }
+    }
+
+    // Fetch RFQ attachments if we found a code
+    if (rfqCodeForAttachments) {
+      try {
+        const { getRfqAttachmentsByRfqCodeAction } = await import("@/actions/rfq-attachments-actions")
+        const attachmentsResult = await getRfqAttachmentsByRfqCodeAction(rfqCodeForAttachments)
+        
+        if (attachmentsResult.isSuccess && attachmentsResult.data) {
+          attachmentCount = attachmentsResult.data.length
+          attachmentUrls = attachmentsResult.data.map(att => att.fileUrl)
+          console.log(`[RFQ WhatsApp] Found ${attachmentCount} RFQ attachment(s) using code: ${rfqCodeForAttachments}`)
+        }
+      } catch (attachmentError) {
+        console.error("[RFQ WhatsApp] Error fetching RFQ attachments:", attachmentError)
+        // Continue without attachments
+      }
+    }
 
     // Build online submission URL if RFQ code exists
     const domain = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
@@ -205,7 +254,7 @@ export async function sendQuoteRequestViaBaileys(
       dueDate: quoteRequest.dueDate || undefined,
       rfqCode: quoteRequest.rfqCode || undefined,
       onlineSubmissionUrl,
-      attachmentCount: 0, 
+      attachmentCount, 
       priority: incident?.priority || undefined
     })
     
@@ -265,6 +314,37 @@ export async function sendQuoteRequestViaBaileys(
       console.log(`[RFQ WhatsApp] Calling client.sendMessage()...`)
       const result = await client.sendMessage(sessionId, recipientPhone, message)
       const sendDuration = Date.now() - sendStartTime
+      
+      // Send media attachments if any
+      if (attachmentUrls.length > 0) {
+        console.log(`[RFQ WhatsApp] Sending ${attachmentUrls.length} media attachment(s)...`)
+        for (let i = 0; i < attachmentUrls.length; i++) {
+          const attachmentUrl = attachmentUrls[i]
+          try {
+            // Determine media type from URL or file extension
+            const isPDF = attachmentUrl.toLowerCase().includes(".pdf") || attachmentUrl.toLowerCase().endsWith(".pdf")
+            const mediaType = isPDF ? "document" : "image"
+            
+            console.log(`[RFQ WhatsApp] Sending attachment ${i + 1}/${attachmentUrls.length}: ${attachmentUrl} (${mediaType})`)
+            await client.sendMediaMessage(
+              sessionId,
+              recipientPhone,
+              attachmentUrl,
+              mediaType
+            )
+            console.log(`[RFQ WhatsApp] ✓ Attachment ${i + 1} sent successfully`)
+            
+            // Small delay between attachments to avoid rate limiting
+            if (i < attachmentUrls.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          } catch (mediaError) {
+            console.error(`[RFQ WhatsApp] ✗ Failed to send attachment ${i + 1}:`, mediaError)
+            // Continue with other attachments
+          }
+        }
+        console.log(`[RFQ WhatsApp] ✓ All attachments sent`)
+      }
       
       console.log(`[RFQ WhatsApp] ========================================`)
       console.log(`[RFQ WhatsApp] SEND RESULT RECEIVED`)

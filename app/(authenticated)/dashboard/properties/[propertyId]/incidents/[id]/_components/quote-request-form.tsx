@@ -5,10 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { createBulkRfqAction } from "@/actions/service-providers-actions"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { createRfqFromIncidentAction } from "@/actions/incident-rfq-actions"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { RfqProviderSelection } from "@/components/rfq-provider-selection"
+import { useRouter } from "next/navigation"
 
 interface QuoteRequestFormProps {
   incidentId: string
@@ -16,6 +24,7 @@ interface QuoteRequestFormProps {
   propertySuburb: string
   propertyProvince: string
   requestedBy: string // userProfileId
+  onSuccess?: () => void
 }
 
 export function QuoteRequestForm({
@@ -23,10 +32,13 @@ export function QuoteRequestForm({
   propertyId,
   propertySuburb,
   propertyProvince,
-  requestedBy
+  requestedBy,
+  onSuccess
 }: QuoteRequestFormProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([])
+  const [sendChannel, setSendChannel] = useState<"email" | "whatsapp" | "both">("both")
   const [formData, setFormData] = useState({
     notes: "",
     dueDate: ""
@@ -41,28 +53,38 @@ export function QuoteRequestForm({
 
     setLoading(true)
     try {
-      const result = await createBulkRfqAction(
-        {
-          propertyId,
-          incidentId,
-          requestedBy,
-          dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
-          notes: formData.notes || null
-        },
+      const result = await createRfqFromIncidentAction(
+        incidentId,
         selectedProviderIds,
-        "email"
+        requestedBy,
+        {
+          notes: formData.notes || null,
+          dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
+          channel: sendChannel
+        }
       )
 
-      if (result.isSuccess) {
+      if (result.isSuccess && result.data) {
         toast.success(`RFQ sent to ${selectedProviderIds.length} provider(s) successfully`)
         setFormData({ notes: "", dueDate: "" })
         setSelectedProviderIds([])
-        window.location.reload()
+        
+        // Call onSuccess callback if provided (e.g., to close dialog)
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          // Navigate to RFQ detail page or refresh
+          if (result.data.rfqId) {
+            router.push(`/dashboard/rfqs/${result.data.rfqId}`)
+          } else {
+            window.location.reload()
+          }
+        }
       } else {
         toast.error(result.message)
       }
     } catch (error) {
-      console.error("Error creating bulk RFQ:", error)
+      console.error("Error creating RFQ from incident:", error)
       toast.error("Failed to create quote request")
     } finally {
       setLoading(false)
@@ -70,8 +92,7 @@ export function QuoteRequestForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 border-t pt-4 mt-4">
-      <h3 className="font-semibold">Request Quote</h3>
+    <form onSubmit={handleSubmit} className="space-y-4">
       
       <div>
         <Label>Select Service Providers *</Label>
@@ -102,6 +123,23 @@ export function QuoteRequestForm({
           placeholder="Add any additional information for the service provider..."
           rows={3}
         />
+      </div>
+
+      <div>
+        <Label htmlFor="sendChannel">Send Via</Label>
+        <Select value={sendChannel} onValueChange={(value: "email" | "whatsapp" | "both") => setSendChannel(value)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="both">Email & WhatsApp</SelectItem>
+            <SelectItem value="email">Email Only</SelectItem>
+            <SelectItem value="whatsapp">WhatsApp Only</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose how to send the RFQ to service providers
+        </p>
       </div>
 
       <Button type="submit" disabled={loading || selectedProviderIds.length === 0} className="w-full">

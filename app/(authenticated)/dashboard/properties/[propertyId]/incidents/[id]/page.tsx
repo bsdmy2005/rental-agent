@@ -19,6 +19,7 @@ import { IncidentQuotesSection } from "./_components/incident-quotes-section"
 import { CloseIncidentButton } from "./_components/close-incident-button"
 import { IncidentMessageSummary } from "./_components/incident-message-summary"
 import { IncidentTimeline } from "./_components/incident-timeline"
+import { RequestQuoteDialog } from "./_components/request-quote-dialog"
 import { getIncidentTimelineQuery } from "@/queries/incidents-queries"
 import { whatsappSessionsTable } from "@/db/schema"
 import { db } from "@/db"
@@ -202,7 +203,16 @@ export default async function IncidentManagementPage({
           <CardHeader>
             <CardTitle>Actions</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <RequestQuoteDialog
+              incidentId={id}
+              propertyId={propertyId}
+              propertySuburb={incident.property.suburb}
+              propertyProvince={incident.property.province}
+              requestedBy={userProfile.id}
+              incidentTitle={incident.title}
+              incidentDescription={incident.description}
+            />
             <CloseIncidentButton
               incidentId={id}
               currentStatus={incident.status}
