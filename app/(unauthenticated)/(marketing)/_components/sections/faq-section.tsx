@@ -12,44 +12,44 @@ import { SectionWrapper } from "./section-wrapper"
 
 const faqs = [
   {
-    question: "What is Rental Agent AI?",
+    question: "What is PropNxt?",
     answer:
-      "Rental Agent AI is an AI-driven rental investment management platform that simplifies, optimizes, and leverages AI to streamline property management end-to-end. From day-to-day operations to cost optimization, tax filing, late payment follow-ups, and delinquency management—all powered by intelligent AI agents."
+      "PropNxt is an AI-powered property management platform that automates the tedious work of rental management. From tenant onboarding to incident resolution, AI agents handle the coordination so you can focus on growing your portfolio."
   },
   {
-    question: "Who is this for?",
+    question: "Who is PropNxt built for?",
     answer:
-      "We designed Rental Agent AI for property investors, landlords, and rental agencies who want to automate their entire rental investment workflow. Whether you manage one property or a large portfolio, our AI agents handle the complexity so you can focus on growth and optimization."
+      "PropNxt is built for rental agencies and property managers who want to automate their workflows and scale without adding headcount. Whether you manage 10 or 100+ properties, our AI handles the complexity."
+  },
+  {
+    question: "Is PropNxt free during beta?",
+    answer:
+      "Yes! All features are included free during the beta period. No credit card required. We're actively working with early users to refine the product."
   },
   {
     question: "What features are currently available?",
     answer:
-      "Currently available: AI-powered document processing, automated invoice generation, payment automation, payment reconciliation, and email integration. Coming soon: Intelligent expense tracking, AI-driven late payment follow-ups, portfolio performance analytics, cost optimization intelligence, automated tax filing, and smart property discovery."
+      "All core features are live: property and tenant management, AI lease templates with e-signatures, AI bill extraction, rental invoicing, payment tracking, expense management, incident management, AI-coordinated RFQs, moving inspections with AI fault detection, WhatsApp and email integration, and Investec bank integration."
   },
   {
-    question: "How does the AI automation work?",
+    question: "How does the AI actually work?",
     answer:
-      "Our AI agents automatically process bills, extract data, generate invoices, execute payments, track expenses, and manage compliance. You configure extraction rules once, and the system handles everything—from bill processing to tax preparation. Intelligent agents also proactively follow up on late payments and identify optimization opportunities."
+      "Our AI agents process documents (extracting data from bills, leases, and receipts), coordinate workflows (routing incidents to service providers, generating RFQs), and communicate with tenants via WhatsApp. You set up the rules once, and the system handles everything automatically."
   },
   {
-    question: "Will this help with tax filing?",
+    question: "What makes PropNxt different from other property management software?",
     answer:
-      "Yes! Coming soon, our platform will automatically track and categorize expenses, identify tax-deductible items, generate tax reports, and even submit directly to tax authorities. You'll have organized records and automated compliance monitoring, making tax season stress-free."
+      "Unlike traditional software that just automates workflows, PropNxt uses true AI agents that understand context and make decisions. Our AI extracts data from any document format, coordinates between tenants and service providers, and detects faults in inspection photos - all without manual intervention."
   },
   {
-    question: "How does cost optimization work?",
+    question: "What happens after the beta?",
     answer:
-      "Our AI analyzes your expenses across properties, identifies patterns, and provides recommendations to reduce costs. It tracks operating expenses, compares against benchmarks, and suggests optimization opportunities—helping you maximize profitability across your portfolio."
-  },
-  {
-    question: "Is my data secure?",
-    answer:
-      "Absolutely. We use enterprise-grade security infrastructure with encryption at rest and in transit. Bank connections use regulated open-banking providers, and we follow best practices for access control and data protection. Your financial data is never exposed to third parties."
+      "We'll introduce pricing plans after beta. Early adopters will receive special benefits for helping us shape the product. We're committed to building something that genuinely solves property management pain points."
   },
   {
     question: "How do I get started?",
     answer:
-      "Sign up, complete onboarding for your landlord or agency profile, add your first property, and configure billing schedules. Forward a test bill or upload manually, and we'll guide you through creating extraction rules. You'll see end-to-end automation in action immediately."
+      "Sign up for free, add your first property, and start exploring. You can upload a bill to see AI extraction in action, connect WhatsApp for tenant communication, or set up a moving inspection. We're here to help if you have questions."
   }
 ]
 
@@ -82,7 +82,7 @@ export function FAQSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Answers to the most common questions about RentPilot AI. If you'd like to go deeper,
+            Answers to the most common questions about PropNxt. If you'd like to go deeper,
             reach out and we'll walk you through a live demo.
           </motion.p>
           <dl className="mt-10 space-y-6">
