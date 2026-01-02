@@ -1,0 +1,1 @@
+ALTER TABLE "rental_invoice_templates" ADD COLUMN "fixed_line_items" jsonb;

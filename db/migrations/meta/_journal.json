@@ -281,6 +281,62 @@
       "when": 1767013620848,
       "tag": "0039_equal_carnage",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1767169681977,
+      "tag": "0040_equal_guardsmen",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1767199240786,
+      "tag": "0041_ordinary_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1767205625905,
+      "tag": "0042_amused_black_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1767248038347,
+      "tag": "0043_spicy_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1767268119510,
+      "tag": "0044_productive_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1767288288105,
+      "tag": "0045_overconfident_sage",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1767334840486,
+      "tag": "0046_kind_rhodey",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1767341972694,
+      "tag": "0047_wet_banshee",
+      "breakpoints": true
     }
   ]
 }

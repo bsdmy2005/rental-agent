@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { createMovingInspectionDefectAction } from "@/actions/moving-inspections-actions"
 import { toast } from "sonner"
 
@@ -16,6 +17,7 @@ interface DefectFormProps {
 export function DefectForm({ itemId, inspectionId }: DefectFormProps) {
   const [description, setDescription] = useState("")
   const [severity, setSeverity] = useState<"minor" | "moderate" | "major">("minor")
+  const [isRepairable, setIsRepairable] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,13 +27,15 @@ export function DefectForm({ itemId, inspectionId }: DefectFormProps) {
     const result = await createMovingInspectionDefectAction({
       itemId,
       description,
-      severity
+      severity,
+      isRepairable
     })
 
     if (result.isSuccess) {
       toast.success("Defect added successfully")
       setDescription("")
       setSeverity("minor")
+      setIsRepairable(true)
     } else {
       toast.error(result.message)
     }
@@ -63,6 +67,14 @@ export function DefectForm({ itemId, inspectionId }: DefectFormProps) {
             <SelectItem value="major">Major</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="isRepairable">Requires Repair</Label>
+        <Switch
+          id="isRepairable"
+          checked={isRepairable}
+          onCheckedChange={setIsRepairable}
+        />
       </div>
       <Button type="submit" disabled={isSubmitting}>
         Add Defect

@@ -3,9 +3,8 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getExtractionRulesByUserProfileIdQuery } from "@/queries/extraction-rules-queries"
-import { getPropertyByIdQuery, getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertyByIdQuery, getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import Link from "next/link"
@@ -104,11 +103,8 @@ export async function RulesTable() {
       allProperties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      allProperties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
-    }
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    allProperties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
   }
 
   // Batch check which rules are referenced by schedules (fixes N+1 query problem)

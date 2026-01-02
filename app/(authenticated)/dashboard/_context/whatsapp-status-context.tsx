@@ -217,14 +217,14 @@ export function WhatsAppStatusProvider({
           uptime: healthResult.data.uptime
         }))
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        const errorMessage = error instanceof Error ? error.message : String(error) || "Unknown error"
         
         // Debug logging in development
         if (process.env.NODE_ENV === "development") {
-          console.error("[WhatsApp Status] Health check error:", {
-            error: errorMessage,
+          console.error("[WhatsApp Status] Health check error:", errorMessage, {
             deep,
-            userProfileId
+            userProfileId,
+            errorType: error instanceof Error ? error.constructor.name : typeof error
           })
         }
 

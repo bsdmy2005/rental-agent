@@ -9,6 +9,7 @@ import {
   incidentsTable,
   propertiesTable,
   incidentStatusHistoryTable,
+  rfqCodesTable,
   type InsertServiceProvider,
   type SelectServiceProvider,
   type InsertServiceProviderArea,
@@ -1401,10 +1402,37 @@ export async function getRfqDetailsByCodeAction(
   }>
 > {
   try {
+    // First try to find in rfqCodesTable
+    const [rfqCode] = await db
+      .select()
+      .from(rfqCodesTable)
+      .where(eq(rfqCodesTable.code, code))
+      .limit(1)
+
+    let quoteRequestId: string | null = null
+
+    if (rfqCode) {
+      quoteRequestId = rfqCode.rfqId
+    } else {
+      // Fallback: check if code exists in quoteRequestsTable.rfqCode
+      const [quoteRequest] = await db
+        .select({ id: quoteRequestsTable.id })
+        .from(quoteRequestsTable)
+        .where(eq(quoteRequestsTable.rfqCode, code))
+        .limit(1)
+
+      if (!quoteRequest) {
+        return { isSuccess: false, message: "RFQ not found" }
+      }
+
+      quoteRequestId = quoteRequest.id
+    }
+
+    // Now get the full quote request details
     const [rfq] = await db
       .select()
       .from(quoteRequestsTable)
-      .where(eq(quoteRequestsTable.rfqCode, code))
+      .where(eq(quoteRequestsTable.id, quoteRequestId))
       .limit(1)
 
     if (!rfq) {

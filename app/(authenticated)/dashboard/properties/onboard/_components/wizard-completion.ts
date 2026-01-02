@@ -292,6 +292,7 @@ export async function completeOnboarding(
             description: tenant.rentalInvoiceTemplate.description || null,
             dependsOnBillTemplateIds: actualBillTemplateIds,
             generationDayOfMonth: tenant.rentalInvoiceTemplate.generationDayOfMonth || 5,
+            fixedLineItems: tenant.rentalInvoiceTemplate.fixedLineItems || undefined,
             isActive: true
           })
 

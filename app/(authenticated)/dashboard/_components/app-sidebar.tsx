@@ -15,6 +15,17 @@ import { NavUser } from "../_components/nav-user"
 import { getNavigationForUserType } from "@/lib/navigation-config"
 import { WhatsAppStatusBadge } from "./whatsapp-status-badge"
 
+function SidebarLogo() {
+  return (
+    <div className="flex items-center gap-2 px-2 py-1.5">
+      <Building2 className="h-5 w-5 shrink-0" />
+      <span className="font-semibold group-data-[collapsible=icon]:hidden">
+        PropNxt.AI
+      </span>
+    </div>
+  )
+}
+
 export function AppSidebar({
   userData,
   userType,
@@ -44,10 +55,7 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Building2 className="h-5 w-5" />
-          <span className="font-semibold">Rental Agent AI</span>
-        </div>
+        <SidebarLogo />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

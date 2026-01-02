@@ -1,6 +1,6 @@
 # WhatsApp Baileys Integration Architecture
 
-This document describes the architecture and integration patterns for the WhatsApp Baileys server and its integration with the Rental Agent AI Next.js application.
+This document describes the architecture and integration patterns for the WhatsApp Baileys server and its integration with the PropNxt.AI Next.js application.
 
 ## System Architecture
 

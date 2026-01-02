@@ -11,7 +11,8 @@ export async function uploadLeaseAgreementAction(
   tenantId: string,
   propertyId: string,
   fileBuffer: Buffer,
-  fileName: string
+  fileName: string,
+  markAsFullyExecuted?: boolean
 ): Promise<ActionState<SelectLeaseAgreement>> {
   try {
     console.log(`[Lease Upload] Starting upload for tenant: ${tenantId}, file: ${fileName}`)
@@ -67,7 +68,24 @@ export async function uploadLeaseAgreementAction(
       effectiveStartDate,
       effectiveEndDate,
       extractionData: extractedData ? (extractedData as unknown as Record<string, unknown>) : null,
-      status: extractedData ? "processed" : "pending"
+      status: extractedData ? "processed" : "pending",
+      initiationMethod: "upload_existing",
+      // If markAsFullyExecuted is true, set status to fully_executed and mark both parties as signed
+      ...(markAsFullyExecuted
+        ? {
+            initiationStatus: "fully_executed",
+            signedByTenant: true,
+            signedByLandlord: true,
+            signedAt: new Date(),
+            lifecycleState: "signed"
+          }
+        : {
+            initiationStatus: null,
+            signedByTenant: false,
+            signedByLandlord: false,
+            signedAt: null,
+            lifecycleState: "waiting"
+          })
     }
 
     const [newLease] = await db.insert(leaseAgreementsTable).values(leaseData).returning()

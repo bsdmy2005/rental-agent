@@ -7,7 +7,7 @@ import { LeasesList } from "./_components/leases-list"
 import { LeasesListSkeleton } from "./_components/leases-list-skeleton"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Plus, FileText } from "lucide-react"
 
 export default async function LeasesPage() {
   const user = await currentUser()
@@ -22,6 +22,12 @@ export default async function LeasesPage() {
             Manage lease agreements and track signing status.
           </p>
         </div>
+        <Link href="/dashboard/leases/new">
+          <Button>
+            <FileText className="mr-2 h-4 w-4" />
+            Generate New Lease Document
+          </Button>
+        </Link>
       </div>
 
       <div>

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { signLeaseAsLandlordAction } from "@/actions/lease-initiation-actions"
 
+// This route handles authenticated landlord signing (backward compatibility)
+// For token-based signing, use /api/leases/[leaseId]/sign/landlord/token
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ leaseId: string }> }

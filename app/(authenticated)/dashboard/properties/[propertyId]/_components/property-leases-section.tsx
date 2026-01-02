@@ -43,9 +43,10 @@ export async function PropertyLeasesSection({ propertyId }: PropertyLeasesSectio
   // Group leases by status
   const pendingLeases = leases.filter(
     (l) =>
+      l.initiationStatus === "sent_to_landlord" ||
+      l.initiationStatus === "landlord_signed" ||
       l.initiationStatus === "sent_to_tenant" ||
-      l.initiationStatus === "tenant_signed" ||
-      (l.initiationStatus === "landlord_signed" && !l.signedByTenant)
+      l.initiationStatus === "tenant_signed"
   )
   const signedLeases = leases.filter(
     (l) => l.initiationStatus === "fully_executed" || (l.signedByTenant && l.signedByLandlord)

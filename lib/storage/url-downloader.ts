@@ -33,7 +33,7 @@ export async function downloadPDFFromUrl(url: string): Promise<Buffer> {
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        "User-Agent": "RentalAgentAI/1.0",
+        "User-Agent": "PropNxtAI/1.0",
         "Accept": "application/pdf,application/octet-stream,*/*"
       },
       // Follow redirects
@@ -97,7 +97,7 @@ export async function checkUrlAccessibility(url: string): Promise<{
     const response = await fetch(url, {
       method: "HEAD",
       headers: {
-        "User-Agent": "RentalAgentAI/1.0"
+        "User-Agent": "PropNxtAI/1.0"
       },
       redirect: "follow"
     })

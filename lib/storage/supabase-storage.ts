@@ -159,6 +159,82 @@ export async function getPDFUrl(path: string): Promise<string> {
 }
 
 /**
+ * Upload an image file to Supabase storage
+ * @param file - File object or Buffer
+ * @param path - Storage path (e.g., "inspections/{inspectionId}/{itemId}/{filename}")
+ * @returns Public URL of the uploaded file
+ */
+export async function uploadImageToSupabase(
+  file: File | Buffer,
+  path: string
+): Promise<string> {
+  try {
+    // Validate path doesn't contain spaces (common issue)
+    if (path.includes(" ")) {
+      throw new Error(
+        `Invalid storage path: "${path}". Path contains spaces which are not allowed in Supabase storage keys. Please sanitize the filename before constructing the path.`
+      )
+    }
+
+    const fileBuffer = file instanceof File ? await file.arrayBuffer() : file
+    const fileName = file instanceof File ? file.name : path.split("/").pop() || "image.jpg"
+    
+    // Determine content type based on file extension or file type
+    let contentType = "image/jpeg"
+    if (file instanceof File) {
+      contentType = file.type || "image/jpeg"
+    } else {
+      const ext = fileName.toLowerCase().split(".").pop()
+      if (ext === "png") contentType = "image/png"
+      else if (ext === "jpg" || ext === "jpeg") contentType = "image/jpeg"
+      else if (ext === "webp") contentType = "image/webp"
+    }
+
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(path, fileBuffer, {
+        contentType,
+        upsert: false
+      })
+
+    if (error) {
+      // Provide more detailed error information
+      const errorDetails = error.message || JSON.stringify(error)
+      throw new Error(
+        `Failed to upload image to Supabase: ${errorDetails}. Path: "${path}", Bucket: "${BUCKET_NAME}"`
+      )
+    }
+
+    // Get public URL
+    const {
+      data: { publicUrl }
+    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path)
+
+    return publicUrl
+  } catch (error) {
+    console.error("Error uploading image to Supabase:", error)
+    throw error
+  }
+}
+
+/**
+ * Delete an image file from Supabase storage
+ * @param path - Storage path to delete
+ */
+export async function deleteImageFromSupabase(path: string): Promise<void> {
+  try {
+    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path])
+
+    if (error) {
+      throw new Error(`Failed to delete image from Supabase: ${error.message}`)
+    }
+  } catch (error) {
+    console.error("Error deleting image from Supabase:", error)
+    throw error
+  }
+}
+
+/**
  * Download a PDF file from Supabase storage
  * @param fileUrlOrPath - Storage path or public URL
  * @returns File buffer

@@ -11,6 +11,7 @@ import { MoreVertical } from "lucide-react"
 import { activateUserProfileAction, deactivateUserProfileAction } from "@/actions/user-profiles-actions"
 import { toast } from "sonner"
 import type { SelectUserProfile } from "@/db/schema"
+import { AssignAgencyDialog } from "./assign-agency-dialog"
 
 interface UserActionsProps {
   userProfile: SelectUserProfile
@@ -38,20 +39,25 @@ export function UserActions({ userProfile }: UserActionsProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {userProfile.isActive ? (
-          <DropdownMenuItem onClick={handleDeactivate}>Deactivate</DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onClick={handleActivate}>Activate</DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-2">
+      {userProfile.userType === "rental_agent" && (
+        <AssignAgencyDialog userProfile={userProfile} />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {userProfile.isActive ? (
+            <DropdownMenuItem onClick={handleDeactivate}>Deactivate</DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={handleActivate}>Activate</DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 

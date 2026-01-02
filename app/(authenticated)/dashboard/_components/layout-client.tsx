@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useEffect, useState } from "react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -37,18 +38,22 @@ export default function DashboardClientLayout({
   userProfileId: string
 }) {
   const pathname = usePathname()
+  const [defaultOpen, setDefaultOpen] = useState(true) // Consistent default for SSR
 
-  // Read the sidebar state from cookie on initial load
-  const getCookieValue = (name: string) => {
-    if (typeof document === "undefined") return null
-    const value = `; ${document.cookie}`
-    const parts = value.split(`; ${name}=`)
-    if (parts.length === 2) return parts.pop()?.split(";").shift()
-    return null
-  }
+  // Read the sidebar state from cookie after mount to avoid hydration mismatch
+  useEffect(() => {
+    const getCookieValue = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(";").shift()
+      return null
+    }
 
-  const savedState = getCookieValue("sidebar_state")
-  const defaultOpen = savedState === null ? true : savedState === "true"
+    const savedState = getCookieValue("sidebar_state")
+    if (savedState !== null) {
+      setDefaultOpen(savedState === "true")
+    }
+  }, [])
 
   const getBreadcrumbs = () => {
     const paths = pathname.split("/").filter(Boolean)
@@ -145,7 +150,7 @@ export default function DashboardClientLayout({
 
   return (
     <WhatsAppStatusProvider userProfileId={userProfileId}>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider open={defaultOpen} onOpenChange={setDefaultOpen}>
         <AppSidebar userData={userData} userType={userType} />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

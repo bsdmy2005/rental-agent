@@ -29,7 +29,7 @@ export function SiteBanner() {
                   Launch beta
                 </span>
                 <span>
-                  RentPilot AI is in active development for early landlords and agencies.
+                  PropNxt.AI is in active development for early landlords and agencies.
                 </span>
               </div>
               <button

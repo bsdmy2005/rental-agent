@@ -3,28 +3,157 @@
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
+import { Node, mergeAttributes } from "@tiptap/core"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Bold, Italic, List, ListOrdered, Undo, Redo, Code } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { Bold, Italic, List, ListOrdered, Undo, Redo, Code, ChevronDown, FileText } from "lucide-react"
+import { useCallback, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from "react"
 import { htmlToMarkdown, markdownToHtml } from "@/lib/utils/markdown-converter"
+import type { TemplateField } from "@/lib/utils/template-helpers"
+
+// Create FieldPlaceholder extension factory that accepts fields array
+function createFieldPlaceholderExtension(fields: TemplateField[]) {
+  return Node.create({
+    name: 'fieldPlaceholder',
+    
+    group: 'inline',
+    
+    inline: true,
+    
+    atom: true,
+    
+    addAttributes() {
+      return {
+        'data-field-id': {
+          default: null,
+          parseHTML: element => element.getAttribute('data-field-id'),
+          renderHTML: attributes => {
+            if (!attributes['data-field-id']) {
+              return {}
+            }
+            return {
+              'data-field-id': attributes['data-field-id'],
+            }
+          },
+        },
+        'field-label': {
+          default: null,
+          parseHTML: element => {
+            const fieldId = element.getAttribute('data-field-id')
+            // First try to get from data attribute
+            const dataLabel = element.getAttribute('data-field-label')
+            if (dataLabel) return dataLabel
+            // Try to look up from fields array
+            if (fieldId) {
+              const field = fields.find(f => f.id === fieldId)
+              if (field) return field.label
+            }
+            // Fallback to parsing from text content
+            const text = element.textContent || ''
+            const match = text.match(/\[Field: (.+?)\]/)
+            return match ? match[1] : null
+          },
+          renderHTML: attributes => {
+            return {}
+          },
+        },
+      }
+    },
+    
+    parseHTML() {
+      return [
+        {
+          tag: 'span[data-field-id].field-placeholder',
+        },
+      ]
+    },
+    
+    renderHTML({ HTMLAttributes }) {
+      const fieldId = HTMLAttributes['data-field-id']
+      let label = HTMLAttributes['field-label'] || HTMLAttributes['data-field-label']
+      
+      // If label is missing, try to look it up from fields array
+      if (!label && fieldId) {
+        const field = fields.find(f => f.id === fieldId)
+        if (field) label = field.label
+      }
+      
+      label = label || 'Field'
+      
+      return [
+        'span',
+        mergeAttributes(HTMLAttributes, {
+          'data-field-id': fieldId,
+          'data-field-label': label,
+          class: 'field-placeholder',
+          contenteditable: 'false',
+        }),
+        `[Field: ${label}]`,
+      ]
+    },
+    addNodeView() {
+      return ({ node, HTMLAttributes }) => {
+        const dom = document.createElement('span')
+        const fieldId = node.attrs['data-field-id']
+        let label = node.attrs['field-label'] || node.attrs['data-field-label']
+        
+        // If label is missing, try to look it up from fields array
+        if (!label && fieldId) {
+          const field = fields.find(f => f.id === fieldId)
+          if (field) label = field.label
+        }
+        
+        label = label || 'Field'
+        
+        dom.setAttribute('data-field-id', fieldId)
+        dom.setAttribute('data-field-label', label)
+        dom.className = 'field-placeholder'
+        dom.contentEditable = 'false'
+        dom.textContent = `[Field: ${label}]`
+        
+        return {
+          dom,
+        }
+      }
+    },
+  })
+}
 
 interface RichTextEditorProps {
   content: string
   onChange: (content: string) => void
   placeholder?: string
   className?: string
+  fields?: TemplateField[]
+  isSignatureSection?: boolean // If true, show signature insertion button
 }
 
-export function RichTextEditor({
+export interface RichTextEditorRef {
+  insertField: (fieldId: string) => void
+  insertSignature: (signatureType: "tenant_signature" | "landlord_signature") => void
+}
+
+export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   content,
   onChange,
   placeholder = "Enter content...",
-  className = ""
-}: RichTextEditorProps) {
+  className = "",
+  fields = [],
+  isSignatureSection = false
+}, ref) => {
   const [editorMode, setEditorMode] = useState<"rich" | "markdown">("rich")
   const [markdownContent, setMarkdownContent] = useState("")
+  
+  // Create extension with fields array so it can look up labels
+  const fieldPlaceholderExtension = useMemo(() => createFieldPlaceholderExtension(fields), [fields])
+  
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -35,7 +164,8 @@ export function RichTextEditor({
       }),
       Placeholder.configure({
         placeholder
-      })
+      }),
+      fieldPlaceholderExtension
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -133,6 +263,68 @@ export function RichTextEditor({
     [editor, editorMode, markdownContent, handleMarkdownChange]
   )
 
+  const insertField = useCallback(
+    (fieldId: string) => {
+      const field = fields.find(f => f.id === fieldId)
+      if (!field) return
+
+      if (editorMode === "rich") {
+        if (editor) {
+          // Insert field placeholder using the custom node
+          editor.chain().focus().insertContent({
+            type: 'fieldPlaceholder',
+            attrs: {
+              'data-field-id': fieldId,
+              'field-label': field.label
+            }
+          }).run()
+        }
+      } else {
+        // Insert in Markdown mode - use a simple format that will be converted
+        const textarea = document.querySelector(`textarea[data-markdown-editor]`) as HTMLTextAreaElement
+        if (textarea) {
+          const start = textarea.selectionStart
+          const end = textarea.selectionEnd
+          const text = markdownContent
+          const before = text.substring(0, start)
+          const after = text.substring(end)
+          const fieldMarkdown = `[Field: ${field.label}]`
+          const newText = `${before}${fieldMarkdown}${after}`
+          setMarkdownContent(newText)
+          handleMarkdownChange(newText)
+          // Restore cursor position
+          setTimeout(() => {
+            textarea.focus()
+            textarea.setSelectionRange(start + fieldMarkdown.length, start + fieldMarkdown.length)
+          }, 0)
+        }
+      }
+    },
+    [editor, editorMode, markdownContent, handleMarkdownChange, fields]
+  )
+
+  const insertSignature = useCallback(
+    (signatureType: "tenant_signature" | "landlord_signature") => {
+      if (editorMode === "rich") {
+        if (editor) {
+          editor.chain().focus().insertContent({
+            type: 'signaturePlaceholder',
+            attrs: {
+              'data-signature-type': signatureType,
+            },
+          }).run()
+        }
+      }
+    },
+    [editor, editorMode]
+  )
+
+  // Expose insertField and insertSignature methods via ref
+  useImperativeHandle(ref, () => ({
+    insertField,
+    insertSignature
+  }), [insertField, insertSignature])
+
   const toggleMode = useCallback(() => {
     setEditorMode(prev => prev === "rich" ? "markdown" : "rich")
   }, [])
@@ -192,6 +384,39 @@ export function RichTextEditor({
             >
               <Italic className="h-4 w-4" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={fields.length === 0}
+                  title={fields.length === 0 ? "Create fields in the Fields tab first" : "Insert a field"}
+                >
+                  <FileText className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              {fields.length > 0 ? (
+                <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto w-[200px]">
+                  {fields.map((field) => (
+                    <DropdownMenuItem
+                      key={field.id}
+                      onClick={() => insertField(field.id)}
+                      className="cursor-pointer"
+                    >
+                      {field.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              ) : (
+                <DropdownMenuContent align="start" className="w-[200px]">
+                  <DropdownMenuItem disabled className="text-muted-foreground">
+                    No fields available. Create fields in the Fields tab first.
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              )}
+            </DropdownMenu>
             <div className="w-px h-6 bg-border mx-1" />
             <Button
               type="button"
@@ -211,45 +436,43 @@ export function RichTextEditor({
             >
               <ListOrdered className="h-4 w-4" />
             </Button>
-            <div className="w-px h-6 bg-border mx-1" />
-            <Button type="button" variant="ghost" size="sm" onClick={undo} disabled={!editor?.can().undo()}>
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={redo} disabled={!editor?.can().redo()}>
-              <Redo className="h-4 w-4" />
-            </Button>
           </>
         )}
         <div className="flex-1" />
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <span>Variables:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-xs"
+                className="h-6 px-2 text-xs whitespace-nowrap"
+              >
+                Variables
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
             onClick={() => insertVariable("tenant_name")}
+                className="cursor-pointer"
           >
             tenant_name
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
+              </DropdownMenuItem>
+              <DropdownMenuItem
             onClick={() => insertVariable("property_address")}
+                className="cursor-pointer"
           >
             property_address
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
+              </DropdownMenuItem>
+              <DropdownMenuItem
             onClick={() => insertVariable("monthly_rental")}
+                className="cursor-pointer"
           >
             monthly_rental
-          </Button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {editorMode === "rich" ? (
@@ -312,8 +535,27 @@ export function RichTextEditor({
         .ProseMirror em {
           font-style: italic;
         }
+        .ProseMirror .field-placeholder {
+          display: inline-block;
+          background-color: #e0e7ff;
+          color: #4338ca;
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          margin: 0 2px;
+          border: 1px solid #c7d2fe;
+          user-select: none;
+          white-space: nowrap;
+          max-width: none;
+        }
+        .ProseMirror .field-placeholder[contenteditable="false"] {
+          cursor: default;
+        }
       `}</style>
     </div>
   )
-}
+})
+
+RichTextEditor.displayName = "RichTextEditor"
 

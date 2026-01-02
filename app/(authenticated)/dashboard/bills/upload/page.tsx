@@ -4,10 +4,9 @@ import { Suspense } from "react"
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
 import {
   getPropertiesByLandlordIdQuery,
-  getPropertiesByRentalAgentIdQuery
+  getPropertiesForUserQuery
 } from "@/queries/properties-queries"
 import { BillUploadWrapper } from "../_components/bill-upload-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,11 +26,8 @@ export default async function UploadBillPage() {
       properties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
     }
   } else if (userProfile?.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
-    }
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
   }
 
   return (

@@ -3,6 +3,7 @@
 import { db } from "@/db"
 import {
   rentalInvoiceInstancesTable,
+  rentalInvoiceTemplatesTable,
   propertiesTable,
   tenantsTable,
   landlordsTable,
@@ -388,14 +389,19 @@ export async function generateInvoiceDataAction(
       }
     }
 
-    // Fallback to landlord address if no agent address found
-    if (!billingAddress) {
+    // Fallback to landlord address if no agent address found (if landlordId exists)
+    if (!billingAddress && property.landlordId) {
       const landlord = await db.query.landlords.findFirst({
         where: eq(landlordsTable.id, property.landlordId)
       })
       if (landlord?.address) {
         billingAddress = landlord.address
       }
+    }
+
+    // Fallback to property owner address stored on property (when landlordId is null)
+    if (!billingAddress && property.landlordAddress) {
+      billingAddress = property.landlordAddress
     }
 
     // Extract banking details from property
@@ -453,19 +459,19 @@ export async function generateInvoiceDataAction(
       }
     }
 
-    // Get all contributing bills
-    const contributingBillIds = (instance.contributingBillIds as string[]) || []
-    if (contributingBillIds.length === 0) {
-      return {
-        isSuccess: false,
-        message: "No contributing bills found for this invoice instance"
-      }
-    }
+    // Get rental invoice template to extract fixed line items
+    const template = await db.query.rentalInvoiceTemplates.findFirst({
+      where: eq(rentalInvoiceTemplatesTable.id, instance.rentalInvoiceTemplateId)
+    })
 
-    const bills = await db
-      .select()
-      .from(billsTable)
-      .where(inArray(billsTable.id, contributingBillIds))
+    // Get all contributing bills (if any)
+    const contributingBillIds = (instance.contributingBillIds as string[]) || []
+    const bills = contributingBillIds.length > 0
+      ? await db
+          .select()
+          .from(billsTable)
+          .where(inArray(billsTable.id, contributingBillIds))
+      : []
 
     // Extract line items from bills
     const lineItems: InvoiceLineItem[] = []
@@ -479,7 +485,26 @@ export async function generateInvoiceDataAction(
       sourceBillId: null
     })
 
-    // Extract line items from each bill's invoiceExtractionData
+    // Add fixed line items from template (if any)
+    if (template?.fixedLineItems) {
+      const fixedLineItems = template.fixedLineItems as Array<{
+        id: string
+        description: string
+        amount: number
+        type?: string
+      }>
+      for (const fixedItem of fixedLineItems) {
+        lineItems.push({
+          id: fixedItem.id,
+          type: (fixedItem.type as InvoiceLineItem["type"]) || "other",
+          description: fixedItem.description,
+          amount: fixedItem.amount,
+          sourceBillId: null
+        })
+      }
+    }
+
+    // Extract line items from each bill's invoiceExtractionData (if any bills exist)
     for (const bill of bills) {
       if (!bill.invoiceExtractionData) {
         continue

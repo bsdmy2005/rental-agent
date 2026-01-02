@@ -3,8 +3,11 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getPropertiesWithTenantsByLandlordIdQuery, getPropertiesWithTenantsByRentalAgentIdQuery, type PropertyWithDetails } from "@/queries/properties-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
+import {
+  getPropertiesWithTenantsByLandlordIdQuery,
+  getPropertiesWithTenantsForUserQuery,
+  type PropertyWithDetails
+} from "@/queries/properties-queries"
 import { getScheduleStatusesForPropertiesAction } from "@/actions/billing-schedule-status-actions"
 import { PropertiesListClient } from "./properties-list-client"
 
@@ -27,10 +30,8 @@ export async function PropertiesList() {
       properties = await getPropertiesWithTenantsByLandlordIdQuery(landlord.id)
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      properties = await getPropertiesWithTenantsByRentalAgentIdQuery(rentalAgent.id)
-    }
+    // Use centralized function that handles rental agent vs agency owner/admin logic
+    properties = await getPropertiesWithTenantsForUserQuery(userProfile.id, userProfile.userType)
   }
 
   // Batch fetch late schedule counts for all properties (fixes N+1 query)

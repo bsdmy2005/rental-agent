@@ -1,0 +1,1 @@
+ALTER TABLE "properties" ALTER COLUMN "landlord_id" DROP NOT NULL;

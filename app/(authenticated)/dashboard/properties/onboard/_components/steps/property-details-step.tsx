@@ -242,6 +242,86 @@ export function PropertyDetailsStep() {
             </div>
           </div>
         </div>
+
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold mb-4">Property Owner Details</h3>
+          <p className="text-muted-foreground text-sm mb-4">
+            Enter the property owner's contact information. This is required for contracts and communication.
+          </p>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="landlordName">
+                  Owner Name / Company Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordName"
+                  required
+                  value={state.property.landlordName || ""}
+                  onChange={(e) => updateProperty({ landlordName: e.target.value })}
+                  placeholder="e.g., John Smith or ABC Properties Ltd"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="landlordIdNumber">
+                  ID / Registration Number <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordIdNumber"
+                  required
+                  value={state.property.landlordIdNumber || ""}
+                  onChange={(e) => updateProperty({ landlordIdNumber: e.target.value })}
+                  placeholder="ID number or company registration"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="landlordEmail">
+                  Owner Email <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordEmail"
+                  type="email"
+                  required
+                  value={state.property.landlordEmail || ""}
+                  onChange={(e) => updateProperty({ landlordEmail: e.target.value })}
+                  placeholder="owner@example.com"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="landlordPhone">
+                  Owner Phone <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="landlordPhone"
+                  type="tel"
+                  required
+                  value={state.property.landlordPhone || ""}
+                  onChange={(e) => updateProperty({ landlordPhone: e.target.value })}
+                  placeholder="+27 12 345 6789"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="landlordAddress">
+                Owner Address <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="landlordAddress"
+                required
+                value={state.property.landlordAddress || ""}
+                onChange={(e) => updateProperty({ landlordAddress: e.target.value })}
+                placeholder="Full address of the property owner"
+                className="h-11"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </WizardStep>
   )

@@ -666,7 +666,7 @@ export function formatOtpEmail(otpCode: string, tenantName?: string): {
   const greeting = tenantName ? `Hi ${tenantName}` : "Hi"
 
   return {
-    subject: "Your RentPilot Verification Code",
+    subject: "Your PropNxt.AI Verification Code",
     text: `${greeting},
 
 Your verification code is: ${otpCode}
@@ -676,7 +676,7 @@ This code will expire in 10 minutes.
 If you didn't request this code, please ignore this email.
 
 Thanks,
-RentPilot`,
+PropNxt.AI`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Verification Code</h2>
@@ -687,7 +687,7 @@ RentPilot`,
         </p>
         <p>This code will expire in 10 minutes.</p>
         <p style="color: #666;">If you didn't request this code, please ignore this email.</p>
-        <p>Thanks,<br>RentPilot</p>
+        <p>Thanks,<br>PropNxt.AI</p>
       </div>
     `
   }

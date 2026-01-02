@@ -38,9 +38,9 @@ export function Header({ userMembership }: HeaderProps) {
           <div className="flex items-center gap-2 lg:flex-1">
             <Link href="/" className="-m-1.5 flex items-center gap-2 p-1.5">
               <span className="bg-brand-primary/10 text-brand-primary flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">
-                RP
+                PN
               </span>
-              <span className="text-xl font-semibold tracking-tight">RentPilot AI</span>
+              <span className="text-xl font-semibold tracking-tight">PropNxt.AI</span>
             </Link>
           </div>
           <div className="flex lg:hidden">
@@ -140,7 +140,7 @@ export function Header({ userMembership }: HeaderProps) {
                 className="-m-1.5 p-1.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="text-xl font-semibold tracking-tight">RentPilot AI</span>
+                <span className="text-xl font-semibold tracking-tight">PropNxt.AI</span>
               </Link>
               <button
                 type="button"

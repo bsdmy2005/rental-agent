@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "RentPilot AI – Automated Rental Agent",
+  title: "PropNxt.AI – Property Management Platform",
   description:
-    "RentPilot AI automates rental property admin for landlords and agencies: ingest bills, generate invoices, and manage tenants in one place.",
+    "PropNxt.AI automates rental property admin for landlords and agencies: ingest bills, generate invoices, and manage tenants in one place.",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",

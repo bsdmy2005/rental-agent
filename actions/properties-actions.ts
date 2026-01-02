@@ -1,7 +1,12 @@
 "use server"
 
 import { db } from "@/db"
-import { propertiesTable, type InsertProperty, type SelectProperty } from "@/db/schema"
+import { getAllPropertiesQuery } from "@/queries/properties-queries"
+import {
+  propertiesTable,
+  type InsertProperty,
+  type SelectProperty
+} from "@/db/schema"
 import { ActionState } from "@/types"
 import { eq } from "drizzle-orm"
 
@@ -26,9 +31,23 @@ export async function createPropertyAction(
   }
 }
 
+export async function getAllPropertiesAction(): Promise<ActionState<SelectProperty[]>> {
+  try {
+    const properties = await getAllPropertiesQuery()
+    return {
+      isSuccess: true,
+      message: "Properties retrieved successfully",
+      data: properties
+    }
+  } catch (error) {
+    console.error("Error getting all properties:", error)
+    return { isSuccess: false, message: "Failed to get properties" }
+  }
+}
+
 export async function updatePropertyAction(
   propertyId: string,
-  data: Partial<InsertProperty>
+  data: Partial<Omit<InsertProperty, "id" | "createdAt" | "updatedAt">>
 ): Promise<ActionState<SelectProperty>> {
   try {
     const [updatedProperty] = await db
@@ -52,7 +71,9 @@ export async function updatePropertyAction(
   }
 }
 
-export async function deletePropertyAction(propertyId: string): Promise<ActionState<void>> {
+export async function deletePropertyAction(
+  propertyId: string
+): Promise<ActionState<void>> {
   try {
     await db.delete(propertiesTable).where(eq(propertiesTable.id, propertyId))
 
@@ -66,4 +87,3 @@ export async function deletePropertyAction(propertyId: string): Promise<ActionSt
     return { isSuccess: false, message: "Failed to delete property" }
   }
 }
-

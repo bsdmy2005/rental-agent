@@ -79,6 +79,25 @@ export function getNavigationForUserType(
           icon: FileCheck
         },
         {
+          title: "Inspections",
+          url: "/dashboard/moving-inspections",
+          icon: ClipboardList,
+          items: [
+            {
+              title: "View Inspections",
+              url: "/dashboard/moving-inspections"
+            },
+            {
+              title: "New Moving-In",
+              url: "/dashboard/moving-inspections/create/moving-in"
+            },
+            {
+              title: "New Moving-Out",
+              url: "/dashboard/moving-inspections/create/moving-out"
+            }
+          ]
+        },
+        {
           title: "Lease Templates",
           url: "/dashboard/lease-templates",
           icon: FileEdit
@@ -187,14 +206,58 @@ export function getNavigationForUserType(
           icon: LayoutDashboard
         },
         {
-          title: "Managed Properties",
+          title: "Properties",
           url: "/dashboard/properties",
-          icon: Home
+          icon: Home,
+          items: [
+            {
+              title: "View Properties",
+              url: "/dashboard/properties"
+            },
+            {
+              title: "Add Property",
+              url: "/dashboard/properties/add"
+            }
+          ]
+        },
+        {
+          title: "Tenants",
+          url: "/dashboard/tenants",
+          icon: Users,
+          items: [
+            {
+              title: "View Tenants",
+              url: "/dashboard/tenants"
+            },
+            {
+              title: "Add Tenant",
+              url: "/dashboard/tenants/add"
+            }
+          ]
         },
         {
           title: "Leases",
           url: "/dashboard/leases",
           icon: FileCheck
+        },
+        {
+          title: "Inspections",
+          url: "/dashboard/moving-inspections",
+          icon: ClipboardList,
+          items: [
+            {
+              title: "View Inspections",
+              url: "/dashboard/moving-inspections"
+            },
+            {
+              title: "New Moving-In",
+              url: "/dashboard/moving-inspections/create/moving-in"
+            },
+            {
+              title: "New Moving-Out",
+              url: "/dashboard/moving-inspections/create/moving-out"
+            }
+          ]
         },
         {
           title: "Lease Templates",
@@ -277,6 +340,11 @@ export function getNavigationForUserType(
           icon: ClipboardList
         },
         {
+          title: "Agency Management",
+          url: "/dashboard/agency",
+          icon: Building2
+        },
+        {
           title: "Settings",
           url: "/dashboard/settings",
           icon: Settings,
@@ -342,6 +410,11 @@ export function getNavigationForUserType(
           title: "Users",
           url: "/admin/users",
           icon: Users
+        },
+        {
+          title: "Agencies",
+          url: "/admin/agencies",
+          icon: Building2
         },
         {
           title: "Properties",

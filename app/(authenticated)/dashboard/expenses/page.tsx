@@ -3,8 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { getExpensesByPropertyIdsWithCategoryQuery } from "@/queries/expenses-queries"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AllExpensesList } from "./_components/all-expenses-list"
@@ -30,11 +29,8 @@ export default async function AllExpensesPage() {
       propertyIds = properties.map((p) => p.id)
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const properties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      propertyIds = properties.map((p) => p.id)
-    }
+    const properties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    propertyIds = properties.map((p) => p.id)
   }
 
   // Get all expenses for user's properties
@@ -51,11 +47,8 @@ export default async function AllExpensesPage() {
       properties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
-    }
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
   }
 
   return (

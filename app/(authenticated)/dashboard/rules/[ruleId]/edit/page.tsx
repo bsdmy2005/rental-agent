@@ -5,8 +5,7 @@ import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getExtractionRuleByIdQuery } from "@/queries/extraction-rules-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { EditRuleBuilderWrapper } from "../_components/edit-rule-builder-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Info, ArrowLeft } from "lucide-react"
@@ -46,11 +45,8 @@ export default async function EditExtractionRulePage({
       properties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
-    }
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
   }
 
   return (

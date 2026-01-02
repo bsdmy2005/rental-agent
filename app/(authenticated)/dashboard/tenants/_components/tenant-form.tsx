@@ -11,15 +11,17 @@ import { toast } from "sonner"
 import { FileText, Upload, X, Calendar, CheckCircle2, UserPlus } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface TenantFormProps {
   propertyId: string
   onSuccess?: () => void
+  userType?: "landlord" | "rental_agent" | "tenant" | "admin" // User type to show/hide certain options
 }
 
 type OnboardingStep = "initial" | "lease-upload" | "manual-entry"
 
-export function TenantForm({ propertyId, onSuccess }: TenantFormProps) {
+export function TenantForm({ propertyId, onSuccess, userType }: TenantFormProps) {
   const router = useRouter()
   const [step, setStep] = useState<OnboardingStep>("initial")
   const [loading, setLoading] = useState(false)
@@ -27,6 +29,7 @@ export function TenantForm({ propertyId, onSuccess }: TenantFormProps) {
   const [extracting, setExtracting] = useState(false)
   const [extractedData, setExtractedData] = useState<any>(null)
   const [uploadingLease, setUploadingLease] = useState(false)
+  const [markAsFullyExecuted, setMarkAsFullyExecuted] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     idNumber: "",
@@ -103,6 +106,9 @@ export function TenantForm({ propertyId, onSuccess }: TenantFormProps) {
       formData.append("file", leaseFile)
       formData.append("tenantId", tenantId)
       formData.append("propertyId", propertyId)
+      if (markAsFullyExecuted && (userType === "rental_agent" || userType === "landlord")) {
+        formData.append("markAsFullyExecuted", "true")
+      }
 
       const response = await fetch("/api/lease-agreements/upload", {
         method: "POST",
@@ -282,6 +288,21 @@ export function TenantForm({ propertyId, onSuccess }: TenantFormProps) {
             >
               {extracting ? "Extracting..." : "Extract Tenant Information"}
             </Button>
+            {(userType === "rental_agent" || userType === "landlord") && (
+              <div className="flex items-center space-x-2 rounded-md border p-3">
+                <Checkbox
+                  id="mark-as-fully-executed"
+                  checked={markAsFullyExecuted}
+                  onCheckedChange={(checked) => setMarkAsFullyExecuted(checked === true)}
+                />
+                <Label
+                  htmlFor="mark-as-fully-executed"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Mark lease as fully executed (both parties have signed)
+                </Label>
+              </div>
+            )}
           </div>
 
           {extractedData && (

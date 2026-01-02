@@ -1,5 +1,5 @@
 
-# Rental Agent AI - Complete Architecture Documentation
+# PropNxt.AI - Complete Architecture Documentation
 
 ## Table of Contents
 1. [System Overview](#system-overview)
@@ -17,7 +17,7 @@
 
 ## System Overview
 
-The Rental Agent AI system is a comprehensive property management automation platform that:
+The PropNxt.AI system is a comprehensive property management automation platform that:
 - Processes bills (municipality, levy, utility) via email or manual upload
 - Extracts data using AI-powered extraction rules
 - Generates billing periods from lease agreements
@@ -815,7 +815,7 @@ graph TD
 
 ## Conclusion
 
-This architecture documentation provides a comprehensive view of the Rental Agent AI system, including:
+This architecture documentation provides a comprehensive view of the PropNxt.AI system, including:
 - User creation and onboarding flows
 - Complete database table dependencies
 - Bill processing workflows

@@ -3,10 +3,9 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
 import {
   getPropertiesByLandlordIdQuery,
-  getPropertiesByRentalAgentIdQuery
+  getPropertiesForUserQuery
 } from "@/queries/properties-queries"
 import {
   getRentalInvoiceInstancesByPropertyIdQuery,
@@ -37,12 +36,9 @@ export async function RentalInvoicesList() {
       propertyIds = landlordProperties.map((p) => p.id)
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const agentProperties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
-      propertyIds = agentProperties.map((p) => p.id)
-    }
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
+    propertyIds = agentProperties.map((p) => p.id)
   }
 
   // Batch fetch all invoices for all properties

@@ -28,9 +28,11 @@ import {
   User,
   Building2,
   Calendar,
-  FileCheck
+  FileCheck,
+  ClipboardCheck
 } from "lucide-react"
 import { deleteLeaseAction } from "@/actions/lease-initiation-actions"
+import { createMovingOutFromMovingInAction } from "@/actions/moving-inspections-actions"
 import { toast } from "sonner"
 
 interface LeaseWithDetails {
@@ -67,10 +69,28 @@ interface LeaseWithDetails {
 
 interface LeaseDetailsClientProps {
   lease: LeaseWithDetails
+  moveInInspection: {
+    id: string
+    status: string
+  } | null
+  inspections: {
+    moveIn: Array<{
+      id: string
+      status: string
+      createdAt: Date
+      hasMoveOut: boolean
+    }>
+    moveOut: Array<{
+      id: string
+      status: string
+      createdAt: Date
+    }>
+  }
 }
 
-export function LeaseDetailsClient({ lease }: LeaseDetailsClientProps) {
+export function LeaseDetailsClient({ lease, moveInInspection, inspections }: LeaseDetailsClientProps) {
   const [deleting, setDeleting] = useState(false)
+  const [creatingMoveOut, setCreatingMoveOut] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
@@ -90,7 +110,27 @@ export function LeaseDetailsClient({ lease }: LeaseDetailsClientProps) {
     }
   }
 
-  const canDelete = !(lease.signedByTenant && lease.signedByLandlord)
+  const handleInitiateMoveOut = async (moveInInspectionId: string) => {
+    setCreatingMoveOut(true)
+    try {
+      const result = await createMovingOutFromMovingInAction(moveInInspectionId)
+      if (result.isSuccess && result.data) {
+        toast.success("Move-out inspection created successfully")
+        router.push(`/dashboard/moving-inspections/${result.data.id}`)
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      console.error("Error creating move-out inspection:", error)
+      toast.error("Failed to create move-out inspection")
+    } finally {
+      setCreatingMoveOut(false)
+    }
+  }
+
+  // Allow delete button to show - the server action will enforce dev mode restriction
+  // In dev mode, fully executed leases can be deleted for testing
+  const canDelete = true
 
   const getStatusBadge = () => {
     if (lease.initiationStatus === "fully_executed" || (lease.signedByTenant && lease.signedByLandlord)) {
@@ -143,6 +183,14 @@ export function LeaseDetailsClient({ lease }: LeaseDetailsClientProps) {
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge()}
+          {lease.signedByTenant && lease.signedByLandlord && inspections.moveIn.length === 0 && (
+            <Button asChild size="sm">
+              <Link href={`/dashboard/leases/${lease.id}/inspections/new`}>
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                Initiate Moving-In Inspection
+              </Link>
+            </Button>
+          )}
           {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -351,6 +399,133 @@ export function LeaseDetailsClient({ lease }: LeaseDetailsClientProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Inspection Reports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5" />
+            Inspection Reports
+          </CardTitle>
+          <CardDescription>
+            View and manage inspection reports for this lease
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {inspections.moveIn.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Moving-In Inspections</h4>
+              <div className="space-y-2">
+                  {inspections.moveIn.map((inspection) => (
+                    <div
+                      key={inspection.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Moving-In Inspection</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(inspection.createdAt), "MMMM d, yyyy 'at' h:mm a")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            inspection.status === "signed"
+                              ? "default"
+                              : inspection.status === "completed"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className={
+                            inspection.status === "signed"
+                              ? "bg-green-600"
+                              : inspection.status === "completed"
+                              ? "bg-blue-600"
+                              : ""
+                          }
+                        >
+                          {inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1).replace(/_/g, " ")}
+                        </Badge>
+                        {(inspection.status === "completed" || inspection.status === "signed") && !inspection.hasMoveOut && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleInitiateMoveOut(inspection.id)}
+                            disabled={creatingMoveOut}
+                          >
+                            <ClipboardCheck className="mr-2 h-3 w-3" />
+                            {creatingMoveOut ? "Creating..." : "Create Move-Out"}
+                          </Button>
+                        )}
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/dashboard/moving-inspections/${inspection.id}`}>
+                            View
+                            <ExternalLink className="ml-2 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+          {inspections.moveOut.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Moving-Out Inspections</h4>
+              <div className="space-y-2">
+                {inspections.moveOut.map((inspection) => (
+                  <div
+                    key={inspection.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Moving-Out Inspection</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(inspection.createdAt), "MMMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          inspection.status === "signed"
+                            ? "default"
+                            : inspection.status === "completed"
+                            ? "secondary"
+                            : "outline"
+                        }
+                        className={
+                          inspection.status === "signed"
+                            ? "bg-green-600"
+                            : inspection.status === "completed"
+                            ? "bg-blue-600"
+                            : ""
+                        }
+                      >
+                        {inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1).replace(/_/g, " ")}
+                      </Badge>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/dashboard/moving-inspections/${inspection.id}`}>
+                          View
+                          <ExternalLink className="ml-2 h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {inspections.moveIn.length === 0 && inspections.moveOut.length === 0 && (
+            <p className="text-sm text-muted-foreground">No inspection reports available yet.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Additional Information */}
       <Card>

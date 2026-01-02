@@ -1,12 +1,11 @@
 import { boolean, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
-import { tenantsTable } from "./tenants"
 import { propertiesTable } from "./properties"
 import { leaseLifecycleStateEnum, escalationTypeEnum, leaseInitiationMethodEnum, leaseInitiationStatusEnum } from "./enums"
 
 export const leaseAgreementsTable = pgTable("lease_agreements", {
   id: uuid("id").defaultRandom().primaryKey(),
   tenantId: uuid("tenant_id")
-    .references(() => tenantsTable.id, { onDelete: "cascade" })
+    .references(() => require("./tenants").tenantsTable.id, { onDelete: "cascade" })
     .notNull(),
   propertyId: uuid("property_id")
     .references(() => propertiesTable.id, { onDelete: "cascade" })
@@ -30,6 +29,8 @@ export const leaseAgreementsTable = pgTable("lease_agreements", {
   tenantSigningToken: text("tenant_signing_token"), // Secure token for signing link
   tenantSigningExpiresAt: timestamp("tenant_signing_expires_at"), // Expiry for signing link
   landlordSigningLink: text("landlord_signing_link"), // Unique link for landlord to sign
+  landlordSigningToken: text("landlord_signing_token"), // Secure token for landlord signing link
+  landlordSigningExpiresAt: timestamp("landlord_signing_expires_at"), // Expiry for landlord signing link
   initiatedAt: timestamp("initiated_at"), // When lease initiation started
   tenantCompletedAt: timestamp("tenant_completed_at"), // When tenant completed their part
   landlordCompletedAt: timestamp("landlord_completed_at"), // When landlord completed their part

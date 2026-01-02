@@ -28,7 +28,7 @@ export function VideoSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Watch how RentPilot AI ingests bills, extracts charges, and prepares
+            Watch how PropNxt.AI ingests bills, extracts charges, and prepares
             tenant invoices in minutes.
           </motion.p>
         </div>

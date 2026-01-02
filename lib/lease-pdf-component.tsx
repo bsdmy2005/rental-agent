@@ -32,6 +32,8 @@ export interface LeaseData {
   escalationPercentage?: number
   escalationFixedAmount?: number
   specialConditions?: string
+  templateFieldValues?: Record<string, string> // Custom template field values
+  signedAtLocation?: string // Location where the lease is signed (e.g., "Johannesburg, South Africa")
   isDraft?: boolean
   tenantSignatureData?: any
   landlordSignatureData?: any
@@ -151,8 +153,8 @@ const styles = StyleSheet.create({
   },
   signatureLine: {
     borderTop: "1px solid #000",
-    marginTop: 50,
-    paddingTop: 5
+    marginTop: 5,
+    paddingTop: 2
   },
   signatureLabel: {
     fontSize: 9,
@@ -480,11 +482,43 @@ function renderList(
   )
 }
 
+// Predefined field label mapping for inline field display
+const PREDEFINED_FIELD_LABELS: Record<string, string> = {
+  // Landlord fields
+  landlord_name: "Landlord Name",
+  landlord_id: "Landlord ID",
+  landlord_address: "Landlord Address",
+  landlord_email: "Landlord Email",
+  landlord_phone: "Landlord Phone",
+  // Tenant fields
+  tenant_name: "Tenant Name",
+  tenant_id: "Tenant ID",
+  tenant_address: "Tenant Address",
+  tenant_email: "Tenant Email",
+  tenant_phone: "Tenant Phone",
+  // Property fields
+  property_address: "Property Address",
+  // Financial fields
+  monthly_rental: "Monthly Rental",
+  deposit_amount: "Deposit Amount",
+  // Date fields
+  commencement_date: "Commencement Date",
+  termination_date: "Termination Date",
+  lease_date: "Lease Date",
+  current_date: "Current Date",
+  // Payment fields
+  payment_bank: "Payment Bank",
+  payment_account_holder: "Account Holder",
+  payment_account_number: "Account Number",
+  payment_branch_code: "Branch Code"
+}
+
 // Render content directly from HTML to React-PDF components
 // This approach is more reliable than converting to Markdown first
 function renderContentWithMarkdown(
   content: string | string[] | undefined,
-  data: LeaseData
+  data: LeaseData,
+  fields?: Array<{ id: string; label: string; suffix?: string; inlineDisplayFormat?: "label-value" | "label-only" | "value-only" }>
 ): React.ReactNode[] {
   if (!content) return []
   
@@ -499,6 +533,60 @@ function renderContentWithMarkdown(
       return renderHtmlToPdf(contentStr, {
         data,
         replaceVariables: (text: string) => replaceVariables(text, data),
+        renderField: (fieldId: string) => {
+          // Get value from renderFieldValue (works for both predefined and user-created fields)
+          const value = renderFieldValue(fieldId, data)
+          
+          // Try to find label and display format - first from user-created fields, then from predefined mapping
+          let label: string | undefined
+          let displayFormat: "label-value" | "label-only" | "value-only" = "label-value"
+          if (fields) {
+            const field = fields.find(f => f.id === fieldId)
+            if (field) {
+              label = field.label
+              displayFormat = field.inlineDisplayFormat || "label-value"
+            }
+          }
+          
+          // If not found in user-created fields, try predefined mapping
+          if (!label) {
+            label = PREDEFINED_FIELD_LABELS[fieldId]
+          }
+          
+          // Apply display format
+          const hasValue = value && value.trim() !== ""
+          const field = fields?.find(f => f.id === fieldId)
+          const suffix = field?.suffix
+          
+          switch (displayFormat) {
+            case "value-only":
+              // Return just the value (with suffix if present)
+              if (hasValue) {
+                return suffix ? `${value} ${suffix}` : value
+              }
+              return ""
+            
+            case "label-only":
+              // Return just the label
+              return label || ""
+            
+            case "label-value":
+            default:
+              // Default behavior: "Label Value" format
+              if (label) {
+                if (hasValue) {
+                  if (suffix) {
+                    return `${label} ${value} ${suffix}`
+                  }
+                  return `${label} ${value}`
+                }
+                // If no value, return just the label
+                return label
+              }
+              // Fallback: if no label found, return value or empty string
+              return hasValue ? (suffix ? `${value} ${suffix}` : value) : ""
+          }
+        },
         styles: {
           listContainer: styles.listContainer,
           listItem: styles.listItem,
@@ -563,6 +651,60 @@ function renderContentWithMarkdown(
       return renderHtmlToPdf(htmlContent, {
         data,
         replaceVariables: (text: string) => replaceVariables(text, data),
+        renderField: (fieldId: string) => {
+          // Get value from renderFieldValue (works for both predefined and user-created fields)
+          const value = renderFieldValue(fieldId, data)
+          
+          // Try to find label and display format - first from user-created fields, then from predefined mapping
+          let label: string | undefined
+          let displayFormat: "label-value" | "label-only" | "value-only" = "label-value"
+          if (fields) {
+            const field = fields.find(f => f.id === fieldId)
+            if (field) {
+              label = field.label
+              displayFormat = field.inlineDisplayFormat || "label-value"
+            }
+          }
+          
+          // If not found in user-created fields, try predefined mapping
+          if (!label) {
+            label = PREDEFINED_FIELD_LABELS[fieldId]
+          }
+          
+          // Apply display format
+          const hasValue = value && value.trim() !== ""
+          const field = fields?.find(f => f.id === fieldId)
+          const suffix = field?.suffix
+          
+          switch (displayFormat) {
+            case "value-only":
+              // Return just the value (with suffix if present)
+              if (hasValue) {
+                return suffix ? `${value} ${suffix}` : value
+              }
+              return ""
+            
+            case "label-only":
+              // Return just the label
+              return label || ""
+            
+            case "label-value":
+            default:
+              // Default behavior: "Label Value" format
+              if (label) {
+                if (hasValue) {
+                  if (suffix) {
+                    return `${label} ${value} ${suffix}`
+                  }
+                  return `${label} ${value}`
+                }
+                // If no value, return just the label
+                return label
+              }
+              // Fallback: if no label found, return value or empty string
+              return hasValue ? (suffix ? `${value} ${suffix}` : value) : ""
+          }
+        },
         styles: {
           listContainer: styles.listContainer,
           listItem: styles.listItem,
@@ -587,6 +729,11 @@ function renderContentWithMarkdown(
 }
 
 function renderFieldValue(fieldId: string, data: LeaseData): string {
+  // First, check if this is a custom template field with a value
+  if (data.templateFieldValues && data.templateFieldValues[fieldId]) {
+    return data.templateFieldValues[fieldId]
+  }
+  
   // Debug logging (can be removed in production)
   if (!data.landlordIdNumber && fieldId === "landlord_id") {
     console.log("Missing landlord ID:", { fieldId, landlordIdNumber: data.landlordIdNumber, landlordName: data.landlordName })
@@ -688,16 +835,78 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
             }
 
             if (section.type === "signatures") {
+              // Helper function to render signature placeholder
+              const renderSignaturePlaceholder = (signatureType: "tenant_signature" | "landlord_signature"): React.ReactNode => {
+                if (signatureType === "tenant_signature") {
+                  return (
+                    <View key="tenant-sig" style={styles.signatureBlock}>
+                      {data.tenantSignatureData?.image ? (
+                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
+                          <Image
+                            src={data.tenantSignatureData.image}
+                            style={{ width: 150, height: 60, objectFit: "contain" }}
+                          />
+                        </View>
+                      ) : (
+                        <View style={styles.signatureLine} />
+                      )}
+                      <Text style={styles.signatureLabel}>Tenant Signature</Text>
+                      <Text style={styles.signatureLabel}>{data.tenantName}</Text>
+                      <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
+                        Date: {data.tenantSignatureData?.signedAt ? formatDate(new Date(data.tenantSignatureData.signedAt)) : "___________"}
+                      </Text>
+                    </View>
+                  )
+                } else {
+                  return (
+                    <View key="landlord-sig" style={styles.signatureBlock}>
+                      {data.landlordSignatureData?.image ? (
+                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
+                          <Image
+                            src={data.landlordSignatureData.image}
+                            style={{ width: 150, height: 60, objectFit: "contain" }}
+                          />
+                        </View>
+                      ) : (
+                        <View style={styles.signatureLine} />
+                      )}
+                      <Text style={styles.signatureLabel}>Landlord Signature</Text>
+                      <Text style={styles.signatureLabel}>{data.landlordName}</Text>
+                      <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
+                        Date: {data.landlordSignatureData?.signedAt ? formatDate(new Date(data.landlordSignatureData.signedAt)) : "___________"}
+                      </Text>
+                    </View>
+                  )
+                }
+              }
+
+              // Render content with signature placeholders if content exists and is HTML
+              const contentNodes = section.content && typeof section.content === "string" && section.content.trim()
+                ? renderHtmlToPdf(section.content, {
+                    data,
+                    replaceVariables: (text: string) => replaceVariables(text, data),
+                    renderField: (fieldId: string) => {
+                      // Handle field rendering (including signedAtLocation)
+                      return renderFieldValue(fieldId, data)
+                    },
+                    renderSignature: renderSignaturePlaceholder,
+                  })
+                : []
+
               return (
                 <View key={section.id} style={styles.signatureSection}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
-                  {section.content && (
-                    <Text style={styles.contentParagraph}>{renderContent(section.content, data)}</Text>
+                  {contentNodes.length > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                      {contentNodes.map((node, idx) => (
+                        <React.Fragment key={idx}>{node}</React.Fragment>
+                      ))}
+                    </View>
                   )}
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 30 }}>
                     <View style={styles.signatureBlock}>
                       {data.tenantSignatureData?.image ? (
-                        <View style={{ marginBottom: 10 }}>
+                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
                           <Image
                             src={data.tenantSignatureData.image}
                             style={{ width: 150, height: 60, objectFit: "contain" }}
@@ -715,7 +924,7 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
 
                     <View style={styles.signatureBlock}>
                       {data.landlordSignatureData?.image ? (
-                        <View style={{ marginBottom: 10 }}>
+                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
                           <Image
                             src={data.landlordSignatureData.image}
                             style={{ width: 150, height: 60, objectFit: "contain" }}
@@ -731,6 +940,12 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                       </Text>
                     </View>
                   </View>
+                  {/* Render footer if exists (no special signedAtLocation replacement - treat as regular field) */}
+                  {section.footer && (
+                    <Text style={[styles.footer, { marginTop: 15, textAlign: "center" }]}>
+                      {replaceVariables(section.footer, data)}
+                    </Text>
+                  )}
                 </View>
               )
             }
@@ -743,14 +958,16 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                 {/* Section content */}
                 {section.content && (
                   <View style={{ marginBottom: 8 }}>
-                    {renderContentWithMarkdown(section.content, data)}
+                    {renderContentWithMarkdown(section.content, data, section.fields)}
                   </View>
                 )}
 
                 {/* Section fields */}
                 {section.fields && section.fields.length > 0 && (
                   <View style={{ marginBottom: 8 }}>
-                    {section.fields.map((field) => (
+                    {section.fields
+                      .filter((field) => !field.inline) // Exclude inline fields
+                      .map((field) => (
                       <View key={field.id} style={styles.row}>
                         <Text style={styles.label} wrap>{field.label}</Text>
                         <Text style={styles.value} wrap>
@@ -767,7 +984,9 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                     {section.subsections.map((subsection) => (
                       <View key={subsection.id} style={{ marginBottom: 8 }}>
                         <Text style={styles.subsectionTitle}>{subsection.title}</Text>
-                        {subsection.fields.map((field) => (
+                        {subsection.fields && subsection.fields.length > 0 && subsection.fields
+                          .filter((field) => !field.inline) // Exclude inline fields
+                          .map((field) => (
                           <View key={field.id} style={styles.row}>
                             <Text style={styles.label} wrap>{field.label}</Text>
                             <Text style={styles.value} wrap>

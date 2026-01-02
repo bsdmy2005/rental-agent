@@ -60,6 +60,13 @@ export interface TenantState {
     description?: string
     dependsOnBillTemplateIds: string[] // Array of bill template IDs (created bill template IDs)
     generationDayOfMonth: number
+    pdfTemplate?: string
+    fixedLineItems?: Array<{
+      id: string
+      description: string
+      amount: number
+      type?: string
+    }>
     rentalInvoiceTemplateId?: string // Created rental invoice template ID (saved to DB)
   }
 }
@@ -80,6 +87,12 @@ export interface WizardState {
     branchCode?: string
     swiftCode?: string
     referenceFormat?: string
+    // Property owner details (required when landlord is not a user)
+    landlordName?: string
+    landlordEmail?: string
+    landlordPhone?: string
+    landlordIdNumber?: string
+    landlordAddress?: string
     propertyId?: string // Created property ID (saved to DB)
   }
 
@@ -107,7 +120,12 @@ const initialState: WizardState = {
     accountNumber: "",
     branchCode: "",
     swiftCode: "",
-    referenceFormat: ""
+    referenceFormat: "",
+    landlordName: "",
+    landlordEmail: "",
+    landlordPhone: "",
+    landlordIdNumber: "",
+    landlordAddress: ""
   },
   billTemplates: [],
   payableTemplates: [],

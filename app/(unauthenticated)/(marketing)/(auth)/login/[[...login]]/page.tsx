@@ -27,7 +27,7 @@ export default function SignInPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              Welcome back to RentPilot AI
+              Welcome back to PropNxt.AI
             </motion.h1>
             <motion.p
               className="text-lg text-slate-300"
@@ -181,7 +181,7 @@ export default function SignInPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <h2 className="mb-2 text-2xl font-semibold text-slate-50">
-              Sign in to your RentPilot AI account
+              Sign in to your PropNxt.AI account
             </h2>
             <p className="text-sm text-slate-300">
               Don't have an account?{" "}

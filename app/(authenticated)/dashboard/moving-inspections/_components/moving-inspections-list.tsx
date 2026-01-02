@@ -3,8 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { db } from "@/db"
 import { movingInspectionsTable, leaseAgreementsTable, tenantsTable, propertiesTable } from "@/db/schema"
 import { inArray, eq, desc } from "drizzle-orm"
@@ -30,11 +29,8 @@ export async function MovingInspectionsList() {
       propertyIds = props.map((p) => p.id)
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const props = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      propertyIds = props.map((p) => p.id)
-    }
+    const props = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    propertyIds = props.map((p) => p.id)
   }
 
   // Get lease agreements for these properties

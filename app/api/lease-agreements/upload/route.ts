@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File
     const tenantId = formData.get("tenantId") as string
     const propertyId = formData.get("propertyId") as string
+    const markAsFullyExecuted = formData.get("markAsFullyExecuted") === "true"
 
     if (!file || !tenantId || !propertyId) {
       return NextResponse.json(
@@ -43,7 +44,18 @@ export async function POST(request: NextRequest) {
     const fileBuffer = Buffer.from(arrayBuffer)
 
     // Upload lease agreement
-    const result = await uploadLeaseAgreementAction(tenantId, propertyId, fileBuffer, file.name)
+    // Only allow marking as fully executed for rental agents and landlords
+    const canMarkAsFullyExecuted = 
+      markAsFullyExecuted && 
+      (userProfile.userType === "rental_agent" || userProfile.userType === "landlord")
+    
+    const result = await uploadLeaseAgreementAction(
+      tenantId, 
+      propertyId, 
+      fileBuffer, 
+      file.name,
+      canMarkAsFullyExecuted
+    )
 
     if (!result.isSuccess) {
       return NextResponse.json({ error: result.message }, { status: 400 })

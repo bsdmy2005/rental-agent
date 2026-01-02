@@ -14,13 +14,7 @@ export default async function OnboardPropertyPage() {
   const user = await currentUser()
   const userProfile = user ? await getUserProfileByClerkIdQuery(user.id) : null
 
-  let landlordId: string | null = null
-  if (userProfile?.userType === "landlord") {
-    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
-    landlordId = landlord?.id || null
-  }
-
-  if (userProfile?.userType === "landlord" && !landlordId) {
+  if (!userProfile) {
     return (
       <div className="flex flex-col gap-4">
         <Button variant="ghost" asChild className="w-fit">
@@ -29,19 +23,15 @@ export default async function OnboardPropertyPage() {
             Back to Properties
           </Link>
         </Button>
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/20">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            Please complete your onboarding to add properties.{" "}
-            <Link href="/onboarding/landlord" className="underline">
-              Complete onboarding
-            </Link>
-          </p>
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">User profile not found.</p>
         </div>
       </div>
     )
   }
 
-  if (!landlordId) {
+  // Allow landlords and rental agents
+  if (userProfile.userType !== "landlord" && userProfile.userType !== "rental_agent") {
     return (
       <div className="flex flex-col gap-4">
         <Button variant="ghost" asChild className="w-fit">
@@ -52,12 +42,24 @@ export default async function OnboardPropertyPage() {
         </Button>
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
           <p className="text-sm text-destructive">
-            You must be a landlord to onboard properties.
+            Only landlords and rental agents can onboard properties.
           </p>
         </div>
       </div>
     )
   }
+
+  let landlordId: string | null = null
+
+  // For landlords, get their landlordId (optional - they can still proceed without it)
+  if (userProfile.userType === "landlord") {
+    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
+    landlordId = landlord?.id || null
+
+    // Note: Landlords can still create properties even if they haven't completed onboarding
+    // The property owner details will be captured in the form
+  }
+  // For rental agents, landlordId is null - they'll enter property owner details directly
 
   return (
     <div className="flex flex-col gap-4">

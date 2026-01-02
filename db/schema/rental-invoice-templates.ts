@@ -33,6 +33,8 @@ export const rentalInvoiceTemplatesTable = pgTable(
     generationDayOfMonth: integer("generation_day_of_month").notNull(), // 1-31, e.g., 5 for 5th of month
     // PDF Template selection: "classic", "modern", or "minimal"
     pdfTemplate: text("pdf_template").default("classic").notNull(), // PDF template style
+    // Fixed line items that appear on every invoice generated from this template
+    fixedLineItems: jsonb("fixed_line_items"), // Array of FixedLineItem objects
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

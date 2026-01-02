@@ -60,7 +60,7 @@ export function PricingSection() {
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             Start in the free launch beta as a solo landlord. Talk to us when you're ready to roll
-            out RentPilot AI across your agency.
+            out PropNxt.AI across your agency.
           </motion.p>
         </div>
 

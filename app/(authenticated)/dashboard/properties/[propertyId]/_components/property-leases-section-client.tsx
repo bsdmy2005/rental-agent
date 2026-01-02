@@ -32,7 +32,7 @@ interface LeaseWithTenant {
   effectiveStartDate: Date
   effectiveEndDate: Date
   initiationMethod: "upload_existing" | "initiate_new"
-  initiationStatus: "draft" | "sent_to_tenant" | "tenant_signed" | "landlord_signed" | "fully_executed" | null
+  initiationStatus: "draft" | "sent_to_landlord" | "landlord_signed" | "sent_to_tenant" | "tenant_signed" | "fully_executed" | null
   lifecycleState: string
   signedByTenant: boolean
   signedByLandlord: boolean
@@ -84,16 +84,18 @@ export function PropertyLeasesSectionClient({
   }
 
   const canDelete = (lease: LeaseWithTenant) => {
-    // Can only delete if not fully signed by both parties
-    return !(lease.signedByTenant && lease.signedByLandlord)
+    // Allow delete button to show for all leases - the server action will enforce dev mode restriction
+    // In dev mode, fully executed leases can be deleted for testing
+    return true
   }
 
   const filteredLeases = leases.filter((lease) => {
     if (filter === "pending") {
       return (
+        lease.initiationStatus === "sent_to_landlord" ||
+        lease.initiationStatus === "landlord_signed" ||
         lease.initiationStatus === "sent_to_tenant" ||
-        lease.initiationStatus === "tenant_signed" ||
-        (lease.initiationStatus === "landlord_signed" && !lease.signedByTenant)
+        lease.initiationStatus === "tenant_signed"
       )
     }
     if (filter === "signed") {
@@ -127,6 +129,22 @@ export function PropertyLeasesSectionClient({
         <Badge className="bg-blue-600">
           <Mail className="mr-1 h-3 w-3" />
           Sent to Tenant
+        </Badge>
+      )
+    }
+    if (lease.initiationStatus === "landlord_signed") {
+      return (
+        <Badge className="bg-purple-600">
+          <CheckCircle2 className="mr-1 h-3 w-3" />
+          Landlord Signed - Awaiting Tenant
+        </Badge>
+      )
+    }
+    if (lease.initiationStatus === "sent_to_landlord") {
+      return (
+        <Badge className="bg-blue-600">
+          <Mail className="mr-1 h-3 w-3" />
+          Sent to Landlord
         </Badge>
       )
     }
@@ -248,9 +266,13 @@ export function PropertyLeasesSectionClient({
                               <AlertDialogTitle>Delete Lease Agreement?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to delete this lease agreement? This action cannot be undone.
-                                {lease.signedByTenant || lease.signedByLandlord ? (
+                                {lease.signedByTenant && lease.signedByLandlord ? (
                                   <span className="block mt-2 text-yellow-600">
-                                    Note: This lease has been partially signed. Only unsigned leases should be deleted.
+                                    Note: This lease is fully executed. Deletion is only allowed in development mode for testing purposes.
+                                  </span>
+                                ) : lease.signedByTenant || lease.signedByLandlord ? (
+                                  <span className="block mt-2 text-yellow-600">
+                                    Note: This lease has been partially signed.
                                   </span>
                                 ) : null}
                               </AlertDialogDescription>

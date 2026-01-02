@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { extractTemplateFields, type TemplateField, type TemplateData } from "@/lib/utils/template-helpers"
+import { TemplateFieldsForm } from "./_components/template-fields-form"
 
 interface Tenant {
   id: string
@@ -56,9 +58,64 @@ export default function NewLeasePage() {
     escalationPercentage: "",
     escalationFixedAmount: "",
     specialConditions: "",
+    signedAtLocation: "",
     sendToTenant: true
   })
   const [landlordDetailsLoaded, setLandlordDetailsLoaded] = useState(false)
+  const [templateFields, setTemplateFields] = useState<TemplateField[]>([])
+  const [templateFieldValues, setTemplateFieldValues] = useState<Record<string, string>>({})
+  const [loadingTemplateFields, setLoadingTemplateFields] = useState(false)
+
+  // Fetch template fields when template is selected
+  useEffect(() => {
+    async function fetchTemplateFields() {
+      if (!formData.templateId) {
+        setTemplateFields([])
+        setTemplateFieldValues({})
+        return
+      }
+
+      setLoadingTemplateFields(true)
+      try {
+        const response = await fetch(`/api/lease-templates/${formData.templateId}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.template && data.template.templateData) {
+            const templateData = data.template.templateData as TemplateData
+            const fields = extractTemplateFields(templateData)
+            setTemplateFields(fields)
+            
+            // Initialize template field values with default values
+            const initialValues: Record<string, string> = {}
+            fields.forEach((field) => {
+              if (field.defaultValue) {
+                initialValues[field.id] = field.defaultValue
+              }
+            })
+            setTemplateFieldValues(initialValues)
+          } else {
+            setTemplateFields([])
+            setTemplateFieldValues({})
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch template fields:", err)
+        setTemplateFields([])
+        setTemplateFieldValues({})
+      } finally {
+        setLoadingTemplateFields(false)
+      }
+    }
+
+    fetchTemplateFields()
+  }, [formData.templateId])
+
+  const handleTemplateFieldChange = (fieldId: string, value: string) => {
+    setTemplateFieldValues((prev) => ({
+      ...prev,
+      [fieldId]: value
+    }))
+  }
 
   useEffect(() => {
     async function fetchTenants() {
@@ -164,6 +221,35 @@ export default function NewLeasePage() {
     setLoading(true)
     setError(null)
 
+    // Validate required fields
+    if (!formData.signedAtLocation?.trim()) {
+      setError("Please fill in the 'Signed At Location' field")
+      setLoading(false)
+      return
+    }
+
+    // Validate required template fields
+    const customFields = templateFields.filter((field) => {
+      const predefinedFields = new Set([
+        "landlord_name", "landlord_id", "landlord_address", "landlord_email", "landlord_phone",
+        "tenant_name", "tenant_id", "tenant_address", "tenant_email", "tenant_phone",
+        "property_address", "monthly_rental", "deposit_amount",
+        "commencement_date", "termination_date", "lease_date", "current_date",
+        "payment_bank", "payment_account_holder", "payment_account_number", "payment_branch_code"
+      ])
+      return !predefinedFields.has(field.id)
+    })
+
+    const missingRequiredFields = customFields
+      .filter((field) => field.required && !templateFieldValues[field.id]?.trim())
+      .map((field) => field.label)
+
+    if (missingRequiredFields.length > 0) {
+      setError(`Please fill in required template fields: ${missingRequiredFields.join(", ")}`)
+      setLoading(false)
+      return
+    }
+
     try {
       const response = await fetch("/api/leases/initiate", {
         method: "POST",
@@ -200,7 +286,9 @@ export default function NewLeasePage() {
           escalationPercentage: formData.escalationPercentage ? Number(formData.escalationPercentage) : undefined,
           escalationFixedAmount: formData.escalationFixedAmount ? Number(formData.escalationFixedAmount) : undefined,
           specialConditions: formData.specialConditions || undefined,
-          sendToTenant: formData.sendToTenant
+          signedAtLocation: formData.signedAtLocation,
+          sendToTenant: formData.sendToTenant,
+          templateFieldValues: Object.keys(templateFieldValues).length > 0 ? templateFieldValues : undefined
         })
       })
 
@@ -211,8 +299,8 @@ export default function NewLeasePage() {
         return
       }
 
-      // Success - redirect to lease detail or property page
-      router.push(`/dashboard/properties/${propertyId}`)
+      // Success - redirect to leases list page
+      router.push("/dashboard/leases")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to initiate lease")
     } finally {
@@ -538,6 +626,31 @@ export default function NewLeasePage() {
           </CardContent>
         </Card>
 
+        {templateFields.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Template-Specific Fields</CardTitle>
+              <CardDescription>
+                Additional fields required by the selected template.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingTemplateFields ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading template fields...</span>
+                </div>
+              ) : (
+                <TemplateFieldsForm
+                  fields={templateFields}
+                  values={templateFieldValues}
+                  onChange={handleTemplateFieldChange}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Escalation (Optional)</CardTitle>
@@ -596,6 +709,27 @@ export default function NewLeasePage() {
               placeholder="Any special conditions or terms..."
               rows={4}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Signature Details</CardTitle>
+            <CardDescription>Location where the lease will be signed.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Signed At Location *</Label>
+              <Input
+                value={formData.signedAtLocation}
+                onChange={(e) => setFormData({ ...formData, signedAtLocation: e.target.value })}
+                placeholder="e.g., Johannesburg, South Africa"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The location where the lease agreement will be signed. This will appear in the signature section of the document.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

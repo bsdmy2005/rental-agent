@@ -3,8 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { getTenantsByPropertyIdQuery, getTenantsWithPropertyQuery, type TenantWithProperty } from "@/queries/tenants-queries"
 import { TenantsListClient } from "./tenants-list-client"
 
@@ -33,14 +32,11 @@ export async function TenantsList() {
       }
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const properties = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      for (const property of properties) {
-        propertyMap.set(property.id, { id: property.id, name: property.name })
-        const tenants = await getTenantsByPropertyIdQuery(property.id)
-        allTenantIds.push(...tenants.map((t) => t.id))
-      }
+    const properties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    for (const property of properties) {
+      propertyMap.set(property.id, { id: property.id, name: property.name })
+      const tenants = await getTenantsByPropertyIdQuery(property.id)
+      allTenantIds.push(...tenants.map((t) => t.id))
     }
   }
 

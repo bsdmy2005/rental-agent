@@ -14,13 +14,14 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { createPropertyAction } from "@/actions/properties-actions"
+import { autoAssignPropertyToAgencyOrAgentForCurrentUserAction } from "@/actions/property-managements-actions"
 import { toast } from "sonner"
 import { SOUTH_AFRICAN_PROVINCES, COUNTRIES } from "@/lib/constants/south-africa"
 import { generatePropertyName } from "@/lib/utils/property-name"
 import { getCitiesByProvince, getSuburbsByCity } from "@/lib/utils/south-africa-geography"
 
 interface PropertyFormProps {
-  landlordId: string
+  landlordId: string | null
   onSuccess?: () => void
 }
 
@@ -125,7 +126,7 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
 
     try {
       const result = await createPropertyAction({
-        landlordId,
+        landlordId: landlordId || null,
         name: formData.name,
         streetAddress: formData.streetAddress,
         suburb: formData.suburb,
@@ -147,12 +148,25 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
       })
 
       if (result.isSuccess && result.data) {
+        const propertyId = result.data.id
+
+        // If landlordId is null, auto-assign property to agency or agent
+        if (!landlordId) {
+          const assignmentResult = await autoAssignPropertyToAgencyOrAgentForCurrentUserAction(
+            propertyId
+          )
+          if (!assignmentResult.isSuccess) {
+            console.error("Failed to auto-assign property:", assignmentResult.message)
+            // Continue anyway - property is created, management can be added later
+          }
+        }
+
         toast.success("Property created successfully!")
         if (onSuccess) {
           onSuccess()
         } else {
           // Redirect to template setup page
-          router.push(`/dashboard/properties/${result.data.id}/setup-templates`)
+          router.push(`/dashboard/properties/${propertyId}/setup-templates`)
         }
         // Reset form
         setFormData({

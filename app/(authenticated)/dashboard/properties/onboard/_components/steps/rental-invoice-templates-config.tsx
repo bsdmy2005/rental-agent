@@ -15,6 +15,8 @@ import {
 import { useWizardState } from "../wizard-state"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { FixedLineItemsManager } from "@/app/(authenticated)/dashboard/properties/[propertyId]/_components/fixed-line-items-manager"
+import { type FixedLineItem } from "@/types/invoice-types"
 
 interface RentalInvoiceTemplatesConfigProps {
   tenantIndex: number
@@ -35,7 +37,8 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
     description: "",
     dependsOnBillTemplateIds: [],
     generationDayOfMonth: 5,
-    pdfTemplate: "classic" as const
+    pdfTemplate: "classic" as const,
+    fixedLineItems: []
   }
 
   const toggleBillTemplateDependency = (billTemplateId: string) => {
@@ -62,6 +65,18 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
       rentalInvoiceTemplate: {
         ...templateConfig,
         [field]: value
+      }
+    }
+    updateTenants(updated)
+  }
+
+  const updateFixedLineItems = (items: FixedLineItem[]) => {
+    const updated = [...state.tenants]
+    updated[tenantIndex] = {
+      ...updated[tenantIndex],
+      rentalInvoiceTemplate: {
+        ...templateConfig,
+        fixedLineItems: items
       }
     }
     updateTenants(updated)
@@ -204,6 +219,14 @@ export function RentalInvoiceTemplatesConfig({ tenantIndex }: RentalInvoiceTempl
             })}
           </div>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <FixedLineItemsManager
+          items={(templateConfig.fixedLineItems as FixedLineItem[]) || []}
+          onItemsChange={updateFixedLineItems}
+          disabled={!!tenant.tenantId}
+        />
       </div>
 
       {templateConfig.dependsOnBillTemplateIds.length > 0 && (

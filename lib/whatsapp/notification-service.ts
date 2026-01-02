@@ -221,7 +221,7 @@ ${description}
 ${attachmentCount > 0 ? `Attachments: ${attachmentCount} file(s)` : ""}
 
 ---
-This is an automated notification from Rental Agent AI.
+This is an automated notification from PropNxt.AI.
 Log in to your dashboard to respond to this incident.
 `.trim()
 
@@ -287,7 +287,7 @@ Log in to your dashboard to respond to this incident.
       }
     </div>
     <div class="footer">
-      <p>This is an automated notification from Rental Agent AI.</p>
+      <p>This is an automated notification from PropNxt.AI.</p>
       <p>Log in to your dashboard to respond to this incident.</p>
     </div>
   </div>

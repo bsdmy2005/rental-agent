@@ -5,8 +5,7 @@ import { paymentModelEnum } from "./enums"
 export const propertiesTable = pgTable("properties", {
   id: uuid("id").defaultRandom().primaryKey(),
   landlordId: uuid("landlord_id")
-    .references(() => landlordsTable.id, { onDelete: "cascade" })
-    .notNull(),
+    .references(() => landlordsTable.id, { onDelete: "cascade" }), // Optional - property owner may not be a user
   name: text("name").notNull(),
   address: text("address"), // Optional for backward compatibility, can be auto-generated
   streetAddress: text("street_address").notNull(),

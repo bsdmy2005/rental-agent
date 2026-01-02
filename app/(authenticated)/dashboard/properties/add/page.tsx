@@ -9,22 +9,25 @@ export default async function AddPropertyPage() {
   const user = await currentUser()
   const userProfile = user ? await getUserProfileByClerkIdQuery(user.id) : null
 
-  let landlordId: string | null = null
-  if (userProfile?.userType === "landlord") {
-    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
-    landlordId = landlord?.id || null
-  }
-
-  if (userProfile?.userType === "landlord" && !landlordId) {
-    // Redirect to onboarding if landlord profile not complete
-    redirect("/onboarding/landlord")
-  }
-
-  if (!landlordId) {
-    // Redirect to properties list if not a landlord
+  if (!userProfile) {
     redirect("/dashboard/properties")
   }
 
+  // Allow landlords and rental agents
+  if (userProfile.userType !== "landlord" && userProfile.userType !== "rental_agent") {
+    redirect("/dashboard/properties")
+  }
+
+  // For landlords, get their landlordId (optional)
+  let landlordId: string | null = null
+  if (userProfile.userType === "landlord") {
+    const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
+    landlordId = landlord?.id || null
+    // Note: Landlords can proceed even without completing onboarding
+    // Property owner details will be captured in the form
+  }
+
+  // For rental agents, landlordId is null - they'll enter property owner details directly
   // Redirect to the onboarding wizard
   redirect("/dashboard/properties/onboard")
 }

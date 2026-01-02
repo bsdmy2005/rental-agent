@@ -1,7 +1,9 @@
 "use server"
 
 import { getAllUserProfilesQuery } from "@/queries/user-profiles-queries"
-import { UserActions } from "./user-actions"
+import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
+import { getAgentPropertiesWithAssignmentsQuery } from "@/queries/agent-properties-queries"
+import { ExpandableUserRow } from "./expandable-user-row"
 
 export async function UsersList() {
   const users = await getAllUserProfilesQuery()
@@ -14,22 +16,38 @@ export async function UsersList() {
     )
   }
 
+  // For rental agents, get their agent ID and property count
+  const usersWithMetadata = await Promise.all(
+    users.map(async (user) => {
+      if (user.userType === "rental_agent") {
+        const rentalAgent = await getRentalAgentByUserProfileIdQuery(user.id)
+        if (rentalAgent) {
+          const properties = await getAgentPropertiesWithAssignmentsQuery(rentalAgent.id)
+          return {
+            user,
+            rentalAgentId: rentalAgent.id,
+            propertyCount: properties.length
+          }
+        }
+      }
+      return {
+        user,
+        rentalAgentId: null,
+        propertyCount: undefined
+      }
+    })
+  )
+
   return (
     <div className="rounded-md border">
       <div className="divide-y">
-        {users.map((user) => (
-          <div key={user.id} className="flex items-center justify-between p-4">
-            <div>
-              <div className="font-semibold">
-                {user.firstName} {user.lastName}
-              </div>
-              <div className="text-muted-foreground text-sm">{user.email}</div>
-              <div className="text-muted-foreground text-xs">
-                Type: {user.userType} • {user.isActive ? "Active" : "Inactive"}
-              </div>
-            </div>
-            <UserActions userProfile={user} />
-          </div>
+        {usersWithMetadata.map(({ user, rentalAgentId, propertyCount }) => (
+          <ExpandableUserRow
+            key={user.id}
+            userProfile={user}
+            rentalAgentId={rentalAgentId}
+            propertyCount={propertyCount}
+          />
         ))}
       </div>
     </div>

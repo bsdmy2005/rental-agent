@@ -33,7 +33,7 @@ export default async function OnboardingPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold">Welcome to Rental Agent AI</h1>
+          <h1 className="text-4xl font-bold">Welcome to PropNxt.AI</h1>
           <p className="text-muted-foreground mt-2">
             Let's set up your account. Choose your user type to get started.
           </p>

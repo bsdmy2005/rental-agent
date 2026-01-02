@@ -9,7 +9,7 @@ const testimonials = [
     name: "Lerato M.",
     role: "Johannesburg landlord (4 units)",
     content:
-      "RentPilot AI turned my messy bill spreadsheet into a clean monthly flow. I forward the municipality email and it does the rest—split bills, tenant invoices, everything.",
+      "PropNxt.AI turned my messy bill spreadsheet into a clean monthly flow. I forward the municipality email and it does the rest—split bills, tenant invoices, everything.",
     rating: 5
   },
   {

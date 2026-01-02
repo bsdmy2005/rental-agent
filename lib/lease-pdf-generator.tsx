@@ -39,6 +39,7 @@ interface LeaseData {
   escalationPercentage?: number
   escalationFixedAmount?: number
   specialConditions?: string
+  signedAtLocation?: string // Location where the lease will be signed
   isDraft?: boolean
   tenantSignatureData?: any
   landlordSignatureData?: any
@@ -494,8 +495,8 @@ export async function generateLeasePDFFromIdAction(
       }
     }
 
-    // Fallback to database if stored details are not available
-    if (!landlordName || !landlordEmail) {
+    // Fallback to database if stored details are not available (only if landlordId exists)
+    if ((!landlordName || !landlordEmail) && property.landlordId) {
       const [landlord] = await db
         .select()
         .from(landlordsTable)
@@ -528,6 +529,23 @@ export async function generateLeasePDFFromIdAction(
       landlordPhone = landlordPhone || landlord?.contactPhone || landlordUserProfile?.phone || ""
       landlordAddress = landlordAddress || landlord?.address || ""
       landlordIdNumber = landlordIdNumber || landlord?.registrationNumber || landlord?.taxId || ""
+    }
+
+    // Fallback to property owner details stored on property (when landlordId is null)
+    if (!landlordName && property.landlordName) {
+      landlordName = property.landlordName
+    }
+    if (!landlordEmail && property.landlordEmail) {
+      landlordEmail = property.landlordEmail
+    }
+    if (!landlordPhone && property.landlordPhone) {
+      landlordPhone = property.landlordPhone
+    }
+    if (!landlordAddress && property.landlordAddress) {
+      landlordAddress = property.landlordAddress
+    }
+    if (!landlordIdNumber && property.landlordIdNumber) {
+      landlordIdNumber = property.landlordIdNumber
     }
 
     // Handle signature data - ensure it's in the correct format
@@ -571,6 +589,18 @@ export async function generateLeasePDFFromIdAction(
       console.warn("Tenant email or phone is missing:", { tenantEmail, tenantPhone, tenantId: tenant.id })
     }
 
+    // Get templateFieldValues and signedAtLocation from extractionData if available
+    let templateFieldValues: Record<string, string> | undefined = undefined
+    let signedAtLocation: string | undefined = undefined
+    if (lease.extractionData && typeof lease.extractionData === 'object') {
+      if ('templateFieldValues' in lease.extractionData) {
+        templateFieldValues = (lease.extractionData as any).templateFieldValues || undefined
+      }
+      if ('signedAtLocation' in lease.extractionData) {
+        signedAtLocation = (lease.extractionData as any).signedAtLocation || undefined
+      }
+    }
+
     const leaseData: LeaseData = {
       propertyAddress: `${property.streetAddress}, ${property.suburb}, ${property.province}`,
       propertyType: property.propertyType || undefined,
@@ -592,6 +622,8 @@ export async function generateLeasePDFFromIdAction(
       escalationType: lease.escalationType || undefined,
       escalationPercentage: lease.escalationPercentage ? Number(lease.escalationPercentage) : undefined,
       escalationFixedAmount: lease.escalationFixedAmount ? Number(lease.escalationFixedAmount) : undefined,
+      templateFieldValues,
+      signedAtLocation,
       isDraft: !includeSignatures || (!lease.signedByTenant && !lease.signedByLandlord),
       tenantSignatureData,
       landlordSignatureData

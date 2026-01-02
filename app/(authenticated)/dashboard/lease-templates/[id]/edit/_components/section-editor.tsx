@@ -6,12 +6,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { RichTextEditor } from "./rich-text-editor"
+import { RichTextEditor, type RichTextEditorRef } from "./rich-text-editor"
 import { FieldBuilder } from "./field-builder"
 import { SubsectionEditor } from "./subsection-editor"
 import { contentToString, stringToContent } from "@/lib/utils/template-helpers"
 import type { TemplateSection } from "@/lib/utils/template-helpers"
 import { SeparatorHorizontal } from "lucide-react"
+import { useRef } from "react"
 
 interface SectionEditorProps {
   section: TemplateSection | null
@@ -19,6 +20,8 @@ interface SectionEditorProps {
 }
 
 export function SectionEditor({ section, onChange }: SectionEditorProps) {
+  const editorRef = useRef<RichTextEditorRef>(null)
+
   if (!section) {
     return (
       <Card className="h-full">
@@ -32,6 +35,10 @@ export function SectionEditor({ section, onChange }: SectionEditorProps) {
   const handleContentChange = (html: string) => {
     // Store HTML content directly - TipTap returns HTML
     onChange({ content: html })
+  }
+
+  const handleInsertField = (fieldId: string) => {
+    editorRef.current?.insertField(fieldId)
   }
 
   // Get content value for editor - handle both HTML string and array formats
@@ -96,7 +103,7 @@ export function SectionEditor({ section, onChange }: SectionEditorProps) {
           <Tabs defaultValue="content" className="w-full">
             <TabsList>
               <TabsTrigger value="content">Content</TabsTrigger>
-              {section.type === "section" && <TabsTrigger value="fields">Fields</TabsTrigger>}
+              {(section.type === "section" || section.type === "signatures") && <TabsTrigger value="fields">Fields</TabsTrigger>}
               {section.type === "section" && <TabsTrigger value="subsections">Subsections</TabsTrigger>}
               {section.footer !== undefined && <TabsTrigger value="footer">Footer</TabsTrigger>}
             </TabsList>
@@ -107,35 +114,43 @@ export function SectionEditor({ section, onChange }: SectionEditorProps) {
                   Header sections display the title and subtitle only. Content editing is not available for headers.
                 </div>
               ) : section.type === "signatures" ? (
-                <div className="text-sm text-muted-foreground">
-                  Signature sections are automatically generated. Content editing is not available for signature sections.
-                </div>
+                <RichTextEditor
+                  ref={editorRef}
+                  content={contentValue}
+                  onChange={handleContentChange}
+                  placeholder="Enter signature section content..."
+                  fields={section.fields || []}
+                  isSignatureSection={true}
+                />
               ) : (
                 <RichTextEditor
+                  ref={editorRef}
                   content={contentValue}
                   onChange={handleContentChange}
                   placeholder="Enter section content..."
+                  fields={section.fields || []}
                 />
               )}
             </TabsContent>
 
-            {section.type === "section" && (
-              <>
-                <TabsContent value="fields" className="mt-4">
-                  <FieldBuilder
-                    fields={section.fields || []}
-                    onChange={(fields) => onChange({ fields })}
-                    title="Section Fields"
-                  />
-                </TabsContent>
+            {(section.type === "section" || section.type === "signatures") && (
+              <TabsContent value="fields" className="mt-4">
+                <FieldBuilder
+                  fields={section.fields || []}
+                  onChange={(fields) => onChange({ fields })}
+                  title={section.type === "signatures" ? "Signature Section Fields" : "Section Fields"}
+                  onInsertField={handleInsertField}
+                />
+              </TabsContent>
+            )}
 
-                <TabsContent value="subsections" className="mt-4">
-                  <SubsectionEditor
-                    subsections={section.subsections || []}
-                    onChange={(subsections) => onChange({ subsections })}
-                  />
-                </TabsContent>
-              </>
+            {section.type === "section" && (
+              <TabsContent value="subsections" className="mt-4">
+                <SubsectionEditor
+                  subsections={section.subsections || []}
+                  onChange={(subsections) => onChange({ subsections })}
+                />
+              </TabsContent>
             )}
 
             {section.footer !== undefined && (

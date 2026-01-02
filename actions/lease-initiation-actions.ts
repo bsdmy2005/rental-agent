@@ -51,6 +51,8 @@ interface InitiateLeaseData {
     branchCode?: string
   }
   sendToTenant?: boolean // Whether to send email immediately
+  templateFieldValues?: Record<string, string> // Custom template field values
+  signedAtLocation?: string // Location where the lease will be signed
 }
 
 /**
@@ -309,6 +311,8 @@ export async function initiateLeaseAction(
       escalationPercentage: data.escalationPercentage,
       escalationFixedAmount: data.escalationFixedAmount,
       specialConditions: data.specialConditions,
+      templateFieldValues: data.templateFieldValues || {},
+      signedAtLocation: data.signedAtLocation || "",
       isDraft: true
     }
 
@@ -346,7 +350,9 @@ export async function initiateLeaseAction(
         address: tenantAddress,
         email: tenantEmail,
         phone: tenantPhone
-      }
+      },
+      templateFieldValues: data.templateFieldValues || {},
+      signedAtLocation: data.signedAtLocation || ""
     }
     
     const [lease] = await db
@@ -374,11 +380,12 @@ export async function initiateLeaseAction(
       return { isSuccess: false, message: "Failed to create lease agreement" }
     }
 
-    // Send to tenant if requested
+    // Send to landlord first if requested (new workflow: landlord signs first, then tenant)
     if (data.sendToTenant) {
-      const sendResult = await sendLeaseToTenantAction(lease.id)
+      const { sendLeaseToLandlordAction } = await import("@/lib/email/lease-email-service")
+      const sendResult = await sendLeaseToLandlordAction(lease.id)
       if (!sendResult.isSuccess) {
-        console.warn("Failed to send lease to tenant:", sendResult.message)
+        console.warn("Failed to send lease to landlord:", sendResult.message)
         // Don't fail the whole operation if email fails
       }
     }
@@ -434,7 +441,9 @@ export async function signLeaseAsTenantAction(
         signedByTenant: true,
         tenantSignatureData: signatureData,
         tenantCompletedAt: new Date(),
-        initiationStatus: "tenant_signed",
+        initiationStatus: "fully_executed",
+        signedAt: new Date(),
+        lifecycleState: "signed",
         // Invalidate token after use
         tenantSigningToken: null,
         tenantSigningLink: null
@@ -446,9 +455,9 @@ export async function signLeaseAsTenantAction(
       return { isSuccess: false, message: "Failed to update lease agreement" }
     }
 
-    // Notify landlord
-    const { notifyLandlordTenantSignedAction } = await import("@/lib/email/lease-email-service")
-    await notifyLandlordTenantSignedAction(leaseId)
+    // Both parties have signed - send final signed copies to both
+    const { sendSignedLeaseCopyAction } = await import("@/lib/email/lease-email-service")
+    await sendSignedLeaseCopyAction(leaseId)
 
     return {
       isSuccess: true,
@@ -499,9 +508,10 @@ export async function signLeaseAsLandlordAction(
         signedByLandlord: true,
         landlordSignatureData: signatureData,
         landlordCompletedAt: new Date(),
-        signedAt: new Date(),
-        initiationStatus: "fully_executed",
-        lifecycleState: "signed"
+        initiationStatus: "landlord_signed",
+        // Invalidate token after use (if token-based signing)
+        landlordSigningToken: null,
+        landlordSigningLink: null
       })
       .where(eq(leaseAgreementsTable.id, leaseId))
       .returning()
@@ -510,9 +520,9 @@ export async function signLeaseAsLandlordAction(
       return { isSuccess: false, message: "Failed to update lease agreement" }
     }
 
-    // Generate final signed PDF and send to both parties
-    const { sendSignedLeaseCopyAction } = await import("@/lib/email/lease-email-service")
-    await sendSignedLeaseCopyAction(leaseId)
+    // Send to tenant after landlord signs
+    const { sendLeaseToTenantAction } = await import("@/lib/email/lease-email-service")
+    await sendLeaseToTenantAction(leaseId)
 
     return {
       isSuccess: true,
@@ -529,7 +539,7 @@ export async function signLeaseAsLandlordAction(
 }
 
 /**
- * Get lease by signing token
+ * Get lease by tenant signing token
  */
 export async function getLeaseByTokenAction(
   token: string
@@ -599,7 +609,144 @@ export async function getLeaseByTokenAction(
 }
 
 /**
- * Delete lease agreement (only if not fully signed by both parties)
+ * Get lease by landlord signing token
+ */
+export async function getLeaseByLandlordTokenAction(
+  token: string
+): Promise<ActionState<SelectLeaseAgreement & { tenant: any; property: any }>> {
+  try {
+    if (!token || token.trim() === "") {
+      return { isSuccess: false, message: "Signing token is required" }
+    }
+
+    // Get lease with manual query - try exact match first
+    let [lease] = await db
+      .select()
+      .from(leaseAgreementsTable)
+      .where(eq(leaseAgreementsTable.landlordSigningToken, token))
+      .limit(1)
+
+    // If not found, try URL-decoded version (in case token was double-encoded)
+    if (!lease) {
+      const decodedToken = decodeURIComponent(token)
+      if (decodedToken !== token) {
+        [lease] = await db
+          .select()
+          .from(leaseAgreementsTable)
+          .where(eq(leaseAgreementsTable.landlordSigningToken, decodedToken))
+          .limit(1)
+      }
+    }
+
+    if (!lease) {
+      console.error("Token lookup failed for token:", token.substring(0, 10) + "...")
+      return { isSuccess: false, message: "Invalid signing token. Please use the link from your email." }
+    }
+
+    if (lease.landlordSigningExpiresAt && new Date(lease.landlordSigningExpiresAt) < new Date()) {
+      return { isSuccess: false, message: "Signing token has expired" }
+    }
+
+    // Get tenant and property
+    const [tenant] = await db
+      .select()
+      .from(tenantsTable)
+      .where(eq(tenantsTable.id, lease.tenantId))
+      .limit(1)
+
+    const [property] = await db
+      .select()
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, lease.propertyId))
+      .limit(1)
+
+    return {
+      isSuccess: true,
+      message: "Lease found",
+      data: {
+        ...lease,
+        tenant: tenant || null,
+        property: property || null
+      } as any
+    }
+  } catch (error) {
+    console.error("Error getting lease by landlord token:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to get lease"
+    }
+  }
+}
+
+/**
+ * Sign lease as landlord (via token)
+ */
+export async function signLeaseAsLandlordViaTokenAction(
+  leaseId: string,
+  token: string,
+  signatureData: any
+): Promise<ActionState<SelectLeaseAgreement>> {
+  try {
+    const lease = await db.query.leaseAgreements.findFirst({
+      where: eq(leaseAgreementsTable.id, leaseId)
+    })
+
+    if (!lease) {
+      return { isSuccess: false, message: "Lease agreement not found" }
+    }
+
+    // Validate token
+    if (lease.landlordSigningToken !== token) {
+      return { isSuccess: false, message: "Invalid signing token" }
+    }
+
+    if (lease.landlordSigningExpiresAt && new Date(lease.landlordSigningExpiresAt) < new Date()) {
+      return { isSuccess: false, message: "Signing token has expired" }
+    }
+
+    if (lease.signedByLandlord) {
+      return { isSuccess: false, message: "Lease already signed by landlord" }
+    }
+
+    // Update lease with landlord signature
+    const [updatedLease] = await db
+      .update(leaseAgreementsTable)
+      .set({
+        signedByLandlord: true,
+        landlordSignatureData: signatureData,
+        landlordCompletedAt: new Date(),
+        initiationStatus: "landlord_signed",
+        // Invalidate token after use
+        landlordSigningToken: null,
+        landlordSigningLink: null
+      })
+      .where(eq(leaseAgreementsTable.id, leaseId))
+      .returning()
+
+    if (!updatedLease) {
+      return { isSuccess: false, message: "Failed to update lease agreement" }
+    }
+
+    // Send to tenant after landlord signs
+    const { sendLeaseToTenantAction } = await import("@/lib/email/lease-email-service")
+    await sendLeaseToTenantAction(leaseId)
+
+    return {
+      isSuccess: true,
+      message: "Lease signed successfully",
+      data: updatedLease as SelectLeaseAgreement
+    }
+  } catch (error) {
+    console.error("Error signing lease as landlord:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to sign lease"
+    }
+  }
+}
+
+/**
+ * Delete lease agreement (only if not fully signed by both parties, unless in dev mode)
  */
 export async function deleteLeaseAction(
   leaseId: string
@@ -622,11 +769,19 @@ export async function deleteLeaseAction(
     }
 
     // Check if both parties have signed
-    if (lease.signedByTenant && lease.signedByLandlord) {
+    const isFullyExecuted = lease.signedByTenant && lease.signedByLandlord
+    const isDevMode = process.env.NODE_ENV === "development"
+
+    if (isFullyExecuted && !isDevMode) {
       return {
         isSuccess: false,
         message: "Cannot delete a lease that has been signed by both parties"
       }
+    }
+
+    // In dev mode, allow deletion of fully executed leases for testing
+    if (isFullyExecuted && isDevMode) {
+      console.warn(`[DEV MODE] Deleting fully executed lease ${leaseId} for testing purposes`)
     }
 
     // Delete the lease
@@ -634,7 +789,9 @@ export async function deleteLeaseAction(
 
     return {
       isSuccess: true,
-      message: "Lease deleted successfully",
+      message: isFullyExecuted && isDevMode 
+        ? "Lease deleted successfully (dev mode: fully executed lease)"
+        : "Lease deleted successfully",
       data: undefined
     }
   } catch (error) {

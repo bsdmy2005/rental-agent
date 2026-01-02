@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, ArrowRight } from "lucide-react"
 import type { TemplateField } from "@/lib/utils/template-helpers"
 
 interface FieldBuilderProps {
   fields: TemplateField[]
   onChange: (fields: TemplateField[]) => void
   title?: string
+  onInsertField?: (fieldId: string) => void
 }
 
 const FIELD_TYPES: Array<{ value: TemplateField["type"]; label: string }> = [
@@ -26,7 +27,7 @@ const FIELD_TYPES: Array<{ value: TemplateField["type"]; label: string }> = [
   { value: "textarea", label: "Textarea" }
 ]
 
-export function FieldBuilder({ fields, onChange, title = "Fields" }: FieldBuilderProps) {
+export function FieldBuilder({ fields, onChange, title = "Fields", onInsertField }: FieldBuilderProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const addField = () => {
@@ -132,6 +133,7 @@ export function FieldBuilder({ fields, onChange, title = "Fields" }: FieldBuilde
                       </div>
                     )}
                   </div>
+                  <div className="flex flex-col gap-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id={`required-${field.id}`}
@@ -141,8 +143,52 @@ export function FieldBuilder({ fields, onChange, title = "Fields" }: FieldBuilde
                     <Label htmlFor={`required-${field.id}`} className="text-xs cursor-pointer">
                       Required field
                     </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`inline-${field.id}`}
+                        checked={field.inline || false}
+                        onCheckedChange={(checked) => updateField(field.id, { inline: !!checked })}
+                      />
+                      <Label htmlFor={`inline-${field.id}`} className="text-xs cursor-pointer">
+                        Inline only (don't show at bottom)
+                      </Label>
+                    </div>
+                    {field.inline && (
+                      <div>
+                        <Label className="text-xs">Inline Display Format</Label>
+                        <Select
+                          value={field.inlineDisplayFormat || "label-value"}
+                          onValueChange={(value: "label-value" | "label-only" | "value-only") =>
+                            updateField(field.id, { inlineDisplayFormat: value })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="label-value">Label and Value</SelectItem>
+                            <SelectItem value="label-only">Label Only</SelectItem>
+                            <SelectItem value="value-only">Value Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
+                <div className="flex flex-col gap-2">
+                  {onInsertField && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onInsertField(field.id)}
+                      className="text-primary hover:text-primary"
+                      title="Insert field into content"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -152,6 +198,7 @@ export function FieldBuilder({ fields, onChange, title = "Fields" }: FieldBuilde
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+                </div>
               </div>
             </div>
           ))

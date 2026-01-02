@@ -4,7 +4,7 @@ import Link from "next/link"
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getPropertiesByLandlordIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { TenantFormWrapper } from "../_components/tenant-form-wrapper"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,9 @@ export default async function AddTenantPage() {
       const landlordProperties = await getPropertiesByLandlordIdQuery(landlord.id)
       properties = landlordProperties.map((p) => ({ id: p.id, name: p.name }))
     }
+  } else if (userProfile?.userType === "rental_agent") {
+    const agentProperties = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    properties = agentProperties.map((p) => ({ id: p.id, name: p.name }))
   }
 
   return (
@@ -41,7 +44,7 @@ export default async function AddTenantPage() {
 
       {properties.length > 0 ? (
         <div className="max-w-2xl">
-          <TenantFormWrapper properties={properties} />
+          <TenantFormWrapper properties={properties} userType={userProfile?.userType} />
         </div>
       ) : (
         <div className="max-w-2xl rounded-lg border border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-950/20">

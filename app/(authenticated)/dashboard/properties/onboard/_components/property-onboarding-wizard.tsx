@@ -18,18 +18,32 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 const STEP_LABELS = ["Property", "Bill Templates", "Payables", "Tenants", "Review"]
 const TOTAL_STEPS = 5
 
-export function PropertyOnboardingWizard({ landlordId }: { landlordId: string }) {
+export function PropertyOnboardingWizard({ landlordId }: { landlordId: string | null }) {
   const router = useRouter()
   const { state, reset, setPropertyId, updatePayableTemplates, updateTenants } = useWizardState()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
 
-  const canProceedToStep2 = !!(
+  // For step 2, we need property details AND property owner details (if no landlordId)
+  const hasPropertyDetails = !!(
     state.property.name &&
     state.property.streetAddress &&
     state.property.suburb &&
     state.property.province
   )
+  
+  // If no landlordId, property owner details are required
+  const hasOwnerDetails = landlordId
+    ? true // If landlordId exists, owner details are optional (can come from landlord record)
+    : !!(
+        state.property.landlordName &&
+        state.property.landlordEmail &&
+        state.property.landlordPhone &&
+        state.property.landlordIdNumber &&
+        state.property.landlordAddress
+      )
+  
+  const canProceedToStep2 = hasPropertyDetails && hasOwnerDetails
 
   const canProceedToStep3 = state.billTemplates.length > 0 && state.billTemplates.every((t) => t.name.trim() && t.billTemplateId)
 
@@ -47,7 +61,7 @@ export function PropertyOnboardingWizard({ landlordId }: { landlordId: string })
         // Step 1 -> Step 2: Save property
         if (currentStep === 1 && !state.property.propertyId) {
           const { savePropertyStep } = await import("./wizard-step-actions")
-          const result = await savePropertyStep(state.property, landlordId)
+          const result = await savePropertyStep(state.property, landlordId || null)
           if (result.isSuccess && result.propertyId) {
             setPropertyId(result.propertyId)
             toast.success("Property saved successfully!")

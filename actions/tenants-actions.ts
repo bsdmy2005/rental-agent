@@ -4,11 +4,12 @@ import { db } from "@/db"
 import {
   propertiesTable,
   tenantsTable,
+  fixedCostsTable,
   type InsertTenant,
   type SelectTenant
 } from "@/db/schema"
 import { ActionState } from "@/types"
-import { eq, sql } from "drizzle-orm"
+import { eq, sql, and } from "drizzle-orm"
 
 export async function createTenantAction(
   tenant: InsertTenant,
@@ -297,6 +298,90 @@ export async function updateTenantPhoneAction(
   } catch (error) {
     console.error("Error updating tenant phone:", error)
     return { isSuccess: false, message: "Failed to update tenant phone" }
+  }
+}
+
+/**
+ * Update tenant's rental amount
+ * Prefers creating/updating a fixed cost with costType "rent" over updating tenant.rentalAmount
+ * This follows the same pattern as the invoice generation logic
+ */
+export async function updateTenantRentalAmountAction(
+  tenantId: string,
+  rentalAmount: number
+): Promise<ActionState<SelectTenant>> {
+  try {
+    // Validate tenant exists
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenantsTable.id, tenantId)
+    })
+
+    if (!tenant) {
+      return { isSuccess: false, message: "Tenant not found" }
+    }
+
+    // Validate rental amount
+    if (typeof rentalAmount !== "number" || rentalAmount <= 0) {
+      return {
+        isSuccess: false,
+        message: "Rental amount must be a positive number"
+      }
+    }
+
+    // Check if there's an existing fixed cost with costType "rent"
+    const existingRentFixedCost = await db
+      .select()
+      .from(fixedCostsTable)
+      .where(
+        and(
+          eq(fixedCostsTable.tenantId, tenantId),
+          eq(fixedCostsTable.costType, "rent"),
+          eq(fixedCostsTable.isActive, true)
+        )
+      )
+      .limit(1)
+
+    if (existingRentFixedCost.length > 0) {
+      // Update existing fixed cost
+      await db
+        .update(fixedCostsTable)
+        .set({
+          amount: rentalAmount.toString(),
+          updatedAt: new Date()
+        })
+        .where(eq(fixedCostsTable.id, existingRentFixedCost[0].id))
+    } else {
+      // Create new fixed cost with costType "rent"
+      await db.insert(fixedCostsTable).values({
+        tenantId,
+        costType: "rent",
+        amount: rentalAmount.toString(),
+        isActive: true
+      })
+    }
+
+    // Also update tenant.rentalAmount as fallback
+    const [updatedTenant] = await db
+      .update(tenantsTable)
+      .set({ rentalAmount: rentalAmount.toString() })
+      .where(eq(tenantsTable.id, tenantId))
+      .returning()
+
+    if (!updatedTenant) {
+      return { isSuccess: false, message: "Failed to update tenant" }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Rental amount updated successfully",
+      data: updatedTenant
+    }
+  } catch (error) {
+    console.error("Error updating tenant rental amount:", error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to update rental amount"
+    }
   }
 }
 

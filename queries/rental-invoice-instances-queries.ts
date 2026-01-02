@@ -57,10 +57,12 @@ export async function getRentalInvoiceInstanceWithDetailsQuery(
     return null
   }
 
-  // Get landlord
-  const landlord = await db.query.landlords.findFirst({
-    where: eq(landlordsTable.id, property.landlordId)
-  })
+  // Get landlord (if property has a landlordId)
+  const landlord = property.landlordId
+    ? await db.query.landlords.findFirst({
+        where: eq(landlordsTable.id, property.landlordId)
+      })
+    : null
 
   // Get rental agent (if property is managed)
   let rentalAgent: SelectRentalAgent | null = null

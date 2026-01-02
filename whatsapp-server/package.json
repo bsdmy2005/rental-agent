@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-baileys-server",
   "version": "1.0.0",
-  "description": "WhatsApp Baileys server for Rental Agent AI exploration",
+  "description": "WhatsApp Baileys server for PropNxt.AI exploration",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

@@ -1,5 +1,6 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { userProfilesTable } from "./user-profiles"
+import { rentalAgenciesTable } from "./rental-agencies-schema"
 
 export const rentalAgentsTable = pgTable("rental_agents", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -7,6 +8,9 @@ export const rentalAgentsTable = pgTable("rental_agents", {
     .references(() => userProfilesTable.id, { onDelete: "cascade" })
     .unique()
     .notNull(),
+  agencyId: uuid("agency_id").references(() => rentalAgenciesTable.id, {
+    onDelete: "set null"
+  }),
   agencyName: text("agency_name"),
   licenseNumber: text("license_number"),
   contactEmail: text("contact_email"),

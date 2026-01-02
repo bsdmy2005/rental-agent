@@ -23,6 +23,8 @@ export interface TemplateField {
   suffix?: string
   placeholder?: string
   defaultValue?: string
+  inline?: boolean // If true, field is only rendered inline in content and not at the bottom
+  inlineDisplayFormat?: "label-value" | "label-only" | "value-only" // How to display inline fields in preview/PDF
 }
 
 export interface TemplateSubsection {
@@ -361,5 +363,41 @@ export function contentToString(content: string | string[] | undefined): string 
 export function stringToContent(str: string): string[] {
   if (!str) return []
   return str.split("\n\n").filter((p) => p.trim() !== "")
+}
+
+/**
+ * Extract all template fields from template data (recursively from sections and subsections)
+ * Returns a flat array of unique fields (deduplicated by id)
+ */
+export function extractTemplateFields(templateData: TemplateData): TemplateField[] {
+  const fieldsMap = new Map<string, TemplateField>()
+
+  function extractFieldsFromSections(sections: TemplateSection[]) {
+    sections.forEach((section) => {
+      // Extract fields from section
+      if (section.fields && section.fields.length > 0) {
+        section.fields.forEach((field) => {
+          fieldsMap.set(field.id, field)
+        })
+      }
+
+      // Extract fields from subsections
+      if (section.subsections && section.subsections.length > 0) {
+        section.subsections.forEach((subsection) => {
+          if (subsection.fields && subsection.fields.length > 0) {
+            subsection.fields.forEach((field) => {
+              fieldsMap.set(field.id, field)
+            })
+          }
+        })
+      }
+    })
+  }
+
+  if (templateData.sections) {
+    extractFieldsFromSections(templateData.sections)
+  }
+
+  return Array.from(fieldsMap.values())
 }
 

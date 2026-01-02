@@ -13,12 +13,12 @@ export default function SigningSuccessPage() {
           </div>
           <CardTitle>Lease Signed Successfully</CardTitle>
           <CardDescription>
-            Your signature has been recorded. The landlord will be notified and will sign the lease to complete the process.
+            Your signature has been recorded. The lease has been fully executed by both parties.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center">
-            You will receive an email with the fully executed lease agreement once both parties have signed.
+            You will receive an email with the fully executed lease agreement shortly.
           </p>
         </CardContent>
       </Card>

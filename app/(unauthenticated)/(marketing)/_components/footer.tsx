@@ -57,7 +57,7 @@ export function Footer() {
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-8">
             <Link href="/" className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              RentPilot AI
+              PropNxt.AI
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm leading-6">
               Automated rental agent for landlords and agencies. Process bills, generate invoices, and manage tenants.
@@ -152,7 +152,7 @@ export function Footer() {
         </div>
         <div className="border-gray-200 dark:border-gray-700 mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
           <p className="text-gray-500 dark:text-gray-500 text-xs leading-5">
-            &copy; {new Date().getFullYear()} RentPilot AI. All rights reserved.
+            &copy; {new Date().getFullYear()} PropNxt.AI. All rights reserved.
           </p>
         </div>
       </div>

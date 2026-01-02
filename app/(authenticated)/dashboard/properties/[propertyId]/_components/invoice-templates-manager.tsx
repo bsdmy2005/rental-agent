@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,8 +26,12 @@ import {
   updateRentalInvoiceTemplateAction,
   deleteRentalInvoiceTemplateAction
 } from "@/actions/rental-invoice-templates-actions"
+import { updateTenantRentalAmountAction } from "@/actions/tenants-actions"
 import { type SelectRentalInvoiceTemplate, type SelectBillTemplate, type SelectTenant } from "@/db/schema"
+import { type FixedLineItem } from "@/types/invoice-types"
 import { TemplateDependencyEditor } from "./template-dependency-editor"
+import { FixedLineItemsManager } from "./fixed-line-items-manager"
+import { getActiveFixedCostsForTenantAction } from "@/actions/fixed-costs-actions"
 
 interface InvoiceTemplatesManagerProps {
   propertyId: string
@@ -111,7 +115,13 @@ export function InvoiceTemplatesManager({
               onSave={async (data) => {
                 setLoading(true)
                 try {
-                  const result = await updateRentalInvoiceTemplateAction(template.id, data)
+                  const result = await updateRentalInvoiceTemplateAction(template.id, {
+                    name: data.name,
+                    description: data.description,
+                    generationDayOfMonth: data.generationDayOfMonth,
+                    dependsOnBillTemplateIds: data.dependsOnBillTemplateIds,
+                    fixedLineItems: data.fixedLineItems
+                  })
                   if (result.isSuccess) {
                     toast.success("Template updated successfully")
                     setEditingId(null)
@@ -208,7 +218,7 @@ export function InvoiceTemplatesManager({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium mb-2">
                   Dependencies ({dependencies.length}):
@@ -230,6 +240,33 @@ export function InvoiceTemplatesManager({
                         </Badge>
                       )
                     })}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">
+                  Fixed Line Items ({(template.fixedLineItems as FixedLineItem[])?.length || 0}):
+                </p>
+                {!template.fixedLineItems || (template.fixedLineItems as FixedLineItem[]).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No fixed line items. Click "Edit" to add fixed line items.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {(template.fixedLineItems as FixedLineItem[]).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-2 border rounded-md bg-muted/50"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{item.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            R {item.amount.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -262,9 +299,13 @@ export function InvoiceTemplatesManager({
                         setLoading(true)
                         try {
                           const result = await createRentalInvoiceTemplateAction({
-                            ...data,
                             propertyId,
                             tenantId: tenant.id,
+                            name: data.name,
+                            description: data.description,
+                            generationDayOfMonth: data.generationDayOfMonth,
+                            dependsOnBillTemplateIds: data.dependsOnBillTemplateIds,
+                            fixedLineItems: data.fixedLineItems,
                             isActive: true
                           })
                           if (result.isSuccess) {
@@ -323,6 +364,7 @@ interface InvoiceTemplateEditFormProps {
     description: string | null
     generationDayOfMonth: number
     dependsOnBillTemplateIds: string[]
+    fixedLineItems?: FixedLineItem[]
   }) => Promise<void>
 }
 
@@ -337,17 +379,72 @@ function InvoiceTemplateEditForm({
     name: template.name,
     description: template.description || "",
     generationDay: template.generationDayOfMonth,
-    dependencies: (template.dependsOnBillTemplateIds as string[]) || []
+    dependencies: (template.dependsOnBillTemplateIds as string[]) || [],
+    fixedLineItems: (template.fixedLineItems as FixedLineItem[]) || []
   })
+  const [rentalAmount, setRentalAmount] = useState<string>("")
+  const [rentalAmountLoading, setRentalAmountLoading] = useState(false)
+  const [savingRentalAmount, setSavingRentalAmount] = useState(false)
+
+  // Load rental amount on mount
+  useEffect(() => {
+    const loadRentalAmount = async () => {
+      if (!tenant) return
+
+      setRentalAmountLoading(true)
+      try {
+        // Get rental amount from fixed costs (rent type) first, then fall back to tenant.rentalAmount
+        const fixedCostsResult = await getActiveFixedCostsForTenantAction(tenant.id)
+        if (fixedCostsResult.isSuccess && fixedCostsResult.data) {
+          const rentFixedCost = fixedCostsResult.data.find(
+            (fc) => fc.costType === "rent" && fc.isActive
+          )
+          if (rentFixedCost) {
+            setRentalAmount(rentFixedCost.amount)
+            return
+          }
+        }
+        // Fallback to tenant.rentalAmount
+        if (tenant.rentalAmount) {
+          setRentalAmount(tenant.rentalAmount)
+        }
+      } catch (error) {
+        console.error("Error loading rental amount:", error)
+      } finally {
+        setRentalAmountLoading(false)
+      }
+    }
+    loadRentalAmount()
+  }, [tenant])
+
+  const handleSaveRentalAmount = async () => {
+    if (!tenant) return
+
+    const amount = parseFloat(rentalAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Rental amount must be a positive number")
+      return
+    }
+
+    setSavingRentalAmount(true)
+    try {
+      const result = await updateTenantRentalAmountAction(tenant.id, amount)
+      if (result.isSuccess) {
+        toast.success("Rental amount updated successfully")
+      } else {
+        toast.error(result.message || "Failed to update rental amount")
+      }
+    } catch (error) {
+      console.error("Error updating rental amount:", error)
+      toast.error("Failed to update rental amount")
+    } finally {
+      setSavingRentalAmount(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error("Template name is required")
-      return
-    }
-
-    if (formData.dependencies.length === 0) {
-      toast.error("At least one bill template dependency is required")
       return
     }
 
@@ -360,7 +457,8 @@ function InvoiceTemplateEditForm({
       name: formData.name.trim(),
       description: formData.description.trim() || null,
       generationDayOfMonth: formData.generationDay,
-      dependsOnBillTemplateIds: formData.dependencies
+      dependsOnBillTemplateIds: formData.dependencies,
+      fixedLineItems: formData.fixedLineItems.length > 0 ? formData.fixedLineItems : undefined
     })
   }
 
@@ -373,6 +471,36 @@ function InvoiceTemplateEditForm({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {tenant && (
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+            <Label htmlFor="rental-amount">Rental Amount</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="rental-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={rentalAmount}
+                onChange={(e) => setRentalAmount(e.target.value)}
+                placeholder="0.00"
+                disabled={rentalAmountLoading || savingRentalAmount}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveRentalAmount}
+                disabled={rentalAmountLoading || savingRentalAmount}
+              >
+                {savingRentalAmount ? "Saving..." : "Save"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This updates the tenant's rental amount used in invoice generation
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="name">Template Name</Label>
           <Input
@@ -420,6 +548,19 @@ function InvoiceTemplateEditForm({
           }
         />
 
+        <div className="space-y-2">
+          <Label>Fixed Line Items</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Add fixed line items that will appear on every invoice generated from this template
+          </p>
+          <FixedLineItemsManager
+            items={formData.fixedLineItems}
+            onItemsChange={(items) =>
+              setFormData({ ...formData, fixedLineItems: items })
+            }
+          />
+        </div>
+
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={onCancel}>
             <X className="h-4 w-4 mr-1" />
@@ -447,6 +588,7 @@ interface InvoiceTemplateCreateFormProps {
     description: string | null
     generationDayOfMonth: number
     dependsOnBillTemplateIds: string[]
+    fixedLineItems?: FixedLineItem[]
     isActive: boolean
   }) => Promise<void>
 }
@@ -462,17 +604,13 @@ function InvoiceTemplateCreateForm({
     name: `${tenant.name} Rental Invoice`,
     description: "",
     generationDay: 5,
-    dependencies: [] as string[]
+    dependencies: [] as string[],
+    fixedLineItems: [] as FixedLineItem[]
   })
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error("Template name is required")
-      return
-    }
-
-    if (formData.dependencies.length === 0) {
-      toast.error("At least one bill template dependency is required")
       return
     }
 
@@ -488,6 +626,7 @@ function InvoiceTemplateCreateForm({
       description: formData.description.trim() || null,
       generationDayOfMonth: formData.generationDay,
       dependsOnBillTemplateIds: formData.dependencies,
+      fixedLineItems: formData.fixedLineItems.length > 0 ? formData.fixedLineItems : undefined,
       isActive: true
     })
   }
@@ -545,6 +684,19 @@ function InvoiceTemplateCreateForm({
             setFormData({ ...formData, dependencies })
           }
         />
+
+        <div className="space-y-2">
+          <Label>Fixed Line Items</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Add fixed line items that will appear on every invoice generated from this template
+          </p>
+          <FixedLineItemsManager
+            items={formData.fixedLineItems}
+            onItemsChange={(items) =>
+              setFormData({ ...formData, fixedLineItems: items })
+            }
+          />
+        </div>
 
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={onCancel}>

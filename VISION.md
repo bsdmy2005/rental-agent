@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document captures the long-term vision for expanding **Rental Agent AI** from a rental property management automation tool into a comprehensive **Property Investment Portfolio Management Platform**. This platform will serve as a holistic solution for property investors, landlords, and portfolio managers to track, analyze, optimize, and grow their real estate investments.
+This document captures the long-term vision for expanding **PropNxt.AI** from a rental property management automation tool into a comprehensive **Property Investment Portfolio Management Platform**. This platform will serve as a holistic solution for property investors, landlords, and portfolio managers to track, analyze, optimize, and grow their real estate investments.
 
 ---
 
 ## Core Vision Statement
 
-**Transform Rental Agent AI into the all-in-one platform for property investors to manage their entire portfolio lifecycle—from property discovery and acquisition, through active management, to performance optimization and tax compliance.**
+**Transform PropNxt.AI into the all-in-one platform for property investors to manage their entire portfolio lifecycle—from property discovery and acquisition, through active management, to performance optimization and tax compliance.**
 
 ---
 
@@ -549,7 +549,7 @@ The current system provides:
 
 ## Conclusion
 
-This vision document serves as a living roadmap for transforming Rental Agent AI into a comprehensive property investment portfolio management platform. The focus is on building a holistic solution that addresses the entire property investment lifecycle, from discovery and acquisition through active management, performance optimization, and tax compliance.
+This vision document serves as a living roadmap for transforming PropNxt.AI into a comprehensive property investment portfolio management platform. The focus is on building a holistic solution that addresses the entire property investment lifecycle, from discovery and acquisition through active management, performance optimization, and tax compliance.
 
 **Key Principles:**
 - **User-Centric**: Always prioritize user needs and experience

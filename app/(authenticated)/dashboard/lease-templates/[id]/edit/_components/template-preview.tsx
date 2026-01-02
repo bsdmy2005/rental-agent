@@ -101,7 +101,9 @@ export function TemplatePreview({ sections, templateName }: TemplatePreviewProps
 
                 {section.fields && section.fields.length > 0 && (
                   <div className="space-y-2">
-                    {section.fields.map((field) => (
+                    {section.fields
+                      .filter((field) => !field.inline) // Exclude inline fields
+                      .map((field) => (
                       <div key={field.id} className="flex items-start gap-2">
                         <span className="text-sm font-medium min-w-[120px]">{field.label}:</span>
                         <span className="text-sm text-muted-foreground">
@@ -120,7 +122,9 @@ export function TemplatePreview({ sections, templateName }: TemplatePreviewProps
                         <h4 className="font-medium text-sm">{subsection.title}</h4>
                         {subsection.fields.length > 0 && (
                           <div className="space-y-2">
-                            {subsection.fields.map((field) => (
+                            {subsection.fields
+                              .filter((field) => !field.inline) // Exclude inline fields
+                              .map((field) => (
                               <div key={field.id} className="flex items-start gap-2">
                                 <span className="text-sm font-medium min-w-[120px]">{field.label}:</span>
                                 <span className="text-sm text-muted-foreground">

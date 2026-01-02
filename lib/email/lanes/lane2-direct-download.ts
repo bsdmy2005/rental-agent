@@ -111,7 +111,7 @@ export async function processDirectLinks(
           const response = await fetch(link.url, {
             method: "GET",
             headers: {
-              "User-Agent": "RentalAgentAI/1.0",
+              "User-Agent": "PropNxtAI/1.0",
               Accept: "text/html"
             },
             redirect: lane2Config.followRedirects ? "follow" : "manual"

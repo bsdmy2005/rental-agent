@@ -27,7 +27,7 @@ export default function SignUpPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              Create your RentPilot AI account
+              Create your PropNxt.AI account
             </motion.h1>
             <motion.p
               className="text-muted-foreground text-lg"
@@ -35,7 +35,7 @@ export default function SignUpPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              Connect your properties, forward your first bill, and see how RentPilot AI turns it
+              Connect your properties, forward your first bill, and see how PropNxt.AI turns it
               into tenant-ready invoices.
             </motion.p>
           </div>

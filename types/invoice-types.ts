@@ -1,3 +1,10 @@
+export interface FixedLineItem {
+  id: string
+  description: string
+  amount: number
+  type?: "other" | "rental" | "water" | "electricity" | "sewerage" | "levy" | "municipality"
+}
+
 export interface InvoiceLineItem {
   id: string // UUID for editing
   type: "rental" | "water" | "electricity" | "sewerage" | "levy" | "municipality" | "other"

@@ -26,7 +26,7 @@ export function StickyCTA() {
                   Automate your rental admin
                 </p>
                 <p className="text-foreground text-sm font-semibold">
-                  Try RentPilot AI on your next bill.
+                  Try PropNxt.AI on your next bill.
                 </p>
               </div>
               <Button size="sm" asChild className="group">
@@ -83,7 +83,7 @@ export function StickyCTA() {
                   Turn this month&apos;s bills into automated invoices
                 </p>
                 <p className="text-foreground text-lg font-bold">
-                  See RentPilot AI on a real property.
+                  See PropNxt.AI on a real property.
                 </p>
               </div>
               <Button asChild className="group w-full">

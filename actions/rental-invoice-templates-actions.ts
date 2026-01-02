@@ -7,21 +7,58 @@ import {
   type SelectRentalInvoiceTemplate
 } from "@/db/schema"
 import { ActionState } from "@/types"
+import { type FixedLineItem } from "@/types/invoice-types"
 import { eq, and } from "drizzle-orm"
 
 export async function createRentalInvoiceTemplateAction(
   invoiceTemplate: InsertRentalInvoiceTemplate
 ): Promise<ActionState<SelectRentalInvoiceTemplate>> {
   try {
-    // Validate dependencies array
+    // Validate dependencies array exists and is an array (but allow empty array)
     if (
-      !invoiceTemplate.dependsOnBillTemplateIds ||
-      !Array.isArray(invoiceTemplate.dependsOnBillTemplateIds) ||
-      invoiceTemplate.dependsOnBillTemplateIds.length === 0
+      invoiceTemplate.dependsOnBillTemplateIds !== undefined &&
+      invoiceTemplate.dependsOnBillTemplateIds !== null &&
+      !Array.isArray(invoiceTemplate.dependsOnBillTemplateIds)
     ) {
       return {
         isSuccess: false,
-        message: "At least one bill template dependency is required"
+        message: "Bill template dependencies must be an array"
+      }
+    }
+
+    // Ensure dependencies is an array (default to empty if not provided)
+    if (!invoiceTemplate.dependsOnBillTemplateIds) {
+      invoiceTemplate.dependsOnBillTemplateIds = []
+    }
+
+    // Validate fixed line items if provided
+    if (invoiceTemplate.fixedLineItems !== undefined && invoiceTemplate.fixedLineItems !== null) {
+      const fixedLineItems = invoiceTemplate.fixedLineItems as FixedLineItem[]
+      if (!Array.isArray(fixedLineItems)) {
+        return {
+          isSuccess: false,
+          message: "Fixed line items must be an array"
+        }
+      }
+      for (const item of fixedLineItems) {
+        if (!item.description || item.description.trim() === "") {
+          return {
+            isSuccess: false,
+            message: "Fixed line item description is required"
+          }
+        }
+        if (typeof item.amount !== "number" || item.amount <= 0) {
+          return {
+            isSuccess: false,
+            message: "Fixed line item amount must be a positive number"
+          }
+        }
+        if (!item.id) {
+          return {
+            isSuccess: false,
+            message: "Fixed line item ID is required"
+          }
+        }
       }
     }
 
@@ -248,15 +285,44 @@ export async function updateRentalInvoiceTemplateAction(
   data: Partial<InsertRentalInvoiceTemplate>
 ): Promise<ActionState<SelectRentalInvoiceTemplate>> {
   try {
-    // Validate dependencies if provided
-    if (data.dependsOnBillTemplateIds !== undefined) {
-      if (
-        !Array.isArray(data.dependsOnBillTemplateIds) ||
-        data.dependsOnBillTemplateIds.length === 0
-      ) {
+    // Validate dependencies if provided (but allow empty array)
+    if (data.dependsOnBillTemplateIds !== undefined && data.dependsOnBillTemplateIds !== null) {
+      if (!Array.isArray(data.dependsOnBillTemplateIds)) {
         return {
           isSuccess: false,
-          message: "At least one bill template dependency is required"
+          message: "Bill template dependencies must be an array"
+        }
+      }
+      // Allow empty array - no minimum requirement
+    }
+
+    // Validate fixed line items if provided
+    if (data.fixedLineItems !== undefined && data.fixedLineItems !== null) {
+      const fixedLineItems = data.fixedLineItems as FixedLineItem[]
+      if (!Array.isArray(fixedLineItems)) {
+        return {
+          isSuccess: false,
+          message: "Fixed line items must be an array"
+        }
+      }
+      for (const item of fixedLineItems) {
+        if (!item.description || item.description.trim() === "") {
+          return {
+            isSuccess: false,
+            message: "Fixed line item description is required"
+          }
+        }
+        if (typeof item.amount !== "number" || item.amount <= 0) {
+          return {
+            isSuccess: false,
+            message: "Fixed line item amount must be a positive number"
+          }
+        }
+        if (!item.id) {
+          return {
+            isSuccess: false,
+            message: "Fixed line item ID is required"
+          }
         }
       }
     }
@@ -340,14 +406,7 @@ export async function updateInvoiceTemplateDependencyAction(
     } else {
       // Remove bill template ID
       newDependencies = currentDependencies.filter((id) => id !== billTemplateId)
-      
-      // Ensure at least one dependency remains
-      if (newDependencies.length === 0) {
-        return {
-          isSuccess: false,
-          message: "At least one bill template dependency is required"
-        }
-      }
+      // Allow empty array - no minimum requirement
     }
 
     return await updateRentalInvoiceTemplateAction(invoiceTemplateId, {

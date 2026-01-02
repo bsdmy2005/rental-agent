@@ -28,7 +28,19 @@
       "Bash(git rev-parse:*)",
       "Bash(cat:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI log --oneline -10)",
+      "WebFetch(domain:www.weconnectu.co.za)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI add docs/plans/2026-01-01-propnxt-landing-page-rebrand-design.md)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI commit -m \"$\\(cat <<''EOF''\ndocs: add PropNxt landing page rebrand design\n\nDesign document for updating the marketing landing page to reflect\nactual product capabilities and AI-first positioning. Includes new\nhero messaging, 4-category feature organization, vision section,\nand beta CTA strategy.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI add docs/plans/2026-01-01-propnxt-landing-page-implementation.md)",
+      "Bash(git -C /Users/bereketmac/RENTAL_AGENT_AI commit -m \"$\\(cat <<''EOF''\ndocs: add PropNxt landing page implementation plan\n\nDetailed 8-task implementation plan for landing page rebrand:\n- Hero section with beta badge and AI-first messaging\n- Features reorganized into 4 categories \\(18 active features\\)\n- New coming soon and vision sections\n- Updated FAQ and CTA for beta positioning\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(while ps aux)",
+      "Bash(do sleep 10)",
+      "Bash(done)",
+      "Bash(kill:*)",
+      "Bash(git status:*)",
+      "Bash(npx next lint:*)"
     ]
   },
   "enabledPlugins": {

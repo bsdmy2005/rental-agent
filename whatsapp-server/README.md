@@ -14,7 +14,7 @@ A standalone Express.js server for WhatsApp integration using the [Baileys](http
 ## Prerequisites
 
 - Node.js 17+
-- PostgreSQL database (shared with Rental Agent AI)
+- PostgreSQL database (shared with PropNxt.AI)
 - The database schema must include `whatsapp_sessions` and `whatsapp_explorer_messages` tables
 
 ## Installation
@@ -155,7 +155,7 @@ Content-Type: application/json
 
 ## Usage with Next.js App
 
-The Next.js app (Rental Agent AI) includes a WhatsApp Explorer page that connects to this server:
+The Next.js app (PropNxt.AI) includes a WhatsApp Explorer page that connects to this server:
 
 1. Start this server: `npm run dev`
 2. Start the Next.js app: `npm run dev` (in RENTAL_AGENT_AI folder)

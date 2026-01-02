@@ -31,7 +31,7 @@ export function CompaniesSection() {
             Designed for real rental operations
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mt-4 text-lg leading-8">
-            RentPilot AI focuses on the boring but critical parts of being a landlord or agency:
+            PropNxt.AI focuses on the boring but critical parts of being a landlord or agency:
             bills in, clear invoices out, and tenants always in the loop.
           </p>
         </motion.div>

@@ -81,18 +81,20 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
   }
 
   const canDelete = (lease: LeaseWithDetails) => {
-    // Can only delete if not fully signed by both parties
-    return !(lease.signedByTenant && lease.signedByLandlord)
+    // Allow delete button to show for all leases - the server action will enforce dev mode restriction
+    // In dev mode, fully executed leases can be deleted for testing
+    return true
   }
 
   // Filter leases based on selected tab
   const filteredLeases = leases.filter((lease) => {
     if (filter === "pending") {
-      // Pending = sent to tenant but not fully signed
+      // Pending = any status that's not fully executed or draft
       return (
+        lease.initiationStatus === "sent_to_landlord" ||
+        lease.initiationStatus === "landlord_signed" ||
         lease.initiationStatus === "sent_to_tenant" ||
-        lease.initiationStatus === "tenant_signed" ||
-        (lease.initiationStatus === "landlord_signed" && !lease.signedByTenant)
+        lease.initiationStatus === "tenant_signed"
       )
     }
     if (filter === "signed") {
@@ -117,7 +119,7 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
       return (
         <Badge className="bg-yellow-600">
           <Clock className="mr-1 h-3 w-3" />
-          Tenant Signed - Awaiting Landlord
+          Tenant Signed
         </Badge>
       )
     }
@@ -126,6 +128,22 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
         <Badge className="bg-blue-600">
           <Mail className="mr-1 h-3 w-3" />
           Sent to Tenant
+        </Badge>
+      )
+    }
+    if (lease.initiationStatus === "landlord_signed") {
+      return (
+        <Badge className="bg-purple-600">
+          <CheckCircle2 className="mr-1 h-3 w-3" />
+          Landlord Signed - Awaiting Tenant
+        </Badge>
+      )
+    }
+    if (lease.initiationStatus === "sent_to_landlord") {
+      return (
+        <Badge className="bg-blue-600">
+          <Mail className="mr-1 h-3 w-3" />
+          Sent to Landlord
         </Badge>
       )
     }
@@ -158,13 +176,19 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
       return "Both parties signed"
     }
     if (lease.signedByTenant) {
-      return "Tenant signed - Waiting for landlord"
+      return "Tenant signed"
     }
     if (lease.signedByLandlord) {
       return "Landlord signed - Waiting for tenant"
     }
     if (lease.initiationStatus === "sent_to_tenant") {
       return "Awaiting tenant signature"
+    }
+    if (lease.initiationStatus === "landlord_signed") {
+      return "Landlord signed - Awaiting tenant"
+    }
+    if (lease.initiationStatus === "sent_to_landlord") {
+      return "Awaiting landlord signature"
     }
     return "Not signed"
   }
@@ -291,9 +315,13 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
                               <AlertDialogTitle>Delete Lease Agreement?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to delete this lease agreement? This action cannot be undone.
-                                {lease.signedByTenant || lease.signedByLandlord ? (
+                                {lease.signedByTenant && lease.signedByLandlord ? (
                                   <span className="block mt-2 text-yellow-600">
-                                    Note: This lease has been partially signed. Only unsigned leases should be deleted.
+                                    Note: This lease is fully executed. Deletion is only allowed in development mode for testing purposes.
+                                  </span>
+                                ) : lease.signedByTenant || lease.signedByLandlord ? (
+                                  <span className="block mt-2 text-yellow-600">
+                                    Note: This lease has been partially signed.
                                   </span>
                                 ) : null}
                               </AlertDialogDescription>

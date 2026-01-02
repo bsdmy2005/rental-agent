@@ -10,6 +10,9 @@ import { uploadLeaseAgreementAction } from "@/actions/lease-agreements-actions"
 import { createRentalInvoiceTemplateAction } from "@/actions/rental-invoice-templates-actions"
 import { createExtractionRuleAction } from "@/actions/extraction-rules-actions"
 import { generateInvoicePeriodsForLeaseAction } from "@/actions/billing-periods-actions"
+import {
+  autoAssignPropertyToAgencyOrAgentAction
+} from "@/actions/property-managements-actions"
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import type { WizardState, BillTemplateState, PayableTemplateState, TenantState } from "./wizard-state"
@@ -20,11 +23,11 @@ import type { FieldMapping } from "@/app/(authenticated)/dashboard/rules/_compon
  */
 export async function savePropertyStep(
   property: WizardState["property"],
-  landlordId: string
+  landlordId: string | null
 ): Promise<{ isSuccess: boolean; message: string; propertyId?: string }> {
   try {
     const result = await createPropertyAction({
-      landlordId,
+      landlordId: landlordId || null,
       name: property.name,
       streetAddress: property.streetAddress,
       suburb: property.suburb,
@@ -37,14 +40,45 @@ export async function savePropertyStep(
       accountNumber: property.accountNumber || null,
       branchCode: property.branchCode || null,
       swiftCode: property.swiftCode || null,
-      referenceFormat: property.referenceFormat || null
+      referenceFormat: property.referenceFormat || null,
+      landlordName: property.landlordName || null,
+      landlordEmail: property.landlordEmail || null,
+      landlordPhone: property.landlordPhone || null,
+      landlordIdNumber: property.landlordIdNumber || null,
+      landlordAddress: property.landlordAddress || null
     })
 
     if (result.isSuccess && result.data) {
+      const propertyId = result.data.id
+
+      // If landlordId is null, the creator is likely a rental agent or agency owner/admin
+      // Automatically assign property to agency or agent based on creator's role
+      if (!landlordId) {
+        const user = await currentUser()
+        if (user) {
+          const userProfile = await getUserProfileByClerkIdQuery(user.id)
+          if (userProfile) {
+            // Auto-assign property to agency (if user is owner/admin) or agent (if user is agent)
+            const assignmentResult = await autoAssignPropertyToAgencyOrAgentAction(
+              propertyId,
+              userProfile.id
+            )
+
+            if (!assignmentResult.isSuccess) {
+              console.error(
+                "Failed to auto-assign property:",
+                assignmentResult.message
+              )
+              // Continue anyway - property is created, management can be added later
+            }
+          }
+        }
+      }
+
       return {
         isSuccess: true,
         message: "Property saved successfully",
-        propertyId: result.data.id
+        propertyId
       }
     }
 
@@ -337,6 +371,7 @@ export async function saveTenantStep(
           description: tenant.rentalInvoiceTemplate.description || null,
           dependsOnBillTemplateIds: actualBillTemplateIds,
           generationDayOfMonth: tenant.rentalInvoiceTemplate.generationDayOfMonth || 5,
+          fixedLineItems: tenant.rentalInvoiceTemplate.fixedLineItems || undefined,
           isActive: true
         })
 

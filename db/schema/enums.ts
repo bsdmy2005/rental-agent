@@ -143,9 +143,9 @@ export const inspectionStatusEnum = pgEnum("inspection_status", [
 ])
 export const itemConditionEnum = pgEnum("item_condition", [
   "good",
-  "fair",
-  "poor",
-  "defective"
+  "requires_repair",
+  "requires_cleaning",
+  "requires_repair_and_cleaning"
 ])
 export const defectSeverityEnum = pgEnum("defect_severity", [
   "minor",
@@ -173,9 +173,10 @@ export const leaseInitiationMethodEnum = pgEnum("lease_initiation_method", [
 ])
 export const leaseInitiationStatusEnum = pgEnum("lease_initiation_status", [
   "draft",
+  "sent_to_landlord",
+  "landlord_signed",
   "sent_to_tenant",
   "tenant_signed",
-  "landlord_signed",
   "fully_executed"
 ])
 export const whatsappConnectionStatusEnum = pgEnum("whatsapp_connection_status", [
@@ -204,5 +205,15 @@ export const incidentAuthorTypeEnum = pgEnum("incident_author_type", [
   "agent",
   "landlord",
   "system"
+])
+export const agencyMembershipStatusEnum = pgEnum("agency_membership_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "removed"
+])
+export const agencyAdminRoleEnum = pgEnum("agency_admin_role", [
+  "owner",
+  "admin"
 ])
 

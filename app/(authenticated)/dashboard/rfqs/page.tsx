@@ -26,21 +26,9 @@ async function getRfqsForUser(userProfileId: string, userType: string) {
       propertyIds = properties.map((p) => p.id)
     }
   } else if (userType === "rental_agent") {
-    const { getRentalAgentByUserProfileIdQuery } = await import("@/queries/rental-agents-queries")
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfileId)
-    if (rentalAgent) {
-      const { propertyManagementsTable } = await import("@/db/schema")
-      const managements = await db
-        .select({ propertyId: propertyManagementsTable.propertyId })
-        .from(propertyManagementsTable)
-        .where(
-          and(
-            eq(propertyManagementsTable.rentalAgentId, rentalAgent.id),
-            eq(propertyManagementsTable.isActive, true)
-          )
-        )
-      propertyIds = managements.map((m) => m.propertyId)
-    }
+    const { getPropertiesForUserQuery } = await import("@/queries/properties-queries")
+    const properties = await getPropertiesForUserQuery(userProfileId, userType)
+    propertyIds = properties.map((p) => p.id)
   }
 
   if (propertyIds.length === 0) {

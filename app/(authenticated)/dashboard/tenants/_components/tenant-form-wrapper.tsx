@@ -12,9 +12,10 @@ import { TenantForm } from "./tenant-form"
 
 interface TenantFormWrapperProps {
   properties: Array<{ id: string; name: string }>
+  userType?: "landlord" | "rental_agent" | "tenant" | "admin"
 }
 
-export function TenantFormWrapper({ properties }: TenantFormWrapperProps) {
+export function TenantFormWrapper({ properties, userType }: TenantFormWrapperProps) {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("")
 
   return (
@@ -34,7 +35,7 @@ export function TenantFormWrapper({ properties }: TenantFormWrapperProps) {
           </SelectContent>
         </Select>
       </div>
-      {selectedPropertyId && <TenantForm propertyId={selectedPropertyId} />}
+      {selectedPropertyId && <TenantForm propertyId={selectedPropertyId} userType={userType} />}
     </div>
   )
 }

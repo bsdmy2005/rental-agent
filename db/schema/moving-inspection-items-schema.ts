@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { boolean, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { movingInspectionsTable } from "./moving-inspections-schema"
 import { movingInspectionCategoriesTable } from "./moving-inspection-categories-schema"
 import { itemConditionEnum } from "./enums"
@@ -12,9 +12,13 @@ export const movingInspectionItemsTable = pgTable("moving_inspection_items", {
     .references(() => movingInspectionCategoriesTable.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
-  condition: itemConditionEnum("condition").default("good").notNull(),
+  condition: itemConditionEnum("condition"), // Nullable - user must select condition
+  isPresent: boolean("is_present"), // DEPRECATED: Replaced by condition enum. Kept for migration period.
   notes: text("notes"),
+  roomInstanceNumber: integer("room_instance_number"), // For expandable rooms (Bedroom 1, Bedroom 2, etc.)
   displayOrder: integer("display_order").notNull(),
+  confirmedAsPrevious: boolean("confirmed_as_previous").default(false).notNull(), // For move-out: mark as same as move-in
+  moveInItemId: uuid("move_in_item_id"), // Link to move-in item (for move-out inspections only)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

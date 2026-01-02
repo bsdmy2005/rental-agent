@@ -3,8 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { getLandlordByUserProfileIdQuery } from "@/queries/landlords-queries"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getPropertiesByLandlordIdQuery, getPropertiesByRentalAgentIdQuery } from "@/queries/properties-queries"
+import { getPropertiesByLandlordIdQuery, getPropertiesForUserQuery } from "@/queries/properties-queries"
 import { getIncidentsByPropertyIdsQuery } from "@/queries/incidents-queries"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AllIncidentsList } from "./_components/all-incidents-list"
@@ -32,12 +31,9 @@ export default async function AllIncidentsPage() {
       properties = props.map((p) => ({ id: p.id, name: p.name }))
     }
   } else if (userProfile.userType === "rental_agent") {
-    const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-    if (rentalAgent) {
-      const props = await getPropertiesByRentalAgentIdQuery(rentalAgent.id)
-      propertyIds = props.map((p) => p.id)
-      properties = props.map((p) => ({ id: p.id, name: p.name }))
-    }
+    const props = await getPropertiesForUserQuery(userProfile.id, userProfile.userType)
+    propertyIds = props.map((p) => p.id)
+    properties = props.map((p) => ({ id: p.id, name: p.name }))
   }
 
   // Get all incidents for user's properties

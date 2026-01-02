@@ -47,3 +47,7 @@ export async function getLandlordWithPropertiesQuery(
   }
 }
 
+export async function getAllLandlordsQuery(): Promise<SelectLandlord[]> {
+  return await db.select().from(landlordsTable)
+}
+
