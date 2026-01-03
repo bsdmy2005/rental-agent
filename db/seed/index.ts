@@ -70,8 +70,10 @@ async function seed() {
     console.warn(`Inserted ${insertedProviders.length} service providers`)
 
     // Insert service provider areas
+    // Convert null suburbs to city name (for city-wide coverage)
     const areasToInsert = serviceProviderAreasData.map(({ providerIndex, area }) => ({
       ...area,
+      suburb: area.suburb || area.city || "Unknown", // Use city name if suburb is null
       serviceProviderId: insertedProviders[providerIndex].id
     }))
 

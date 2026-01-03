@@ -5,7 +5,7 @@ import {
   getPropertiesByLandlordIdQuery,
   getPropertiesForUserQuery
 } from "@/queries/properties-queries"
-import { getPayableInstancesWithDetailsQuery } from "@/queries/payable-instances-queries"
+import { getPayableInstancesWithDetailsQuery, type PayableInstanceWithDetails } from "@/queries/payable-instances-queries"
 import { PaymentsListClient } from "./payments-list-client"
 
 export async function PaymentsList() {
@@ -21,7 +21,7 @@ export async function PaymentsList() {
 
   let properties: Array<{ id: string; name: string }> = []
   let propertyIds: string[] = []
-  let allPayables: any[] = []
+  let allPayables: PayableInstanceWithDetails[] = []
 
   if (userProfile.userType === "landlord") {
     const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)

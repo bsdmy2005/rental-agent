@@ -29,8 +29,7 @@ import { getAgencyPropertiesAction } from "@/actions/db/agency-properties-action
 import { getAgencyMembersAction } from "@/actions/db/agency-members-actions"
 import { getAgentPropertyAssignmentsAction } from "@/actions/db/agent-properties-actions"
 import { toast } from "sonner"
-import type { SelectProperty } from "@/db/schema"
-import type { SelectRentalAgent } from "@/db/schema"
+import type { SelectProperty, SelectRentalAgent, SelectUserProfile } from "@/db/schema"
 
 interface ManageAgentPropertiesDialogProps {
   agencyId: string
@@ -43,26 +42,12 @@ export function ManageAgentPropertiesDialog({
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"assign" | "deassign">("assign")
   const [properties, setProperties] = useState<SelectProperty[]>([])
-  const [agents, setAgents] = useState<Array<SelectRentalAgent & { userProfile: any }>>([])
+  const [agents, setAgents] = useState<Array<SelectRentalAgent & { userProfile: SelectUserProfile }>>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>("")
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set())
   const [assignedProperties, setAssignedProperties] = useState<
     Array<{ property: SelectProperty; managementId: string }>
   >([])
-
-  useEffect(() => {
-    if (open) {
-      loadData()
-    }
-  }, [open, agencyId])
-
-  useEffect(() => {
-    if (selectedAgentId && activeTab === "deassign") {
-      loadAssignedProperties()
-    }
-    // Reset selections when agent or tab changes
-    setSelectedPropertyIds(new Set())
-  }, [selectedAgentId, activeTab])
 
   const loadData = async () => {
     try {
@@ -106,6 +91,22 @@ export function ManageAgentPropertiesDialog({
       console.error("Error loading assigned properties:", error)
     }
   }
+
+  useEffect(() => {
+    if (open) {
+      loadData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agencyId])
+
+  useEffect(() => {
+    if (selectedAgentId && activeTab === "deassign") {
+      loadAssignedProperties()
+    }
+    // Reset selections when agent or tab changes
+    setSelectedPropertyIds(new Set())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgentId, activeTab])
 
   const handleSelectAll = () => {
     if (activeTab === "assign") {

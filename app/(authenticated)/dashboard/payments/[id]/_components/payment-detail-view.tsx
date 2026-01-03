@@ -33,7 +33,26 @@ export function PaymentDetailView({ payable }: PaymentDetailViewProps) {
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [diagnosticDialogOpen, setDiagnosticDialogOpen] = useState(false)
-  const [diagnosticData, setDiagnosticData] = useState<any>(null)
+  const [diagnosticData, setDiagnosticData] = useState<{
+    recommendedAction: string
+    contributingBillIds: string[]
+    billsFound: Array<{
+      id: string
+      exists: boolean
+      hasPaymentData: boolean
+      propertyId: string
+      billingYear: number | null
+      billingMonth: number | null
+      status: string
+    }>
+    reDiscoveredBills: Array<{
+      id: string
+      hasPaymentData: boolean
+    }>
+    instance: {
+      payableData: unknown
+    }
+  } | null>(null)
   const [loadingDiagnostic, setLoadingDiagnostic] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -363,7 +382,7 @@ export function PaymentDetailView({ payable }: PaymentDetailViewProps) {
                   {diagnosticData.contributingBillIds.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No bills stored</p>
                   ) : (
-                    diagnosticData.billsFound.map((bill: any, idx: number) => (
+                    diagnosticData.billsFound.map((bill, idx: number) => (
                       <div key={idx} className="border rounded p-2 text-sm">
                         <div className="font-medium">Bill ID: {bill.id}</div>
                         <div className="text-muted-foreground">
@@ -395,7 +414,7 @@ export function PaymentDetailView({ payable }: PaymentDetailViewProps) {
                     Re-discovered Bills ({diagnosticData.reDiscoveredBills.length})
                   </h3>
                   <div className="space-y-2">
-                    {diagnosticData.reDiscoveredBills.map((bill: any, idx: number) => (
+                    {diagnosticData.reDiscoveredBills.map((bill, idx: number) => (
                       <div key={idx} className="border rounded p-2 text-sm">
                         <div className="font-medium">Bill ID: {bill.id}</div>
                         <div className="text-muted-foreground">
@@ -422,7 +441,7 @@ export function PaymentDetailView({ payable }: PaymentDetailViewProps) {
             <Button variant="outline" onClick={() => setDiagnosticDialogOpen(false)}>
               Close
             </Button>
-            {diagnosticData?.reDiscoveredBills.length > 0 && (
+            {diagnosticData?.reDiscoveredBills && diagnosticData.reDiscoveredBills.length > 0 && (
               <Button onClick={handleRefreshInstance} disabled={refreshing}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh & Re-link

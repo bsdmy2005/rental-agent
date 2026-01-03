@@ -19,12 +19,11 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { getRentalAgenciesAction } from "@/actions/db/rental-agencies-actions"
-import { requestAgencyMembershipWithAuthAction } from "@/actions/db/agency-memberships-actions"
+import { requestAgencyMembershipWithAuthAction, getAgentMembershipStatusAction } from "@/actions/db/agency-memberships-actions"
+import { getRentalAgentByUserProfileIdAction } from "@/actions/rental-agents-actions"
 import { toast } from "sonner"
 import type { SelectRentalAgency } from "@/db/schema"
 import type { SelectUserProfile } from "@/db/schema"
-import { getRentalAgentByUserProfileIdQuery } from "@/queries/rental-agents-queries"
-import { getAgentMembershipStatusQuery } from "@/queries/agency-memberships-queries"
 
 interface AssignAgencyDialogProps {
   userProfile: SelectUserProfile
@@ -35,13 +34,7 @@ export function AssignAgencyDialog({ userProfile }: AssignAgencyDialogProps) {
   const [loading, setLoading] = useState(false)
   const [agencies, setAgencies] = useState<SelectRentalAgency[]>([])
   const [selectedAgencyId, setSelectedAgencyId] = useState<string>("")
-  const [currentMembership, setCurrentMembership] = useState<any>(null)
-
-  useEffect(() => {
-    if (open && userProfile.userType === "rental_agent") {
-      loadData()
-    }
-  }, [open, userProfile.userType])
+  const [currentMembership, setCurrentMembership] = useState<{ agency: SelectRentalAgency } | null>(null)
 
   const loadData = async () => {
     try {
@@ -51,18 +44,25 @@ export function AssignAgencyDialog({ userProfile }: AssignAgencyDialogProps) {
       }
 
       // Check current membership
-      const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-      if (rentalAgent) {
-        const membership = await getAgentMembershipStatusQuery(rentalAgent.id)
-        setCurrentMembership(membership)
-        if (membership) {
-          setSelectedAgencyId(membership.agency.id)
+      const rentalAgentResult = await getRentalAgentByUserProfileIdAction(userProfile.id)
+      if (rentalAgentResult.isSuccess && rentalAgentResult.data) {
+        const membershipResult = await getAgentMembershipStatusAction(rentalAgentResult.data.id)
+        if (membershipResult.isSuccess && membershipResult.data) {
+          setCurrentMembership(membershipResult.data)
+          setSelectedAgencyId(membershipResult.data.agency.id)
         }
       }
     } catch (error) {
       console.error("Error loading data:", error)
     }
   }
+
+  useEffect(() => {
+    if (open && userProfile.userType === "rental_agent") {
+      loadData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userProfile.userType])
 
   const handleSubmit = async () => {
     if (!selectedAgencyId) {
@@ -73,14 +73,14 @@ export function AssignAgencyDialog({ userProfile }: AssignAgencyDialogProps) {
     setLoading(true)
 
     try {
-      const rentalAgent = await getRentalAgentByUserProfileIdQuery(userProfile.id)
-      if (!rentalAgent) {
+      const rentalAgentResult = await getRentalAgentByUserProfileIdAction(userProfile.id)
+      if (!rentalAgentResult.isSuccess || !rentalAgentResult.data) {
         toast.error("Rental agent profile not found")
         return
       }
 
       const result = await requestAgencyMembershipWithAuthAction(
-        rentalAgent.id,
+        rentalAgentResult.data.id,
         selectedAgencyId
       )
 

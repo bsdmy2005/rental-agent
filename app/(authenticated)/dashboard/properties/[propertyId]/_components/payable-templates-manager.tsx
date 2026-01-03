@@ -317,7 +317,7 @@ function PayableTemplateEditForm({
     description: template.description || "",
     dependencies: (template.dependsOnBillTemplateIds as string[]) || [],
     bankAccountId: template.bankAccountId || null,
-    beneficiaryId: (template as any).beneficiaryId || null
+    beneficiaryId: template.beneficiaryId || null
   })
 
 

@@ -1,6 +1,6 @@
 "use server"
 
-import { ServerClient } from "postmark"
+import { ServerClient, Models, type Attachment } from "postmark"
 import { db } from "@/db"
 import {
   quoteRequestsTable,
@@ -44,6 +44,10 @@ export async function sendQuoteRequestEmailAction(
     }
 
     // Get property (required for both incident-linked and standalone RFQs)
+    if (!quoteRequest.propertyId) {
+      return { isSuccess: false, message: "Quote request property ID is required" }
+    }
+
     const [property] = await db
       .select()
       .from(propertiesTable)
@@ -99,7 +103,7 @@ export async function sendQuoteRequestEmailAction(
     }
 
     // Get incident attachments (photos) if incident exists
-    const emailAttachments = []
+    const emailAttachments: Attachment[] = []
     let attachmentCount = 0
     
     if (incident) {
@@ -123,7 +127,8 @@ export async function sendQuoteRequestEmailAction(
             Name: attachment.fileName,
             Content: base64Content,
             ContentType: attachment.fileType === "pdf" ? "application/pdf" : "image/jpeg",
-            ContentLength: fileBuffer.length
+            ContentLength: fileBuffer.length,
+            ContentID: ""
           })
         } catch (error) {
           console.error(`Failed to download attachment ${attachment.id}:`, error)
@@ -217,7 +222,8 @@ export async function sendQuoteRequestEmailAction(
                 Name: attachment.fileName,
                 Content: base64Content,
                 ContentType: contentType,
-                ContentLength: fileBuffer.length
+                ContentLength: fileBuffer.length,
+                ContentID: ""
               })
             } catch (error) {
               console.error(`Failed to download RFQ attachment ${attachment.id}:`, error)
@@ -328,7 +334,7 @@ Thank you for your service.
       TextBody: textBody,
       Attachments: emailAttachments,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     // Update quote request with email message ID

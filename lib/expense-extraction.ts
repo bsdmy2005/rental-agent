@@ -317,7 +317,17 @@ Be accurate and thorough. If information is not clearly visible, use null for op
     console.log(`[Expense Extraction] Output text preview: ${outputText.substring(0, 200)}...`)
 
     // Parse the JSON response
-    let parsed: any
+    let parsed: {
+      amount: number
+      date: string
+      description: string
+      merchantName?: string | null
+      category?: string | null
+      taxAmount?: number | null
+      paymentMethod?: string | null
+      referenceNumber?: string | null
+      items?: unknown[] | null
+    }
     try {
       parsed = JSON.parse(outputText)
       console.log(`[Expense Extraction] ✓ Successfully parsed JSON response`)
@@ -339,7 +349,7 @@ Be accurate and thorough. If information is not clearly visible, use null for op
       taxAmount: parsed.taxAmount === null ? undefined : parsed.taxAmount,
       paymentMethod: parsed.paymentMethod === null ? undefined : parsed.paymentMethod,
       referenceNumber: parsed.referenceNumber === null ? undefined : parsed.referenceNumber,
-      items: parsed.items === null ? undefined : parsed.items
+      items: parsed.items === null ? undefined : (parsed.items as Array<{ description: string; amount: number }>) 
     }
 
     // Validate required fields

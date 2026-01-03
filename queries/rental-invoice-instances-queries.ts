@@ -75,10 +75,11 @@ export async function getRentalInvoiceInstanceWithDetailsQuery(
     )
   })
 
-  if (propertyManagement) {
-    rentalAgent = await db.query.rentalAgents.findFirst({
+  if (propertyManagement && propertyManagement.rentalAgentId) {
+    const foundAgent = await db.query.rentalAgents.findFirst({
       where: eq(rentalAgentsTable.id, propertyManagement.rentalAgentId)
     })
+    rentalAgent = foundAgent ?? null
     if (rentalAgent?.address) {
       billingAddress = rentalAgent.address
     }

@@ -39,7 +39,7 @@ export function BillTemplatesStep() {
     updateBillTemplates(state.billTemplates.filter((_, i) => i !== index))
   }
 
-  const updateBillTemplate = (index: number, field: keyof BillTemplateState, value: any) => {
+  const updateBillTemplate = (index: number, field: keyof BillTemplateState, value: string | number | undefined | BillTemplateState["newRule"]) => {
     const updated = [...state.billTemplates]
     updated[index] = { ...updated[index], [field]: value }
     updateBillTemplates(updated)
@@ -149,7 +149,7 @@ export function BillTemplatesStep() {
                   </Label>
                   <Select
                     value={template.billType}
-                    onValueChange={(value: any) => updateBillTemplate(index, "billType", value)}
+                    onValueChange={(value: "municipality" | "levy" | "utility" | "other") => updateBillTemplate(index, "billType", value)}
                   >
                     <SelectTrigger>
                       <SelectValue />

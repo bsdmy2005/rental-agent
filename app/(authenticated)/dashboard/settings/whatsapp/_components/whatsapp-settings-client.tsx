@@ -251,7 +251,7 @@ export function WhatsAppSettingsClient({ userProfileId }: WhatsAppSettingsClient
                 </div>
               )}
 
-              {connectionStatus !== "connected" && connectionStatus !== "connecting" && connectionStatus !== "qr_pending" && phoneNumberInput && (
+              {(connectionStatus === "disconnected" || connectionStatus === "logged_out") && phoneNumberInput && (
                 <div className="flex justify-end">
                   <Button
                     variant="outline"

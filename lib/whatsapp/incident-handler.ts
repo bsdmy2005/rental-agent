@@ -1,6 +1,6 @@
 "use server"
 
-import { parseIncidentMessage, extractPropertyCode, isIncidentMessage } from "./message-parser"
+import { parseIncidentMessage, extractPropertyCode, isIncidentMessage, type ParsedIncidentMessage } from "./message-parser"
 import { checkRateLimitAction, recordSubmissionAction } from "@/actions/whatsapp-incident-rate-limits-actions"
 import { validatePropertyCodeAction } from "@/actions/property-codes-actions"
 import { identifyPropertyByPhoneAction } from "@/actions/property-identification-actions"

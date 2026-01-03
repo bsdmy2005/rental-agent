@@ -36,7 +36,9 @@ export function TenantsStep() {
     try {
       // First, upload lease file if available
       let leaseFileUploaded = false
-      if (tenant.leaseFile && displayData.startDate && displayData.endDate) {
+      const hasStartDate = tenant.extractedData?.startDate || tenant.manualData?.leaseStartDate
+      const hasEndDate = tenant.extractedData?.endDate || tenant.manualData?.leaseEndDate
+      if (tenant.leaseFile && hasStartDate && hasEndDate) {
         try {
           // We'll upload the lease after tenant is created
           // For now, just mark that we have a file to upload
@@ -191,7 +193,7 @@ export function TenantsStep() {
     }
   }
 
-  const updateTenantData = (index: number, field: string, value: any) => {
+  const updateTenantData = (index: number, field: string, value: string | number | undefined) => {
     const updated = [...state.tenants]
     if (!updated[index].manualData) {
       updated[index].manualData = {
@@ -212,7 +214,7 @@ export function TenantsStep() {
     updateTenants(updated)
   }
 
-  const updateExtractedData = (index: number, field: string, value: any) => {
+  const updateExtractedData = (index: number, field: string, value: string | number | undefined) => {
     const updated = [...state.tenants]
     if (!updated[index].extractedData) {
       updated[index].extractedData = {

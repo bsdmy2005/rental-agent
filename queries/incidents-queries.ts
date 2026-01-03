@@ -287,7 +287,7 @@ export async function getIncidentTimelineQuery(
         metadata: {
           messageId: message.id,
           fromMe: message.fromMe,
-          photoUrl: hasImage ? message.mediaUrl : undefined,
+          photoUrl: hasImage ? (message.mediaUrl ?? undefined) : undefined,
           photoFileName: hasImage ? `attachment-${message.id}` : undefined
         }
       })

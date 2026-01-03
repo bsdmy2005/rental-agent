@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getInspectionByTokenAction } from "@/actions/moving-inspections-actions"
+import type { SelectMovingInspection, SelectMovingInspectionItem, SelectMovingInspectionDefect, SelectMovingInspectionAttachment, SelectProperty, SelectTenant, SelectLeaseAgreement } from "@/db/schema"
 import { InspectionChecklist } from "@/app/(authenticated)/dashboard/moving-inspections/_components/inspection-checklist"
 import { SignaturePad } from "@/components/utility/signature-pad"
 import { Button } from "@/components/ui/button"
@@ -18,7 +19,16 @@ export default function InspectionSigningPage() {
   // Decode token from URL (in case it was URL-encoded)
   const token = params.token ? decodeURIComponent(params.token as string) : ""
 
-  const [inspection, setInspection] = useState<any>(null)
+  const [inspection, setInspection] = useState<(SelectMovingInspection & {
+    items: Array<SelectMovingInspectionItem & {
+      category: { name: string; displayOrder: number }
+      defects: SelectMovingInspectionDefect[]
+      attachments?: SelectMovingInspectionAttachment[]
+    }>
+    property: SelectProperty | null
+    tenant: SelectTenant | null
+    lease: SelectLeaseAgreement | null
+  }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -196,7 +206,7 @@ export default function InspectionSigningPage() {
               inspectionType={inspection.inspectionType}
               isLocked={true}
               isReadOnly={true} // Tenants can only view, not edit
-              items={inspection.items.map((item: any) => ({
+              items={inspection.items.map((item) => ({
                 ...item,
                 isPresent: null // Not used in new system
               }))}

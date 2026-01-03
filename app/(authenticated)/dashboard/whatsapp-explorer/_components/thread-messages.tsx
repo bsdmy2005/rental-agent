@@ -137,7 +137,10 @@ export function ThreadMessages({
       status: "pending",
       statusUpdatedAt: null,
       timestamp: new Date(),
-      createdAt: new Date()
+      createdAt: new Date(),
+      incidentId: null,
+      messageClassification: null,
+      classifiedAt: null
     }
 
     // Add optimistic message immediately

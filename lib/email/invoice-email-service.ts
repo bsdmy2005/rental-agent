@@ -1,6 +1,6 @@
 "use server"
 
-import { ServerClient } from "postmark"
+import { ServerClient, Models } from "postmark"
 import { db } from "@/db"
 import {
   rentalInvoiceInstancesTable,
@@ -100,19 +100,24 @@ export async function sendInvoiceEmailAction(
     // Handle different buffer formats (Buffer might be serialized as Uint8Array or array)
     if (Buffer.isBuffer(pdfResult.data)) {
       pdfBuffer = pdfResult.data
-    } else if (pdfResult.data instanceof Uint8Array) {
-      pdfBuffer = Buffer.from(pdfResult.data)
-    } else if (Array.isArray(pdfResult.data)) {
-      pdfBuffer = Buffer.from(pdfResult.data)
-    } else if (typeof pdfResult.data === "object" && pdfResult.data !== null) {
+    } else {
+      // After serialization, Buffer might be Uint8Array or array
+      // Cast to unknown first to allow instanceof checks
+      const data = pdfResult.data as unknown
+      if (data instanceof Uint8Array) {
+        pdfBuffer = Buffer.from(data)
+      } else if (Array.isArray(data)) {
+        pdfBuffer = Buffer.from(data)
+      } else if (typeof data === "object" && data !== null) {
       // Check if it's a serialized buffer object
-      if ("data" in pdfResult.data && Array.isArray((pdfResult.data as any).data)) {
+        const dataObj = data as Record<string, unknown>
+        if ("data" in dataObj && Array.isArray(dataObj.data)) {
         // Handle serialized buffer objects { type: 'Buffer', data: [...] }
-        pdfBuffer = Buffer.from((pdfResult.data as any).data)
-      } else if (typeof (pdfResult.data as any).toBuffer === "function") {
+          pdfBuffer = Buffer.from(dataObj.data as number[])
+        } else if (typeof (dataObj as { toBuffer?: () => Promise<Buffer> | Buffer }).toBuffer === "function") {
         // If it's a PDFDocument instance, call toBuffer()
         try {
-          const buffer = await (pdfResult.data as any).toBuffer()
+            const buffer = await (dataObj as { toBuffer: () => Promise<Buffer> | Buffer }).toBuffer()
           if (Buffer.isBuffer(buffer)) {
             pdfBuffer = buffer
           } else {
@@ -126,21 +131,22 @@ export async function sendInvoiceEmailAction(
           }
         }
       } else {
-        const dataType = pdfResult.data.constructor?.name || typeof pdfResult.data
+          const dataType = dataObj.constructor?.name || typeof dataObj
         console.error("[Invoice Email] Unexpected PDF data type:", {
-          type: typeof pdfResult.data,
+            type: typeof dataObj,
           constructor: dataType,
-          keys: Object.keys(pdfResult.data as any)
+            keys: Object.keys(dataObj)
         })
         return {
           isSuccess: false,
-          message: `Invalid PDF data type received: ${dataType}. Expected Buffer, got ${typeof pdfResult.data}`
+            message: `Invalid PDF data type received: ${dataType}. Expected Buffer, got ${typeof dataObj}`
         }
       }
     } else {
       return {
         isSuccess: false,
-        message: `Invalid PDF data: expected Buffer, got ${typeof pdfResult.data}`
+          message: `Invalid PDF data: expected Buffer, got ${typeof data}`
+        }
       }
     }
 
@@ -151,7 +157,7 @@ export async function sendInvoiceEmailAction(
         isBuffer: Buffer.isBuffer(pdfResult.data),
         isUint8Array: pdfResult.data instanceof Uint8Array,
         isArray: Array.isArray(pdfResult.data),
-        length: pdfResult.data ? (pdfResult.data as any).length : 0
+        length: pdfResult.data && typeof pdfResult.data === "object" && "length" in pdfResult.data ? (pdfResult.data as { length: number }).length : 0
       })
       return {
         isSuccess: false,
@@ -381,11 +387,12 @@ This is an automated email. Please do not reply to this message.
           Name: `invoice-${invoiceData.invoiceNumber}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfBuffer.length
+          ContentLength: pdfBuffer.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     // Update instance status to "sent" and record sent timestamp
@@ -395,7 +402,7 @@ This is an automated email. Please do not reply to this message.
       .update(rentalInvoiceInstancesTable)
       .set({
         status: "sent",
-        invoiceData: invoiceData as any,
+        invoiceData: invoiceData as unknown as Record<string, unknown>,
         updatedAt: new Date()
       })
       .where(eq(rentalInvoiceInstancesTable.id, instanceId))

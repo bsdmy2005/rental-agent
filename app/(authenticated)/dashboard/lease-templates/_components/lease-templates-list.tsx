@@ -14,6 +14,12 @@ export async function LeaseTemplatesList() {
     )
   }
 
-  return <LeaseTemplatesListClient templates={result.data || []} />
+  // Map templates to ensure templateData is Record<string, unknown>
+  const templates = (result.data || []).map((template) => ({
+    ...template,
+    templateData: (template.templateData as Record<string, unknown>) || {}
+  }))
+
+  return <LeaseTemplatesListClient templates={templates} />
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { processEmailWebhookAction } from "@/actions/email-processors-actions"
+import { processEmailWebhookAction, type PostmarkWebhookPayload } from "@/actions/email-processors-actions"
 
 // Configure route for longer processing time and ensure it's not blocked
 // Note: We return immediately, so maxDuration is mainly for error handling
@@ -12,7 +12,16 @@ export async function POST(request: NextRequest) {
   console.log("[Email Webhook] Received POST request at:", new Date().toISOString())
   
   // Parse payload with timeout protection
-  let payload: any
+  let payload: {
+    MessageID?: string
+    From?: string
+    To?: string
+    Recipient?: string
+    Subject?: string
+    ReceivedAt?: string
+    Attachments?: Array<{ Name?: string; ContentType?: string; ContentLength?: number }>
+    [key: string]: unknown
+  }
   try {
     // Set a timeout for JSON parsing to avoid hanging
     const jsonPromise = request.json()
@@ -55,8 +64,16 @@ export async function POST(request: NextRequest) {
       console.log("[Email Webhook] ==========================================")
       return NextResponse.json({ error: "Payload is required" }, { status: 400 })
     }
+
+    // Validate required fields
+    if (!payload.MessageID || !payload.From) {
+      console.error("[Email Webhook] ✗ Missing required fields (MessageID or From)")
+      console.log("[Email Webhook] ==========================================")
+      return NextResponse.json({ error: "MessageID and From are required" }, { status: 400 })
+    }
+
     if (payload.Attachments && payload.Attachments.length > 0) {
-      payload.Attachments.forEach((att: any, idx: number) => {
+      payload.Attachments.forEach((att: { Name?: string; ContentType?: string; ContentLength?: number }, idx: number) => {
         console.log(`[Email Webhook]   Attachment ${idx + 1}:`, {
           name: att.Name,
           contentType: att.ContentType,
@@ -76,7 +93,8 @@ export async function POST(request: NextRequest) {
     
     // Process email asynchronously - don't await, return immediately
     // The promise chain won't block the response
-    processEmailWebhookAction(payload)
+    // Type assertion is safe here because we've validated MessageID and From exist
+    processEmailWebhookAction(payload as PostmarkWebhookPayload)
       .then((result) => {
         const duration = Date.now() - startTime
         console.log(`[Email Webhook] Background processing completed in ${duration}ms`)

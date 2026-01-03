@@ -57,7 +57,7 @@ export function DefectForm({ itemId, inspectionId }: DefectFormProps) {
       </div>
       <div>
         <Label htmlFor="severity">Severity</Label>
-        <Select value={severity} onValueChange={(value: any) => setSeverity(value)}>
+        <Select value={severity} onValueChange={(value: string) => setSeverity(value as "minor" | "moderate" | "major")}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

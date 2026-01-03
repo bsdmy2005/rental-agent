@@ -87,7 +87,7 @@ export function ManualPeriodMatcherDialog({
           if (matchesResponse.ok) {
             const matchesData = await matchesResponse.json()
             if (matchesData.success && matchesData.matches) {
-              existingMatchIds = new Set(matchesData.matches.map((m: any) => m.periodId))
+              existingMatchIds = new Set(matchesData.matches.map((m: { periodId: string }) => m.periodId))
               setExistingMatches(existingMatchIds)
               // Pre-select existing matches so user can see what's already matched and add more
               setSelectedPeriodIds(existingMatchIds)

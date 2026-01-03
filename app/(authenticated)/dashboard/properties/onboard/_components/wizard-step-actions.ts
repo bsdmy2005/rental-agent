@@ -289,6 +289,10 @@ export async function saveTenantStep(
       return { isSuccess: false, message: "Missing required tenant data" }
     }
 
+    // Extract dates from either extractedData or manualData
+    const startDate = tenant.extractedData?.startDate || (tenant.manualData?.leaseStartDate ? tenant.manualData.leaseStartDate.toISOString() : null)
+    const endDate = tenant.extractedData?.endDate || (tenant.manualData?.leaseEndDate ? tenant.manualData.leaseEndDate.toISOString() : null)
+
     // Create tenant
     const tenantResult = await createTenantAction({
       propertyId,
@@ -297,8 +301,8 @@ export async function saveTenantStep(
       email: displayData.email || null,
       phone: displayData.phone || null,
       rentalAmount: displayData.rentalAmount ? String(displayData.rentalAmount) : null,
-      leaseStartDate: displayData.startDate ? new Date(displayData.startDate) : null,
-      leaseEndDate: displayData.endDate ? new Date(displayData.endDate) : null
+      leaseStartDate: startDate ? new Date(startDate) : null,
+      leaseEndDate: endDate ? new Date(endDate) : null
     })
 
     if (!tenantResult.isSuccess || !tenantResult.data) {
@@ -310,13 +314,13 @@ export async function saveTenantStep(
     // Upload lease if available (file should be uploaded from client first)
     // For now, create lease record with dates - file can be uploaded later through tenant detail page
     let leaseAgreementId: string | undefined
-    if (displayData.startDate && displayData.endDate) {
+    if (startDate && endDate) {
       // Create lease record without file (file can be uploaded later)
       try {
         const { db } = await import("@/db")
         const { leaseAgreementsTable } = await import("@/db/schema")
-        const startDate = new Date(displayData.startDate)
-        const endDate = new Date(displayData.endDate)
+        const leaseStartDate = new Date(startDate)
+        const leaseEndDate = new Date(endDate)
 
         const [lease] = await db
           .insert(leaseAgreementsTable)
@@ -325,12 +329,12 @@ export async function saveTenantStep(
             propertyId,
             fileName: "lease.pdf",
             fileUrl: "",
-            extractedStartDate: startDate,
-            extractedEndDate: endDate,
+            extractedStartDate: leaseStartDate,
+            extractedEndDate: leaseEndDate,
             manualStartDate: null,
             manualEndDate: null,
-            effectiveStartDate: startDate,
-            effectiveEndDate: endDate,
+            effectiveStartDate: leaseStartDate,
+            effectiveEndDate: leaseEndDate,
             extractionData: tenant.extractedData ? (tenant.extractedData as unknown as Record<string, unknown>) : null,
             status: tenant.extractedData ? "processed" : "pending"
           })
@@ -397,17 +401,17 @@ export async function saveTenantStep(
     }
 
     // Generate invoice periods from lease dates
-    if (displayData.startDate && displayData.endDate) {
+    if (startDate && endDate && leaseAgreementId) {
       try {
-        const startDate = new Date(displayData.startDate)
-        const endDate = new Date(displayData.endDate)
+        const invoiceStartDate = new Date(startDate)
+        const invoiceEndDate = new Date(endDate)
 
         await generateInvoicePeriodsForLeaseAction(
           propertyId,
           tenantId,
-          leaseAgreementId || undefined,
-          startDate,
-          endDate
+          leaseAgreementId,
+          invoiceStartDate,
+          invoiceEndDate
         )
       } catch (periodError) {
         console.error("Error generating invoice periods:", periodError)

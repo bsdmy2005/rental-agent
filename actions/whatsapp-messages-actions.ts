@@ -35,7 +35,8 @@ export async function linkMessageToIncidentAction(
 
     return {
       isSuccess: true,
-      message: "Message linked to incident"
+      message: "Message linked to incident",
+      data: undefined
     }
   } catch (error) {
     console.error("Error linking message to incident:", error)
@@ -64,7 +65,8 @@ export async function markMessageAsGeneralAction(
 
     return {
       isSuccess: true,
-      message: "Message marked as general"
+      message: "Message marked as general",
+      data: undefined
     }
   } catch (error) {
     console.error("Error marking message as general:", error)

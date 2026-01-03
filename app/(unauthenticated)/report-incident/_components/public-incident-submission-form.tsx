@@ -244,8 +244,9 @@ export function PublicIncidentSubmissionForm() {
                 </p>
                 <p>
                   <span className="font-medium">Priority:</span>{" "}
-                  {submissionData.priority?.charAt(0).toUpperCase() +
-                    submissionData.priority?.slice(1)}
+                  {submissionData.priority
+                    ? submissionData.priority.charAt(0).toUpperCase() + submissionData.priority.slice(1)
+                    : "Not specified"}
                 </p>
                 {submissionData.submittedName && (
                   <p>

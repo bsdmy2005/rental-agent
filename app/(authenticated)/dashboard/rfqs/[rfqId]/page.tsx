@@ -24,11 +24,15 @@ async function getRfqDetails(rfqId: string) {
     return null
   }
 
-  const [property] = await db
-    .select()
-    .from(propertiesTable)
-    .where(eq(propertiesTable.id, rfq.propertyId))
-    .limit(1)
+  let property = null
+  if (rfq.propertyId) {
+    const [propertyData] = await db
+      .select()
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, rfq.propertyId))
+      .limit(1)
+    property = propertyData || null
+  }
 
   let incident = null
   if (rfq.incidentId) {
@@ -70,6 +74,10 @@ export default async function RfqDetailPage({
   }
 
   const { rfq, property, incident } = details
+  
+  if (!property) {
+    return <div>Property not found for this RFQ</div>
+  }
 
   // Get quotes for comparison
   const quotesResult = await getRfqComparisonAction(rfqId)

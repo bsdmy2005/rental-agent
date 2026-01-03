@@ -349,7 +349,7 @@ export async function listInvestecBeneficiaries(
   apiKey?: string
 ): Promise<InvestecBeneficiary[]> {
   // Try different response structures
-  const response = await investecApiRequest<any>(
+  const response = await investecApiRequest<{ data?: { beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]; beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]>(
     accessToken,
     "/za/pb/v1/accounts/beneficiaries",
     {},
@@ -361,17 +361,20 @@ export async function listInvestecBeneficiaries(
   console.log("[Investec API] Beneficiaries response structure:", JSON.stringify(response, null, 2))
   
   // Try different possible response structures
-  if (response.data?.beneficiaries && Array.isArray(response.data.beneficiaries)) {
-    return response.data.beneficiaries
-  }
-  if (response.data && Array.isArray(response.data)) {
-    return response.data
-  }
-  if (response.beneficiaries && Array.isArray(response.beneficiaries)) {
-    return response.beneficiaries
-  }
   if (Array.isArray(response)) {
     return response
+  }
+  if (typeof response === 'object' && response !== null) {
+    const objResponse = response as { data?: { beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]; beneficiaries?: InvestecBeneficiary[] }
+    if (objResponse.data && typeof objResponse.data === 'object' && !Array.isArray(objResponse.data) && 'beneficiaries' in objResponse.data && Array.isArray(objResponse.data.beneficiaries)) {
+      return objResponse.data.beneficiaries
+    }
+    if (objResponse.data && Array.isArray(objResponse.data)) {
+      return objResponse.data
+    }
+    if (objResponse.beneficiaries && Array.isArray(objResponse.beneficiaries)) {
+      return objResponse.beneficiaries
+    }
   }
   
   console.warn("[Investec API] Unexpected beneficiaries response structure:", response)
@@ -390,7 +393,7 @@ export async function listInvestecBeneficiariesForAccount(
   apiKey?: string
 ): Promise<InvestecBeneficiary[]> {
   try {
-    const response = await investecApiRequest<any>(
+    const response = await investecApiRequest<{ data?: { beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]; beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]>(
       accessToken,
       `/za/pb/v1/accounts/${accountId}/beneficiaries`,
       {},
@@ -399,17 +402,20 @@ export async function listInvestecBeneficiariesForAccount(
     )
     
     // Try different possible response structures
-    if (response.data?.beneficiaries && Array.isArray(response.data.beneficiaries)) {
-      return response.data.beneficiaries
-    }
-    if (response.data && Array.isArray(response.data)) {
-      return response.data
-    }
-    if (response.beneficiaries && Array.isArray(response.beneficiaries)) {
-      return response.beneficiaries
-    }
     if (Array.isArray(response)) {
       return response
+    }
+    if (typeof response === 'object' && response !== null) {
+      const objResponse = response as { data?: { beneficiaries?: InvestecBeneficiary[] } | InvestecBeneficiary[]; beneficiaries?: InvestecBeneficiary[] }
+      if (objResponse.data && typeof objResponse.data === 'object' && !Array.isArray(objResponse.data) && 'beneficiaries' in objResponse.data && Array.isArray(objResponse.data.beneficiaries)) {
+        return objResponse.data.beneficiaries
+      }
+      if (objResponse.data && Array.isArray(objResponse.data)) {
+        return objResponse.data
+      }
+      if (objResponse.beneficiaries && Array.isArray(objResponse.beneficiaries)) {
+        return objResponse.beneficiaries
+      }
     }
     
     return []

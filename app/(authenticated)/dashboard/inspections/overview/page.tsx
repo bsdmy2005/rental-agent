@@ -69,6 +69,12 @@ async function getAllInspectionItems() {
 export default async function InspectionDashboardPage() {
   const items = await getAllInspectionItems()
 
+  // Filter out items with null conditions since the component expects non-null conditions
+  const itemsWithConditions = items.filter(
+    (item): item is typeof item & { condition: NonNullable<typeof item.condition> } =>
+      item.condition !== null
+  )
+
   return (
     <div className="space-y-6">
       <div>
@@ -79,7 +85,7 @@ export default async function InspectionDashboardPage() {
       </div>
 
       <Suspense fallback={<InspectionDashboardSkeleton />}>
-        <InspectionDashboardClient initialItems={items} />
+        <InspectionDashboardClient initialItems={itemsWithConditions} />
       </Suspense>
     </div>
   )

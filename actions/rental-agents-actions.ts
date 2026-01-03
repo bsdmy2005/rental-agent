@@ -63,3 +63,24 @@ export async function updateRentalAgentAction(
   }
 }
 
+export async function getRentalAgentByUserProfileIdAction(
+  userProfileId: string
+): Promise<ActionState<SelectRentalAgent | null>> {
+  try {
+    const [rentalAgent] = await db
+      .select()
+      .from(rentalAgentsTable)
+      .where(eq(rentalAgentsTable.userProfileId, userProfileId))
+      .limit(1)
+
+    return {
+      isSuccess: true,
+      message: "Rental agent retrieved successfully",
+      data: rentalAgent || null
+    }
+  } catch (error) {
+    console.error("Error getting rental agent:", error)
+    return { isSuccess: false, message: "Failed to get rental agent" }
+  }
+}
+

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getLeaseByTokenAction } from "@/actions/lease-initiation-actions"
+import type { SelectLeaseAgreement, SelectTenant, SelectProperty } from "@/db/schema"
 import { SignaturePad } from "@/components/utility/signature-pad"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +16,7 @@ export default function TenantSigningPage() {
   // Decode token from URL (in case it was URL-encoded)
   const token = params.token ? decodeURIComponent(params.token as string) : ""
 
-  const [lease, setLease] = useState<any>(null)
+  const [lease, setLease] = useState<(SelectLeaseAgreement & { tenant: SelectTenant | null; property: SelectProperty | null }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +47,11 @@ export default function TenantSigningPage() {
   const handleSign = async () => {
     if (!signatureData) {
       setError("Please provide your signature")
+      return
+    }
+
+    if (!lease) {
+      setError("Lease not found")
       return
     }
 

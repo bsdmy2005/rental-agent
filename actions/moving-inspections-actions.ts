@@ -18,7 +18,10 @@ import {
   type SelectMovingInspectionAttachment,
   type InsertMovingInspectionDocument,
   type SelectMovingInspectionDocument,
-  type SelectMovingInspectionCategory
+  type SelectMovingInspectionCategory,
+  type SelectProperty,
+  type SelectTenant,
+  type SelectLeaseAgreement
 } from "@/db/schema"
 import { ActionState } from "@/types"
 import { eq, and, desc, inArray, isNull, asc } from "drizzle-orm"
@@ -421,14 +424,14 @@ export async function getRepairableDefectsAction(
       where: eq(movingInspectionItemsTable.inspectionId, inspectionId),
       with: {
         defects: {
-          where: (defects, { eq }) => eq(defects.isRepairable, true)
+          where: (defects: any, { eq: eqOp }: any) => eqOp(defects.isRepairable, true)
         }
       }
     })
 
     // Flatten defects with item info
     const repairableDefects = items.flatMap((item) =>
-      item.defects.map((defect) => ({
+      (item.defects as SelectMovingInspectionDefect[]).map((defect) => ({
         ...defect,
         item: { name: item.name }
       }))
@@ -1309,7 +1312,7 @@ export async function validateInspectionStructureAction(
       where: eq(movingInspectionsTable.id, moveInInspectionId),
       with: {
         items: {
-          orderBy: (items, { asc }) => [asc(items.displayOrder)]
+          orderBy: (items: any, { asc: ascOp }: any) => [ascOp(items.displayOrder)]
         }
       }
     })
@@ -1318,7 +1321,7 @@ export async function validateInspectionStructureAction(
       where: eq(movingInspectionsTable.id, moveOutInspectionId),
       with: {
         items: {
-          orderBy: (items, { asc }) => [asc(items.displayOrder)]
+          orderBy: (items: any, { asc: ascOp }: any) => [ascOp(items.displayOrder)]
         }
       }
     })
@@ -1329,16 +1332,20 @@ export async function validateInspectionStructureAction(
 
     const differences: string[] = []
 
-    if (moveIn.items.length !== moveOut.items.length) {
-      differences.push(`Item count mismatch: ${moveIn.items.length} vs ${moveOut.items.length}`)
+    // Type assertion: items is an array from the with clause
+    const moveInItems = (moveIn.items as SelectMovingInspectionItem[]) || []
+    const moveOutItems = (moveOut.items as SelectMovingInspectionItem[]) || []
+
+    if (moveInItems.length !== moveOutItems.length) {
+      differences.push(`Item count mismatch: ${moveInItems.length} vs ${moveOutItems.length}`)
     }
 
     // Check item structure matches
     const moveInItemsMap = new Map(
-      moveIn.items.map((item) => [`${item.categoryId}-${item.name}-${item.roomInstanceNumber || 0}`, item])
+      moveInItems.map((item) => [`${item.categoryId}-${item.name}-${item.roomInstanceNumber || 0}`, item])
     )
     const moveOutItemsMap = new Map(
-      moveOut.items.map((item) => [`${item.categoryId}-${item.name}-${item.roomInstanceNumber || 0}`, item])
+      moveOutItems.map((item) => [`${item.categoryId}-${item.name}-${item.roomInstanceNumber || 0}`, item])
     )
 
     for (const [key, moveInItem] of moveInItemsMap) {
@@ -1621,9 +1628,9 @@ export async function getInspectionByTokenAction(
     category: { name: string; displayOrder: number }
     defects: SelectMovingInspectionDefect[]
   })[]
-  property: any
-  tenant: any
-  lease: any
+  property: SelectProperty | null
+  tenant: SelectTenant | null
+  lease: SelectLeaseAgreement | null
 }>> {
   try {
     if (!token || token.trim() === "") {
@@ -1672,6 +1679,8 @@ export async function getInspectionByTokenAction(
         notes: movingInspectionItemsTable.notes,
         roomInstanceNumber: movingInspectionItemsTable.roomInstanceNumber,
         displayOrder: movingInspectionItemsTable.displayOrder,
+        confirmedAsPrevious: movingInspectionItemsTable.confirmedAsPrevious,
+        moveInItemId: movingInspectionItemsTable.moveInItemId,
         createdAt: movingInspectionItemsTable.createdAt,
         updatedAt: movingInspectionItemsTable.updatedAt,
         category: {
@@ -1706,10 +1715,14 @@ export async function getInspectionByTokenAction(
     })
 
     // Attach defects to items
-    const itemsWithDefects = items.map(item => ({
-      ...item,
+    const itemsWithDefects = items.map(item => {
+      const { category, ...itemData } = item
+      return {
+        ...itemData,
+        category,
       defects: defectsByItem.get(item.id) || []
-    }))
+      }
+    })
 
     // Get lease, property, and tenant
     const { leaseAgreementsTable } = await import("@/db/schema")
@@ -1747,7 +1760,7 @@ export async function getInspectionByTokenAction(
         property: property || null,
         tenant: tenant || null,
         lease: lease || null
-      } as any
+      }
     }
   } catch (error) {
     console.error("Error getting inspection by token:", error)
@@ -1871,9 +1884,9 @@ export async function getInspectionByInspectorTokenAction(
     category: { name: string; displayOrder: number }
     defects: SelectMovingInspectionDefect[]
   })[]
-  property: any
-  tenant: any
-  lease: any
+  property: SelectProperty | null
+  tenant: SelectTenant | null
+  lease: SelectLeaseAgreement | null
 }>> {
   try {
     if (!token || token.trim() === "") {
@@ -1892,17 +1905,26 @@ export async function getInspectionByInspectorTokenAction(
     }
 
     // Allow access even after signing (read-only mode will be enforced in UI)
-    // Get items with categories (manual joins to avoid referencedTable error)
+    // Get items with categories
     const items = await db
       .select({
         id: movingInspectionItemsTable.id,
+        inspectionId: movingInspectionItemsTable.inspectionId,
+        categoryId: movingInspectionItemsTable.categoryId,
         name: movingInspectionItemsTable.name,
         condition: movingInspectionItemsTable.condition,
+        isPresent: movingInspectionItemsTable.isPresent,
         notes: movingInspectionItemsTable.notes,
-        confirmedAsPrevious: movingInspectionItemsTable.confirmedAsPrevious,
         roomInstanceNumber: movingInspectionItemsTable.roomInstanceNumber,
-        categoryId: movingInspectionItemsTable.categoryId,
-        displayOrder: movingInspectionItemsTable.displayOrder
+        displayOrder: movingInspectionItemsTable.displayOrder,
+        confirmedAsPrevious: movingInspectionItemsTable.confirmedAsPrevious,
+        moveInItemId: movingInspectionItemsTable.moveInItemId,
+        createdAt: movingInspectionItemsTable.createdAt,
+        updatedAt: movingInspectionItemsTable.updatedAt,
+        category: {
+          name: movingInspectionCategoriesTable.name,
+          displayOrder: movingInspectionCategoriesTable.displayOrder
+        }
       })
       .from(movingInspectionItemsTable)
       .innerJoin(
@@ -1912,19 +1934,8 @@ export async function getInspectionByInspectorTokenAction(
       .where(eq(movingInspectionItemsTable.inspectionId, inspection.id))
       .orderBy(movingInspectionItemsTable.displayOrder)
 
-    // Get categories for items
-    const categoryIds = [...new Set(items.map((item) => item.categoryId))]
-    const categories = categoryIds.length > 0
-      ? await db
-          .select()
-          .from(movingInspectionCategoriesTable)
-          .where(inArray(movingInspectionCategoriesTable.id, categoryIds))
-      : []
-
-    const categoriesMap = new Map(categories.map((cat) => [cat.id, cat]))
-
-    // Get defects for items
-    const itemIds = items.map((item) => item.id)
+    // Get defects for each item
+    const itemIds = items.map(item => item.id)
     const defects = itemIds.length > 0
       ? await db
           .select()
@@ -1932,16 +1943,30 @@ export async function getInspectionByInspectorTokenAction(
           .where(inArray(movingInspectionDefectsTable.itemId, itemIds))
       : []
 
-    const defectsByItemId = new Map<string, SelectMovingInspectionDefect[]>()
-    defects.forEach((defect) => {
-      if (!defectsByItemId.has(defect.itemId)) {
-        defectsByItemId.set(defect.itemId, [])
+    // Group defects by item
+    const defectsByItem = new Map<string, typeof defects>()
+    defects.forEach(defect => {
+      if (!defectsByItem.has(defect.itemId)) {
+        defectsByItem.set(defect.itemId, [])
       }
-      defectsByItemId.get(defect.itemId)!.push(defect)
+      defectsByItem.get(defect.itemId)!.push(defect)
     })
 
-    // Get lease and property
-    const { leaseAgreementsTable, propertiesTable, tenantsTable } = await import("@/db/schema")
+    // Attach defects to items
+    const itemsWithDetails = items.map(item => {
+      const { category, ...itemData } = item
+      return {
+        ...itemData,
+        category,
+        defects: defectsByItem.get(item.id) || []
+      }
+    })
+
+    // Get lease, property, and tenant
+    const { leaseAgreementsTable } = await import("@/db/schema")
+    const { propertiesTable } = await import("@/db/schema")
+    const { tenantsTable } = await import("@/db/schema")
+
     const [lease] = await db
       .select()
       .from(leaseAgreementsTable)
@@ -1964,31 +1989,16 @@ export async function getInspectionByInspectorTokenAction(
           .limit(1)
       : [null]
 
-    // Assemble items with categories and defects
-    const itemsWithDetails = items.map((item) => {
-      const category = categoriesMap.get(item.categoryId)
-      return {
-        ...item,
-        category: category
-          ? {
-              name: category.name,
-              displayOrder: category.displayOrder
-            }
-          : { name: "Unknown", displayOrder: 0 },
-        defects: defectsByItemId.get(item.id) || []
-      }
-    })
-
     return {
       isSuccess: true,
       message: "Inspection retrieved successfully",
       data: {
         ...inspection,
-        items: itemsWithDetails as any,
+        items: itemsWithDetails,
         property: property || null,
         tenant: tenant || null,
         lease: lease || null
-      } as any
+      }
     }
   } catch (error) {
     console.error("Error getting inspection by inspector token:", error)

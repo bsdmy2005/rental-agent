@@ -283,8 +283,7 @@ export async function autoAssignPropertyToAgencyOrAgentForCurrentUserAction(
     if (!user) {
       return {
         isSuccess: false,
-        message: "User not authenticated",
-        data: null
+        message: "User not authenticated"
       }
     }
 
@@ -292,8 +291,7 @@ export async function autoAssignPropertyToAgencyOrAgentForCurrentUserAction(
     if (!userProfile) {
       return {
         isSuccess: false,
-        message: "User profile not found",
-        data: null
+        message: "User profile not found"
       }
     }
 
@@ -302,8 +300,7 @@ export async function autoAssignPropertyToAgencyOrAgentForCurrentUserAction(
     console.error("Error auto-assigning property for current user:", error)
     return {
       isSuccess: false,
-      message: "Failed to auto-assign property",
-      data: null
+      message: "Failed to auto-assign property"
     }
   }
 }
@@ -367,8 +364,7 @@ export async function autoAssignPropertyToAgencyOrAgentAction(
     console.error("Error auto-assigning property:", error)
     return {
       isSuccess: false,
-      message: "Failed to auto-assign property",
-      data: null
+      message: "Failed to auto-assign property"
     }
   }
 }

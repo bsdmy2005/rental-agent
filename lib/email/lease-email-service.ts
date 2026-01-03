@@ -1,6 +1,6 @@
 "use server"
 
-import { ServerClient } from "postmark"
+import { ServerClient, Models } from "postmark"
 import { db } from "@/db"
 import {
   leaseAgreementsTable,
@@ -35,7 +35,7 @@ function generateSigningToken(): string {
 /**
  * Get landlord email from property/lease (helper function)
  */
-async function getLandlordEmail(property: any, lease: any): Promise<string> {
+async function getLandlordEmail(property: { landlordEmail?: string | null; landlordId?: string | null }, lease: { extractionData?: unknown }): Promise<string> {
   let landlordEmail = ""
   
   // First, check property's stored landlord email (this is the source of truth)
@@ -45,7 +45,7 @@ async function getLandlordEmail(property: any, lease: any): Promise<string> {
   
   // If not on property, check if landlord email was stored in extractionData during lease creation
   if (!landlordEmail && lease.extractionData && typeof lease.extractionData === 'object' && 'landlordDetails' in lease.extractionData) {
-    const storedDetails = (lease.extractionData as any).landlordDetails
+    const storedDetails = (lease.extractionData as { landlordDetails?: { email?: string } }).landlordDetails
     if (storedDetails?.email) {
       landlordEmail = storedDetails.email
     }
@@ -250,11 +250,12 @@ Property Management Team
           Name: `lease-agreement-${leaseId}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfResult.data.length
+          ContentLength: pdfResult.data.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
@@ -435,11 +436,12 @@ Property Management Team
           Name: `lease-agreement-${leaseId}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfResult.data.length
+          ContentLength: pdfResult.data.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
@@ -547,12 +549,13 @@ Sign Lease Agreement: ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:300
       HtmlBody: htmlBody,
       TextBody: textBody,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Landlord notified successfully"
+      message: "Landlord notified successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error notifying landlord:", error)
@@ -691,11 +694,12 @@ Property Management Team
             Name: fileName,
             Content: base64Content,
             ContentType: "application/pdf",
-            ContentLength: pdfResult.data.length
+            ContentLength: pdfResult.data.length,
+            ContentID: ""
           }
         ],
         TrackOpens: true,
-        TrackLinks: "HtmlAndText"
+        TrackLinks: Models.LinkTrackingOptions.HtmlAndText
       })
     }
 
@@ -713,11 +717,12 @@ Property Management Team
             Name: fileName,
             Content: base64Content,
             ContentType: "application/pdf",
-            ContentLength: pdfResult.data.length
+            ContentLength: pdfResult.data.length,
+            ContentID: ""
           }
         ],
         TrackOpens: true,
-        TrackLinks: "HtmlAndText"
+        TrackLinks: Models.LinkTrackingOptions.HtmlAndText
       })
     } else {
       console.warn(`Could not find landlord email for lease ${leaseId}. Skipping landlord notification.`)
@@ -725,7 +730,8 @@ Property Management Team
 
     return {
       isSuccess: true,
-      message: "Signed lease copies sent successfully"
+      message: "Signed lease copies sent successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending signed lease copy:", error)

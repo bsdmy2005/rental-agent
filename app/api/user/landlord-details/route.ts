@@ -19,7 +19,17 @@ export async function GET() {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    let landlordData: any = null
+    let landlordData: {
+      name: string
+      idNumber: string
+      address: string
+      email: string
+      phone: string
+      bankName: string
+      accountHolder: string
+      accountNumber: string
+      branchCode: string
+    } | null = null
 
     if (userProfile.userType === "landlord") {
       const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)

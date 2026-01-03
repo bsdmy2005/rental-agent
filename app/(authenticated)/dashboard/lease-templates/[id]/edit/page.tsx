@@ -8,7 +8,7 @@ import Link from "next/link"
 import { getLeaseTemplateByIdAction } from "@/actions/lease-templates-actions"
 import { toast } from "sonner"
 import { TemplateEditor } from "./_components/template-editor"
-import type { TemplateSection } from "@/lib/utils/template-helpers"
+import type { TemplateSection, TemplateData } from "@/lib/utils/template-helpers"
 
 export default function EditTemplatePage() {
   const params = useParams()
@@ -27,9 +27,9 @@ export default function EditTemplatePage() {
       try {
         const result = await getLeaseTemplateByIdAction(templateId)
         if (result.isSuccess && result.data) {
-          const templateData = result.data.templateData
+          const templateData = (result.data.templateData as TemplateData) || { sections: [] }
           // Ensure sections array exists and has order
-          const sections = (templateData?.sections || []).map((s: TemplateSection, i: number) => ({
+          const sections = (templateData.sections || []).map((s: TemplateSection, i: number) => ({
             ...s,
             order: s.order ?? i
           }))

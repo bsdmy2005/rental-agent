@@ -4,27 +4,31 @@
  */
 
 import React from "react"
-import { View, Text as PdfText } from "@react-pdf/renderer"
-import { parse } from "node-html-parser"
+import { View, Text as PdfText, StyleSheet } from "@react-pdf/renderer"
+import { parse, HTMLElement, Node } from "node-html-parser"
+
+type PdfStyle = {
+  [key: string]: string | number | undefined
+}
 
 interface RenderOptions {
-  data?: Record<string, any>
-  replaceVariables?: (text: string, data?: Record<string, any>) => string
+  data?: Record<string, unknown>
+  replaceVariables?: (text: string, data?: Record<string, unknown>) => string
   renderField?: (fieldId: string) => string
   renderSignature?: (signatureType: "tenant_signature" | "landlord_signature") => React.ReactNode
   styles?: {
-    listContainer?: any
-    listItem?: any
-    listBullet?: any
-    listContent?: any
-    paragraph?: any
+    listContainer?: PdfStyle
+    listItem?: PdfStyle
+    listBullet?: PdfStyle
+    listContent?: PdfStyle
+    paragraph?: PdfStyle
   }
 }
 
 /**
  * Extract plain text from HTML node (excluding nested lists)
  */
-function extractTextFromNode(node: any): string {
+function extractTextFromNode(node: HTMLElement | { nodeType: number; rawText?: string; tagName?: string; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string }> }): string {
   if (node.nodeType === 3) {
     // Text node
     return node.rawText || ""
@@ -37,11 +41,14 @@ function extractTextFromNode(node: any): string {
   
   if (node.childNodes && node.childNodes.length > 0) {
     return node.childNodes
-      .filter((child: any) => {
+      .filter((child): child is HTMLElement | { nodeType: number; rawText?: string; tagName?: string; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string }> } => {
         // Skip nested lists
-        return child.tagName?.toLowerCase() !== "ul" && child.tagName?.toLowerCase() !== "ol"
+        if ("tagName" in child && child.tagName) {
+          return child.tagName.toLowerCase() !== "ul" && child.tagName.toLowerCase() !== "ol"
+        }
+        return true
       })
-      .map((child: any) => extractTextFromNode(child))
+      .map((child) => extractTextFromNode(child))
       .join("")
   }
   
@@ -65,7 +72,7 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
     /**
      * Render inline content (text with formatting and fields) recursively
      */
-    function renderInlineContent(node: any): React.ReactNode[] {
+    function renderInlineContent(node: HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null }> }): React.ReactNode[] {
       const result: React.ReactNode[] = []
 
       if (!node) return result
@@ -107,17 +114,17 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
         }
 
         // Handle formatting tags
-        let style: any = {}
+        let style: { fontWeight?: "bold" | "normal"; fontStyle?: "italic" | "normal" } = {}
         if (tagName === "strong" || tagName === "b") {
-          style = { fontWeight: "bold" }
+          style = { fontWeight: "bold" as const }
         } else if (tagName === "em" || tagName === "i") {
-          style = { fontStyle: "italic" }
+          style = { fontStyle: "italic" as const }
         }
 
         // Process children
         const children: React.ReactNode[] = []
         if (node.childNodes && node.childNodes.length > 0) {
-          node.childNodes.forEach((child: any) => {
+          node.childNodes.forEach((child) => {
             children.push(...renderInlineContent(child))
           })
         }
@@ -137,7 +144,7 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
         }
       } else if (node.childNodes && node.childNodes.length > 0) {
         // Process child nodes
-        node.childNodes.forEach((child: any) => {
+        node.childNodes.forEach((child) => {
           result.push(...renderInlineContent(child))
         })
       }
@@ -148,23 +155,36 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
     /**
      * Render a list element (ul or ol) recursively
      */
-    function renderList(listNode: any, depth: number = 0): React.ReactNode[] {
+    function renderList(listNode: HTMLElement | { tagName?: string; childNodes?: Array<HTMLElement | { tagName?: string; childNodes?: Array<HTMLElement | { tagName?: string }> }> }, depth: number = 0): React.ReactNode[] {
       const items: React.ReactNode[] = []
       const isOrdered = listNode.tagName?.toLowerCase() === "ol"
-      const listItems = listNode.childNodes.filter((node: any) => node.tagName?.toLowerCase() === "li")
+      const listItems = (listNode.childNodes || []).filter((node): node is HTMLElement | { tagName?: string; childNodes?: Array<HTMLElement | { tagName?: string }> } => {
+        if ("tagName" in node && node.tagName) {
+          return node.tagName.toLowerCase() === "li"
+        }
+        return false
+      })
 
-      listItems.forEach((li: any, index: number) => {
+      listItems.forEach((li, index: number) => {
         // Separate formatted content from nested lists
         const contentNodes: React.ReactNode[] = []
-        const nestedLists: any[] = []
+        const nestedLists: Array<HTMLElement | { tagName?: string; childNodes?: Array<HTMLElement | { tagName?: string }> }> = []
 
-        li.childNodes.forEach((child: any) => {
-          const tagName = child.tagName?.toLowerCase()
-          if (tagName === "ul" || tagName === "ol") {
-            nestedLists.push(child)
+        ;(li.childNodes || []).forEach((child) => {
+          if ("tagName" in child && child.tagName) {
+            const tagName = child.tagName.toLowerCase()
+            if (tagName === "ul" || tagName === "ol") {
+              nestedLists.push(child as HTMLElement | { tagName?: string; childNodes?: Array<HTMLElement | { tagName?: string }> })
+            } else {
+              // Use renderInlineContent to preserve formatting
+              const inlineContent = renderInlineContent(child as HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null }> })
+              if (inlineContent.length > 0) {
+                contentNodes.push(...inlineContent)
+              }
+            }
           } else {
             // Use renderInlineContent to preserve formatting
-            const inlineContent = renderInlineContent(child)
+            const inlineContent = renderInlineContent(child as HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null }> })
             if (inlineContent.length > 0) {
               contentNodes.push(...inlineContent)
             }
@@ -208,15 +228,16 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
     /**
      * Render a paragraph with inline field placeholders and formatting
      */
-    function renderParagraphWithFields(paragraphNode: any): React.ReactNode[] {
+    function renderParagraphWithFields(paragraphNode: HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null }> }): React.ReactNode[] {
       const nodes: React.ReactNode[] = []
 
       // Render inline content (handles text, formatting, and fields)
       const inlineContent = renderInlineContent(paragraphNode)
 
       if (inlineContent.length > 0) {
+        const paragraphStyle = styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }
         nodes.push(
-          <PdfText key={`p-${Math.random()}`} style={styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }} wrap>
+          <PdfText key={`p-${Math.random()}`} style={paragraphStyle as any} wrap>
             {inlineContent}
           </PdfText>
         )
@@ -228,19 +249,20 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
     /**
      * Process all nodes in the HTML
      */
-    function processNode(node: any): React.ReactNode[] {
+    function processNode(node: HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null; childNodes?: Array<HTMLElement | { nodeType: number; rawText?: string; tagName?: string; getAttribute?: (attr: string) => string | null }> }): React.ReactNode[] {
       const nodes: React.ReactNode[] = []
 
       if (!node) return nodes
 
-      if (node.nodeType === 3) {
+        if (node.nodeType === 3) {
         // Text node
         const text = node.rawText?.trim()
         if (text) {
           const processed = replaceVariables ? replaceVariables(text, data) : text
           if (processed) {
+            const textStyle = styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }
             nodes.push(
-              <PdfText key={`text-${Math.random()}`} style={styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }} wrap>
+              <PdfText key={`text-${Math.random()}`} style={textStyle as any} wrap>
                 {processed}
               </PdfText>
             )
@@ -255,8 +277,9 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
           if (fieldId && renderField) {
             const fieldValue = renderField(fieldId)
             if (fieldValue) {
+              const fieldStyle = styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }
               nodes.push(
-                <PdfText key={`field-${Math.random()}`} style={styles?.paragraph || { marginBottom: 8, lineHeight: 1.5 }} wrap>
+                <PdfText key={`field-${Math.random()}`} style={fieldStyle as any} wrap>
                   {fieldValue}
                 </PdfText>
               )
@@ -270,8 +293,9 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
           // List element
           const listItems = renderList(node, 0)
           if (listItems.length > 0) {
+            const listContainerStyle = styles?.listContainer || { marginBottom: 8 }
             nodes.push(
-              <View key={`list-${Math.random()}`} style={styles?.listContainer || { marginBottom: 8 }}>
+              <View key={`list-${Math.random()}`} style={listContainerStyle as any}>
                 {listItems}
               </View>
             )
@@ -284,13 +308,13 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
           }
         } else {
           // Other elements - process children recursively
-          node.childNodes?.forEach((child: any) => {
+          node.childNodes?.forEach((child) => {
             nodes.push(...processNode(child))
           })
         }
       } else {
         // Process child nodes
-        node.childNodes?.forEach((child: any) => {
+        node.childNodes?.forEach((child) => {
           nodes.push(...processNode(child))
         })
       }
@@ -299,7 +323,7 @@ export function renderHtmlToPdf(html: string, options: RenderOptions = {}): Reac
     }
 
     // Process root node
-    root.childNodes.forEach((child: any) => {
+    root.childNodes.forEach((child) => {
       result.push(...processNode(child))
     })
 

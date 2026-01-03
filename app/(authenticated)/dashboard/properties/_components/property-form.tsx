@@ -172,6 +172,7 @@ export function PropertyForm({ landlordId, onSuccess }: PropertyFormProps) {
         setFormData({
           name: "",
           streetAddress: "",
+          city: "",
           suburb: "",
           province: "",
           country: "South Africa",

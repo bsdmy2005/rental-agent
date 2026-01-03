@@ -244,6 +244,7 @@ export function RentalInvoiceTemplatesManager({
         name: existingTemplate.name,
         description: existingTemplate.description || "",
         generationDay: existingTemplate.generationDayOfMonth,
+        pdfTemplate: (existingTemplate.pdfTemplate as "classic" | "modern" | "minimal" | "professional" | "elegant" | "compact") || "classic",
         dependencies: (existingTemplate.dependsOnBillTemplateIds as string[]) || []
       })
       setIsEditing(false)
@@ -252,6 +253,7 @@ export function RentalInvoiceTemplatesManager({
         name: `${tenantName} Rental Invoice`,
         description: "",
         generationDay: 5,
+        pdfTemplate: "classic",
         dependencies: []
       })
       setIsCreating(false)
@@ -428,6 +430,10 @@ export function RentalInvoiceTemplatesManager({
   }
 
   // Show existing template (view or edit mode)
+  if (!existingTemplate) {
+    return null
+  }
+
   const dependencies = (existingTemplate.dependsOnBillTemplateIds as string[]) || []
   const dependencyNames = dependencies
     .map((id) => billTemplates.find((bt) => bt.id === id)?.name)

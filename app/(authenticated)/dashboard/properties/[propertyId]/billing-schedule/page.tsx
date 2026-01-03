@@ -12,6 +12,7 @@ import { getPeriodsDependencyStatusQuery } from "@/queries/period-dependency-sta
 import { getBillsByPeriodIdAction } from "@/actions/period-bill-matches-actions"
 import { BillingScheduleView } from "./_components/billing-schedule-view"
 import { notFound } from "next/navigation"
+import { type SelectBill } from "@/db/schema"
 
 export default async function BillingSchedulePage({
   params
@@ -68,12 +69,10 @@ export default async function BillingSchedulePage({
   const dependencyStatuses = await getPeriodsDependencyStatusQuery(allPeriodIds)
 
   // Fetch bills for all periods
-  const billsByPeriod = new Map<string, Awaited<ReturnType<typeof getBillsByPeriodIdAction>>["data"]>()
+  const billsByPeriod = new Map<string, SelectBill[]>()
   for (const periodId of allPeriodIds) {
     const billsResult = await getBillsByPeriodIdAction(periodId)
-    if (billsResult.isSuccess && billsResult.data) {
-      billsByPeriod.set(periodId, billsResult.data)
-    }
+    billsByPeriod.set(periodId, billsResult.isSuccess && billsResult.data ? billsResult.data : [])
   }
 
   return (

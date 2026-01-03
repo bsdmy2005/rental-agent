@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/db"
-import { billsTable, type InsertBill, type SelectBill } from "@/db/schema"
+import { billsTable, type InsertBill, type SelectBill, type SelectBillTemplate, type SelectExtractionRule } from "@/db/schema"
 import { ActionState } from "@/types"
 import { eq, and, isNull } from "drizzle-orm"
 import { getBillByIdQuery, getBillsByPropertyIdQuery } from "@/queries/bills-queries"
@@ -110,19 +110,20 @@ export async function linkBillToTemplate(
       findBillTemplateByBillTypeAndPropertyAction
     } = await import("@/actions/bill-templates-actions")
 
-    let templateResult: { isSuccess: boolean; data: any } | null = null
+    let templateResult: ActionState<SelectBillTemplate | null> | null = null
 
     // Priority 1: Try to match by extraction rule ID
     if (bill.invoiceRuleId || bill.paymentRuleId) {
       const ruleId = bill.invoiceRuleId || bill.paymentRuleId
       if (ruleId) {
-        templateResult = await findBillTemplateByExtractionRuleAction(
+        const ruleResult = await findBillTemplateByExtractionRuleAction(
           bill.propertyId,
           ruleId
         )
-        if (templateResult.isSuccess && templateResult.data) {
+        if (ruleResult.isSuccess && ruleResult.data) {
+          templateResult = ruleResult
           console.log(
-            `[Bill Template Linking] Found template by extraction rule: ${templateResult.data.id} for bill ${billId}`
+            `[Bill Template Linking] Found template by extraction rule: ${ruleResult.data.id} for bill ${billId}`
           )
         }
       }
@@ -514,6 +515,10 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
       // This ensures payableData is populated even if instance was created before bill processing
       if (paymentData && finalBill.billingYear && finalBill.billingMonth) {
         try {
+          // Extract values to constants so TypeScript can narrow the types
+          const billingYear = finalBill.billingYear
+          const billingMonth = finalBill.billingMonth
+          
           const { updatePayableInstanceFromBills } = await import("@/lib/generation-triggers")
           const { payableInstancesTable } = await import("@/db/schema")
           const { db } = await import("@/db")
@@ -522,8 +527,8 @@ export async function processBillAction(billId: string): Promise<ActionState<Sel
           const payableInstances = await db.query.payableInstances.findMany({
             where: (instances, { eq, and }) => and(
               eq(instances.propertyId, finalBill.propertyId),
-              eq(instances.periodYear, finalBill.billingYear),
-              eq(instances.periodMonth, finalBill.billingMonth)
+              eq(instances.periodYear, billingYear),
+              eq(instances.periodMonth, billingMonth)
             )
           })
 

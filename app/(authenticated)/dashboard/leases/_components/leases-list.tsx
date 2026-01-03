@@ -58,16 +58,30 @@ export async function LeasesList() {
 
   // Map leases with related data
   const leasesWithDetails = leases.map((lease) => {
-    const tenant = tenantsMap.get(lease.tenantId) || null
-    const property = propertiesMap.get(lease.propertyId) || null
+    const tenant = tenantsMap.get(lease.tenantId)
+    const property = propertiesMap.get(lease.propertyId)
 
     return {
       ...lease,
-      tenant,
-      property
+      tenant: tenant
+        ? {
+            id: tenant.id,
+            name: tenant.name,
+            email: tenant.email
+          }
+        : null,
+      property: property
+        ? {
+            id: property.id,
+            name: property.name,
+            streetAddress: property.streetAddress,
+            suburb: property.suburb,
+            province: property.province
+          }
+        : null
     }
   })
 
-  return <LeasesListClient leases={leasesWithDetails as any} />
+  return <LeasesListClient leases={leasesWithDetails} />
 }
 

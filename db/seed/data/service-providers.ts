@@ -148,9 +148,11 @@ export const serviceProvidersData: InsertServiceProvider[] = [
 
 // Service provider areas - matching providers to different provinces, cities, and suburbs
 // Using proper city/suburb structure from geographic data
+// Note: serviceProviderId will be set during seeding based on providerIndex
+// Note: suburb can be null in seed data for city-wide coverage, even though schema requires it
 export const serviceProviderAreasData: Array<{
   providerIndex: number
-  area: InsertServiceProviderArea
+  area: Omit<InsertServiceProviderArea, 'serviceProviderId' | 'suburb'> & { suburb: string | null }
 }> = [
   // Cape Town Plumbing Services - Western Cape, Cape Town
   { providerIndex: 0, area: { suburb: "Green Point", city: "Cape Town", province: "Western Cape", country: "South Africa" } },

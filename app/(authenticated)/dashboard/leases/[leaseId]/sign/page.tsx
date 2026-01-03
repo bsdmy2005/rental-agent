@@ -13,7 +13,40 @@ export default function LandlordSigningPage() {
   const router = useRouter()
   const leaseId = params.leaseId as string
 
-  const [lease, setLease] = useState<any>(null)
+  const [lease, setLease] = useState<{
+    id: string
+    tenantId: string
+    propertyId: string
+    fileName: string
+    fileUrl: string
+    effectiveStartDate: Date | string
+    effectiveEndDate: Date | string
+    initiationMethod: "upload_existing" | "initiate_new"
+    initiationStatus: "draft" | "sent_to_landlord" | "sent_to_tenant" | "tenant_signed" | "landlord_signed" | "fully_executed" | null
+    lifecycleState: string
+    signedByTenant: boolean
+    signedByLandlord: boolean
+    signedAt: Date | string | null
+    tenantSigningLink: string | null
+    tenantSigningExpiresAt: Date | string | null
+    createdAt: Date | string
+    tenant: {
+      id: string
+      name: string
+      email: string | null
+      phone: string | null
+      idNumber: string
+      rentalAmount: string | number | null
+    } | null
+    property: {
+      id: string
+      name: string
+      streetAddress: string
+      suburb: string
+      province: string
+      propertyType: string | null
+    } | null
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)

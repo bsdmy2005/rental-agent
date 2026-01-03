@@ -31,12 +31,26 @@ export function BrowserUseExplorerConsole() {
   // File Output Tab
   const [fileOutputTask, setFileOutputTask] = useState<string>("Navigate to https://example.com and download any PDF files you find")
   const [fileOutputLlm, setFileOutputLlm] = useState<string>("browser-use-llm")
-  const [fileOutputResult, setFileOutputResult] = useState<any>(null)
+  const [fileOutputResult, setFileOutputResult] = useState<{
+    isSuccess: boolean
+    message: string
+    data?: {
+      taskId?: string
+      files?: Array<{ name: string; size: number }>
+      output?: string
+    }
+  } | null>(null)
   
   // Structured Output Tab
   const [structuredTask, setStructuredTask] = useState<string>("Search for top 5 Hacker News posts and return their titles and URLs")
   const [structuredLlm, setStructuredLlm] = useState<string>("browser-use-llm")
-  const [structuredResult, setStructuredResult] = useState<any>(null)
+  const [structuredResult, setStructuredResult] = useState<{
+    isSuccess: boolean
+    message: string
+    data?: {
+      parsed?: unknown
+    }
+  } | null>(null)
   
   // Session Management Tab
   const [sessions, setSessions] = useState<Array<{ id: string; status: string; liveUrl?: string }>>([])
@@ -45,7 +59,15 @@ export function BrowserUseExplorerConsole() {
   // Real-World Test Tab
   const [angorUrl, setAngorUrl] = useState<string>("https://system.angor.co.za/angor/Online_Statements/onlineStatement.asp?GUID=FBDC50B1-4320-4224-9AE5-ACA591D118A3")
   const [angorPin, setAngorPin] = useState<string>("537083")
-  const [angorResult, setAngorResult] = useState<any>(null)
+  const [angorResult, setAngorResult] = useState<{
+    isSuccess: boolean
+    message: string
+    data?: {
+      taskId?: string
+      pdfDownloaded?: boolean
+      files?: Array<{ name: string; size: number }>
+    }
+  } | null>(null)
   
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -102,7 +124,8 @@ export function BrowserUseExplorerConsole() {
       })
       
       // Convert Zod schema to JSON Schema (serializable)
-      const jsonSchema = zodToJsonSchema(schema)
+      // Type assertion needed because zodToJsonSchema expects a specific ZodType structure
+      const jsonSchema = zodToJsonSchema(schema as unknown as Parameters<typeof zodToJsonSchema>[0])
       
       const result = await createTaskWithStructuredOutputAction(
         apiKey,
@@ -314,7 +337,7 @@ export function BrowserUseExplorerConsole() {
                         </div>
                         {fileOutputResult.data.files && fileOutputResult.data.files.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {fileOutputResult.data.files.map((file: any, idx: number) => (
+                            {fileOutputResult.data.files.map((file, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 text-xs">
                                 <Download className="h-3 w-3" />
                                 <span>{file.name}</span>
@@ -395,7 +418,7 @@ export function BrowserUseExplorerConsole() {
                   <AlertTitle>{structuredResult.isSuccess ? "Success" : "Error"}</AlertTitle>
                   <AlertDescription>
                     {structuredResult.message}
-                    {structuredResult.data && structuredResult.data.parsed && (
+                    {structuredResult.data && !!structuredResult.data.parsed && (
                       <div className="mt-4">
                         <div className="text-xs font-medium">Parsed Output:</div>
                         <pre className="mt-1 max-h-60 overflow-auto rounded bg-muted p-2 text-xs">
@@ -543,7 +566,7 @@ export function BrowserUseExplorerConsole() {
                         </div>
                         {angorResult.data.files && angorResult.data.files.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {angorResult.data.files.map((file: any, idx: number) => (
+                            {angorResult.data.files.map((file, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 text-xs">
                                 <Download className="h-3 w-3" />
                                 <span>{file.name}</span>

@@ -76,11 +76,15 @@ export function IncidentManagementControls({
     }
   }
 
+  const handleStatusValueChange = (value: string) => {
+    setStatus(value as typeof status)
+  }
+
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor="status">Update Status</Label>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={handleStatusValueChange}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

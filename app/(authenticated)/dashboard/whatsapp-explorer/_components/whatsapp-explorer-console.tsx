@@ -51,12 +51,12 @@ type ConnectionStatus = "disconnected" | "connecting" | "qr_pending" | "connecte
 export function WhatsAppExplorerConsole() {
   // Configuration state
   // Default to explorer server URL (can be overridden via environment variable)
-  const [serverUrl, setServerUrl] = useState(
-    typeof window !== "undefined" && (window as any).WHATSAPP_EXPLORER_SERVER_URL
-      ? (window as any).WHATSAPP_EXPLORER_SERVER_URL
+  const [serverUrl, setServerUrl] = useState<string>(
+    typeof window !== "undefined" && (window as Window & { WHATSAPP_EXPLORER_SERVER_URL?: string }).WHATSAPP_EXPLORER_SERVER_URL
+      ? (window as Window & { WHATSAPP_EXPLORER_SERVER_URL?: string }).WHATSAPP_EXPLORER_SERVER_URL!
       : "http://localhost:3002"
   )
-  const [apiKey, setApiKey] = useState("")
+  const [apiKey, setApiKey] = useState<string>("")
   const [connectionTestResult, setConnectionTestResult] = useState<{
     success: boolean
     message: string
@@ -117,7 +117,7 @@ export function WhatsAppExplorerConsole() {
       }
       
       // If already connected, check status from server
-      if (result.data.connectionStatus === "connected" && apiKey) {
+      if (result.data.connectionStatus === "connected" && apiKey && serverUrl) {
         const statusResult = await getSessionStatusAction(serverUrl, apiKey, result.data.sessionId)
         if (statusResult.isSuccess && statusResult.data) {
           setSessionStatus(statusResult.data.connectionStatus)
@@ -619,7 +619,7 @@ export function WhatsAppExplorerConsole() {
                     // Allow user to type freely, but show formatted version
                     setPhoneNumberInput(e.target.value)
                   }}
-                  disabled={loading || sessionStatus === "connecting" || sessionStatus === "qr_pending"}
+                  disabled={loading}
                 />
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>

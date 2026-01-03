@@ -1,6 +1,6 @@
 "use server"
 
-import { ServerClient } from "postmark"
+import { ServerClient, Models } from "postmark"
 import { db } from "@/db"
 import {
   movingInspectionsTable,
@@ -163,12 +163,13 @@ Property Management Team
       HtmlBody: htmlBody,
       TextBody: textBody,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Inspection email sent to tenant successfully"
+      message: "Inspection email sent to tenant successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending inspection to tenant:", error)
@@ -304,16 +305,18 @@ Property Management Team
           Name: `move-out-inspection-report-${moveOutInspectionId}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfBuffer.length
+          ContentLength: pdfBuffer.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Move-out report email sent to tenant successfully"
+      message: "Move-out report email sent to tenant successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending move-out report to tenant:", error)
@@ -457,16 +460,18 @@ Property Management Team
           Name: `signed-inspection-${inspectionTypeLabel.toLowerCase()}-${inspectionId}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfBuffer.length
+          ContentLength: pdfBuffer.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Signed inspection PDF sent to tenant successfully"
+      message: "Signed inspection PDF sent to tenant successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending signed inspection PDF to tenant:", error)
@@ -615,12 +620,13 @@ Property Management Team
       HtmlBody: htmlBody,
       TextBody: textBody,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Inspection email sent to inspector successfully"
+      message: "Inspection email sent to inspector successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending inspection to inspector:", error)
@@ -788,16 +794,18 @@ Property Management Team
           Name: `inspection-report-${inspectionTypeLabel.toLowerCase()}-${inspectionId}.pdf`,
           Content: base64Content,
           ContentType: "application/pdf",
-          ContentLength: pdfBuffer.length
+          ContentLength: pdfBuffer.length,
+          ContentID: ""
         }
       ],
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
       isSuccess: true,
-      message: "Inspection email sent to tenant successfully"
+      message: "Inspection email sent to tenant successfully",
+      data: undefined
     }
   } catch (error) {
     console.error("Error sending inspection to tenant after inspector:", error)

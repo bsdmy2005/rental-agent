@@ -21,12 +21,52 @@ import {
 } from "@/actions/investec-explorer-actions"
 import { AlertCircle, CheckCircle2, Loader2, Copy, Check, Search } from "lucide-react"
 import { INVESTEC_MAX_TEST_PAYMENT_AMOUNT } from "@/lib/constants/investec-guardrails"
+import type { InvestecBeneficiary } from "@/lib/investec-client"
 
 interface InvestecCredentials {
   clientId: string
   clientSecret: string
   apiKey?: string
   apiUrl?: string
+}
+
+interface InvestecBalance {
+  currency: string
+  currentBalance: number
+  availableBalance: number
+  [key: string]: unknown
+}
+
+interface InvestecTransaction {
+  type?: string
+  amount: number
+  currency: string
+  description: string
+  status: string
+  postingDate: string
+  valueDate?: string
+  theirReference?: string
+  myReference?: string
+  reference?: string
+  [key: string]: unknown
+}
+
+interface PaymentPreview {
+  endpoint: string
+  method: string
+  payload: {
+    paymentList: Array<{
+      beneficiaryId: string
+      amount: string
+      myReference: string
+      theirReference: string
+    }>
+  }
+}
+
+interface PaymentResult {
+  error?: string
+  [key: string]: unknown
 }
 
 export function InvestecExplorerConsole() {
@@ -45,25 +85,17 @@ export function InvestecExplorerConsole() {
     Array<{ accountId: string; accountNumber: string; accountName: string }>
   >([])
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([])
-  const [balances, setBalances] = useState<Record<string, any>>({})
+  const [balances, setBalances] = useState<Record<string, InvestecBalance>>({})
   const [balanceErrors, setBalanceErrors] = useState<Record<string, string>>({})
-  const [transactions, setTransactions] = useState<Record<string, any[]>>({})
+  const [transactions, setTransactions] = useState<Record<string, InvestecTransaction[]>>({})
   const [transactionsErrors, setTransactionsErrors] = useState<Record<string, string>>({})
   // Reconciliation tab state
   const [reconciliationAccountId, setReconciliationAccountId] = useState<string>("")
   const [reconciliationFromDate, setReconciliationFromDate] = useState<string>("")
   const [reconciliationToDate, setReconciliationToDate] = useState<string>("")
-  const [reconciliationTransactions, setReconciliationTransactions] = useState<any[]>([])
+  const [reconciliationTransactions, setReconciliationTransactions] = useState<InvestecTransaction[]>([])
   const [reconciliationError, setReconciliationError] = useState<string | null>(null)
-  const [beneficiaries, setBeneficiaries] = useState<
-    Array<{
-      beneficiaryId: string
-      name: string
-      bankAccountNumber: string
-      bankCode: string
-      beneficiaryType?: string
-    }>
-  >([])
+  const [beneficiaries, setBeneficiaries] = useState<InvestecBeneficiary[]>([])
   const [beneficiariesError, setBeneficiariesError] = useState<string | null>(null)
   const [selectedBeneficiaryId, setSelectedBeneficiaryId] = useState<string>("")
   const [beneficiarySearchQuery, setBeneficiarySearchQuery] = useState<string>("")
@@ -75,8 +107,8 @@ export function InvestecExplorerConsole() {
     theirReference: "",
     paymentDate: ""
   })
-  const [paymentPreview, setPaymentPreview] = useState<any>(null)
-  const [paymentResult, setPaymentResult] = useState<any>(null)
+  const [paymentPreview, setPaymentPreview] = useState<PaymentPreview | null>(null)
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [confirmationCode, setConfirmationCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -136,7 +168,7 @@ export function InvestecExplorerConsole() {
       try {
         const result = await getInvestecAccountBalanceAction(credentials, accountId)
         if (result.isSuccess && result.data) {
-          setBalances((prev) => ({ ...prev, [accountId]: result.data }))
+          setBalances((prev) => ({ ...prev, [accountId]: result.data as InvestecBalance }))
           setBalanceErrors((prev) => {
             const newErrors = { ...prev }
             delete newErrors[accountId]
@@ -174,7 +206,7 @@ export function InvestecExplorerConsole() {
           limit: 20
         })
         if (result.isSuccess && result.data) {
-          setTransactions((prev) => ({ ...prev, [accountId]: result.data }))
+          setTransactions((prev) => ({ ...prev, [accountId]: result.data as InvestecTransaction[] }))
           setTransactionsErrors((prev) => {
             const newErrors = { ...prev }
             delete newErrors[accountId]
@@ -223,7 +255,7 @@ export function InvestecExplorerConsole() {
       })
 
       if (result.isSuccess && result.data) {
-        setReconciliationTransactions(result.data)
+        setReconciliationTransactions(result.data as InvestecTransaction[])
         setReconciliationError(null)
       } else {
         setReconciliationError(result.message || "Failed to get transactions")
@@ -302,7 +334,7 @@ export function InvestecExplorerConsole() {
           ]
         }
       }
-      setPaymentPreview(payload)
+      setPaymentPreview(payload as PaymentPreview)
     } catch (error) {
       console.error("Error previewing payment:", error)
     } finally {
@@ -348,15 +380,15 @@ export function InvestecExplorerConsole() {
         confirmationCode
       )
       if (result.isSuccess && result.data) {
-        setPaymentResult(result.data)
+        setPaymentResult(result.data as PaymentResult)
         setConfirmationCode("")
       } else {
-        setPaymentResult({ error: result.message })
+        setPaymentResult({ error: result.message } as PaymentResult)
       }
     } catch (error) {
       setPaymentResult({
         error: error instanceof Error ? error.message : "Unknown error"
-      })
+      } as PaymentResult)
     } finally {
       setLoading(false)
     }
@@ -368,7 +400,7 @@ export function InvestecExplorerConsole() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const formatJSON = (obj: any) => {
+  const formatJSON = (obj: unknown) => {
     return JSON.stringify(obj, null, 2)
   }
 
@@ -381,7 +413,7 @@ export function InvestecExplorerConsole() {
     }).format(amount)
   }
 
-  const isIncomingTransaction = (tx: { type?: string; amount: number }) => {
+  const isIncomingTransaction = (tx: InvestecTransaction) => {
     // Check transaction type field for debit/credit indication
     const typeLower = tx.type?.toLowerCase() || ""
     
@@ -766,7 +798,7 @@ export function InvestecExplorerConsole() {
                               <>
                                 <div className="space-y-2 max-h-96 overflow-y-auto">
                                   {accountTransactions.map((tx, idx) => {
-                                    const isIncoming = isIncomingTransaction(tx)
+                                    const isIncoming = isIncomingTransaction(tx as InvestecTransaction)
                                     return (
                                       <div
                                         key={idx}
@@ -1123,7 +1155,7 @@ export function InvestecExplorerConsole() {
                           Math.abs(
                             reconciliationTransactions
                               .filter((tx) => isIncomingTransaction(tx))
-                              .reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
+                              .reduce((sum: number, tx) => sum + Math.abs(tx.amount), 0)
                           ),
                           reconciliationTransactions[0]?.currency || "ZAR"
                         )}
@@ -1140,7 +1172,7 @@ export function InvestecExplorerConsole() {
                         {formatCurrency(
                           reconciliationTransactions
                             .filter((tx) => !isIncomingTransaction(tx))
-                            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0),
+                            .reduce((sum: number, tx) => sum + Math.abs(tx.amount), 0),
                           reconciliationTransactions[0]?.currency || "ZAR"
                         )}
                       </div>
@@ -1517,7 +1549,11 @@ export function InvestecExplorerConsole() {
                   )}
                   <AlertTitle>{paymentResult.error ? "Error" : "Payment Executed"}</AlertTitle>
                   <AlertDescription>
-                    {paymentResult.error || formatJSON(paymentResult)}
+                    {paymentResult.error ? (
+                      paymentResult.error
+                    ) : (
+                      formatJSON(paymentResult)
+                    )}
                   </AlertDescription>
                 </Alert>
               )}

@@ -5,12 +5,14 @@ import {
   agencyMembershipsTable,
   rentalAgentsTable,
   type InsertAgencyMembership,
-  type SelectAgencyMembership
+  type SelectAgencyMembership,
+  type SelectRentalAgency
 } from "@/db/schema"
 import { ActionState } from "@/types"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
+import { getAgentMembershipStatusQuery } from "@/queries/agency-memberships-queries"
 
 export async function requestAgencyMembershipAction(
   rentalAgentId: string,
@@ -310,6 +312,26 @@ export async function rejectAgencyMembershipWithAuthAction(
   } catch (error) {
     console.error("Error rejecting agency membership with auth:", error)
     return { isSuccess: false, message: "Failed to reject agency membership" }
+  }
+}
+
+export interface AgentMembershipStatusWithAgency extends SelectAgencyMembership {
+  agency: SelectRentalAgency
+}
+
+export async function getAgentMembershipStatusAction(
+  rentalAgentId: string
+): Promise<ActionState<AgentMembershipStatusWithAgency | null>> {
+  try {
+    const membership = await getAgentMembershipStatusQuery(rentalAgentId)
+    return {
+      isSuccess: true,
+      message: "Membership status retrieved successfully",
+      data: membership
+    }
+  } catch (error) {
+    console.error("Error getting agent membership status:", error)
+    return { isSuccess: false, message: "Failed to get membership status" }
   }
 }
 

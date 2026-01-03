@@ -1,6 +1,6 @@
 "use server"
 
-import { ServerClient } from "postmark"
+import { ServerClient, Models } from "postmark"
 import { db } from "@/db"
 import {
   quotesTable,
@@ -69,6 +69,10 @@ export async function sendQuoteAcceptanceEmailAction(
     }
 
     // Get property
+    if (!quoteRequest.propertyId) {
+      return { isSuccess: false, message: "Quote request property ID is required" }
+    }
+
     const [property] = await db
       .select()
       .from(propertiesTable)
@@ -151,7 +155,7 @@ Thank you for your service.
       HtmlBody: htmlBody,
       TextBody: textBody,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {
@@ -210,6 +214,10 @@ export async function sendQuoteRejectionEmailAction(
     }
 
     // Get property
+    if (!quoteRequest.propertyId) {
+      return { isSuccess: false, message: "Quote request property ID is required" }
+    }
+
     const [property] = await db
       .select()
       .from(propertiesTable)
@@ -265,7 +273,7 @@ Thank you for your service.
       HtmlBody: htmlBody,
       TextBody: textBody,
       TrackOpens: true,
-      TrackLinks: "HtmlAndText"
+      TrackLinks: Models.LinkTrackingOptions.HtmlAndText
     })
 
     return {

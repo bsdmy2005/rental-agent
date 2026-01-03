@@ -17,7 +17,7 @@ export function PayableTemplatePaymentInfo({ template }: PayableTemplatePaymentI
 
   useEffect(() => {
     const loadPaymentInfo = async () => {
-      if (!template.bankAccountId && !(template as any).beneficiaryId) {
+      if (!template.bankAccountId && !template.beneficiaryId) {
         return
       }
 
@@ -30,8 +30,8 @@ export function PayableTemplatePaymentInfo({ template }: PayableTemplatePaymentI
           }
         }
 
-        if ((template as any).beneficiaryId) {
-          const beneficiaryResult = await getBeneficiaryAction((template as any).beneficiaryId)
+        if (template.beneficiaryId) {
+          const beneficiaryResult = await getBeneficiaryAction(template.beneficiaryId)
           if (beneficiaryResult.isSuccess && beneficiaryResult.data) {
             setBeneficiaryName(beneficiaryResult.data.name)
           }
@@ -44,7 +44,7 @@ export function PayableTemplatePaymentInfo({ template }: PayableTemplatePaymentI
     }
 
     loadPaymentInfo()
-  }, [template.bankAccountId, (template as any).beneficiaryId])
+  }, [template.bankAccountId, template.beneficiaryId])
 
   if (loading) {
     return (
@@ -55,7 +55,7 @@ export function PayableTemplatePaymentInfo({ template }: PayableTemplatePaymentI
     )
   }
 
-  if (!template.bankAccountId && !(template as any).beneficiaryId) {
+  if (!template.bankAccountId && !template.beneficiaryId) {
     return (
       <p className="text-sm text-muted-foreground">Not linked</p>
     )

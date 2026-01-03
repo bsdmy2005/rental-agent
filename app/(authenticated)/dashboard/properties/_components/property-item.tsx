@@ -23,8 +23,7 @@ export function PropertyItem({ property }: PropertyItemProps) {
   const [formData, setFormData] = useState({
     name: property.name,
     address: property.address || "",
-    propertyType: property.propertyType || "",
-    rentalAmount: property.rentalAmount?.toString() || ""
+    propertyType: property.propertyType || ""
   })
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -35,8 +34,7 @@ export function PropertyItem({ property }: PropertyItemProps) {
       const result = await updatePropertyAction(property.id, {
         name: formData.name,
         address: formData.address || undefined,
-        propertyType: formData.propertyType || undefined,
-        rentalAmount: formData.rentalAmount ? formData.rentalAmount : undefined
+        propertyType: formData.propertyType || undefined
       })
 
       if (result.isSuccess) {
@@ -78,8 +76,7 @@ export function PropertyItem({ property }: PropertyItemProps) {
     setFormData({
       name: property.name,
       address: property.address || "",
-      propertyType: property.propertyType || "",
-      rentalAmount: property.rentalAmount?.toString() || ""
+      propertyType: property.propertyType || ""
     })
     setIsEditing(false)
   }
@@ -121,19 +118,6 @@ export function PropertyItem({ property }: PropertyItemProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`rental-${property.id}`}>Monthly Rental Amount (ZAR)</Label>
-              <Input
-                id={`rental-${property.id}`}
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.rentalAmount}
-                onChange={(e) => setFormData({ ...formData, rentalAmount: e.target.value })}
-                className="h-10"
-              />
-            </div>
-
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
@@ -169,9 +153,6 @@ export function PropertyItem({ property }: PropertyItemProps) {
             </div>
             {property.address && (
               <p className="text-muted-foreground text-sm">{property.address}</p>
-            )}
-            {property.rentalAmount && (
-              <p className="text-lg font-medium">R{property.rentalAmount}/month</p>
             )}
           </div>
           <div className="flex gap-2">

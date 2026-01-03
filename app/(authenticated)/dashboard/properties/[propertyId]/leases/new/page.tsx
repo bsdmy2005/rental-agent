@@ -144,7 +144,7 @@ export default function NewLeasePage() {
           const data = await response.json()
           setTemplates(data.templates || [])
           // Select default template if available
-          const defaultTemplate = data.templates?.find((t: any) => t.isDefault)
+          const defaultTemplate = data.templates?.find((t: { id: string; isDefault: boolean }) => t.isDefault)
           if (defaultTemplate) {
             setFormData(prev => ({ ...prev, templateId: defaultTemplate.id }))
           } else if (data.templates?.length > 0) {

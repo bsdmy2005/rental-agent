@@ -457,6 +457,7 @@ export function BillTemplatesManager({
 
 interface BillTemplateEditFormProps {
   template: SelectBillTemplate
+  propertyId: string
   invoiceTemplates: SelectRentalInvoiceTemplate[]
   payableTemplates: SelectPayableTemplate[]
   tenants: SelectTenant[]

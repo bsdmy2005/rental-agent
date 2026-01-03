@@ -35,8 +35,8 @@ export interface LeaseData {
   templateFieldValues?: Record<string, string> // Custom template field values
   signedAtLocation?: string // Location where the lease is signed (e.g., "Johannesburg, South Africa")
   isDraft?: boolean
-  tenantSignatureData?: any
-  landlordSignatureData?: any
+  tenantSignatureData?: { image: string; signedAt?: string } | string | null
+  landlordSignatureData?: { image: string; signedAt?: string } | string | null
 }
 
 const styles = StyleSheet.create({
@@ -531,7 +531,7 @@ function renderContentWithMarkdown(
     // Render HTML directly to PDF components
     try {
       return renderHtmlToPdf(contentStr, {
-        data,
+        data: data as unknown as Record<string, unknown>,
         replaceVariables: (text: string) => replaceVariables(text, data),
         renderField: (fieldId: string) => {
           // Get value from renderFieldValue (works for both predefined and user-created fields)
@@ -649,7 +649,7 @@ function renderContentWithMarkdown(
     // Now render as HTML
     try {
       return renderHtmlToPdf(htmlContent, {
-        data,
+        data: data as unknown as Record<string, unknown>,
         replaceVariables: (text: string) => replaceVariables(text, data),
         renderField: (fieldId: string) => {
           // Get value from renderFieldValue (works for both predefined and user-created fields)
@@ -838,12 +838,13 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
               // Helper function to render signature placeholder
               const renderSignaturePlaceholder = (signatureType: "tenant_signature" | "landlord_signature"): React.ReactNode => {
                 if (signatureType === "tenant_signature") {
+                  const tenantSigData = typeof data.tenantSignatureData === 'object' && data.tenantSignatureData !== null ? data.tenantSignatureData : null
                   return (
                     <View key="tenant-sig" style={styles.signatureBlock}>
-                      {data.tenantSignatureData?.image ? (
+                      {tenantSigData?.image ? (
                         <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
                           <Image
-                            src={data.tenantSignatureData.image}
+                            src={tenantSigData.image}
                             style={{ width: 150, height: 60, objectFit: "contain" }}
                           />
                         </View>
@@ -853,17 +854,18 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                       <Text style={styles.signatureLabel}>Tenant Signature</Text>
                       <Text style={styles.signatureLabel}>{data.tenantName}</Text>
                       <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
-                        Date: {data.tenantSignatureData?.signedAt ? formatDate(new Date(data.tenantSignatureData.signedAt)) : "___________"}
+                        Date: {tenantSigData?.signedAt ? formatDate(new Date(tenantSigData.signedAt)) : "___________"}
                       </Text>
                     </View>
                   )
                 } else {
+                  const landlordSigData = typeof data.landlordSignatureData === 'object' && data.landlordSignatureData !== null ? data.landlordSignatureData : null
                   return (
                     <View key="landlord-sig" style={styles.signatureBlock}>
-                      {data.landlordSignatureData?.image ? (
+                      {landlordSigData?.image ? (
                         <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
                           <Image
-                            src={data.landlordSignatureData.image}
+                            src={landlordSigData.image}
                             style={{ width: 150, height: 60, objectFit: "contain" }}
                           />
                         </View>
@@ -873,7 +875,7 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                       <Text style={styles.signatureLabel}>Landlord Signature</Text>
                       <Text style={styles.signatureLabel}>{data.landlordName}</Text>
                       <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
-                        Date: {data.landlordSignatureData?.signedAt ? formatDate(new Date(data.landlordSignatureData.signedAt)) : "___________"}
+                        Date: {landlordSigData?.signedAt ? formatDate(new Date(landlordSigData.signedAt)) : "___________"}
                       </Text>
                     </View>
                   )
@@ -883,7 +885,7 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
               // Render content with signature placeholders if content exists and is HTML
               const contentNodes = section.content && typeof section.content === "string" && section.content.trim()
                 ? renderHtmlToPdf(section.content, {
-                    data,
+                    data: data as unknown as Record<string, unknown>,
                     replaceVariables: (text: string) => replaceVariables(text, data),
                     renderField: (fieldId: string) => {
                       // Handle field rendering (including signedAtLocation)
@@ -903,43 +905,49 @@ export const TemplateBasedPDF: React.FC<TemplateBasedPDFProps> = ({ data, templa
                       ))}
                     </View>
                   )}
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 30 }}>
-                    <View style={styles.signatureBlock}>
-                      {data.tenantSignatureData?.image ? (
-                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
-                          <Image
-                            src={data.tenantSignatureData.image}
-                            style={{ width: 150, height: 60, objectFit: "contain" }}
-                          />
+                  {(() => {
+                    const tenantSigData = typeof data.tenantSignatureData === 'object' && data.tenantSignatureData !== null ? data.tenantSignatureData : null
+                    const landlordSigData = typeof data.landlordSignatureData === 'object' && data.landlordSignatureData !== null ? data.landlordSignatureData : null
+                    return (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 30 }}>
+                        <View style={styles.signatureBlock}>
+                          {tenantSigData?.image ? (
+                            <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
+                              <Image
+                                src={tenantSigData.image}
+                                style={{ width: 150, height: 60, objectFit: "contain" }}
+                              />
+                            </View>
+                          ) : (
+                            <View style={styles.signatureLine} />
+                          )}
+                          <Text style={styles.signatureLabel}>Tenant Signature</Text>
+                          <Text style={styles.signatureLabel}>{data.tenantName}</Text>
+                          <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
+                            Date: {tenantSigData?.signedAt ? formatDate(new Date(tenantSigData.signedAt)) : "___________"}
+                          </Text>
                         </View>
-                      ) : (
-                        <View style={styles.signatureLine} />
-                      )}
-                      <Text style={styles.signatureLabel}>Tenant Signature</Text>
-                      <Text style={styles.signatureLabel}>{data.tenantName}</Text>
-                      <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
-                        Date: {data.tenantSignatureData?.signedAt ? formatDate(new Date(data.tenantSignatureData.signedAt)) : "___________"}
-                      </Text>
-                    </View>
 
-                    <View style={styles.signatureBlock}>
-                      {data.landlordSignatureData?.image ? (
-                        <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
-                          <Image
-                            src={data.landlordSignatureData.image}
-                            style={{ width: 150, height: 60, objectFit: "contain" }}
-                          />
+                        <View style={styles.signatureBlock}>
+                          {landlordSigData?.image ? (
+                            <View style={{ marginBottom: 3, paddingLeft: 0, marginLeft: 0, alignItems: "flex-start" }}>
+                              <Image
+                                src={landlordSigData.image}
+                                style={{ width: 150, height: 60, objectFit: "contain" }}
+                              />
+                            </View>
+                          ) : (
+                            <View style={styles.signatureLine} />
+                          )}
+                          <Text style={styles.signatureLabel}>Landlord Signature</Text>
+                          <Text style={styles.signatureLabel}>{data.landlordName}</Text>
+                          <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
+                            Date: {landlordSigData?.signedAt ? formatDate(new Date(landlordSigData.signedAt)) : "___________"}
+                          </Text>
                         </View>
-                      ) : (
-                        <View style={styles.signatureLine} />
-                      )}
-                      <Text style={styles.signatureLabel}>Landlord Signature</Text>
-                      <Text style={styles.signatureLabel}>{data.landlordName}</Text>
-                      <Text style={[styles.signatureLabel, { fontSize: 8, marginTop: 5 }]}>
-                        Date: {data.landlordSignatureData?.signedAt ? formatDate(new Date(data.landlordSignatureData.signedAt)) : "___________"}
-                      </Text>
-                    </View>
-                  </View>
+                      </View>
+                    )
+                  })()}
                   {/* Render footer if exists (no special signedAtLocation replacement - treat as regular field) */}
                   {section.footer && (
                     <Text style={[styles.footer, { marginTop: 15, textAlign: "center" }]}>

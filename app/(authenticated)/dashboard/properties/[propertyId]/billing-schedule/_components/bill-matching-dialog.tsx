@@ -30,8 +30,20 @@ export function BillMatchingDialog({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
-  const [unmatchedBills, setUnmatchedBills] = useState<any[]>([])
-  const [periods, setPeriods] = useState<any[]>([])
+  const [unmatchedBills, setUnmatchedBills] = useState<Array<{
+    id: string
+    fileName: string
+    billingYear?: number
+    billingMonth?: number
+    [key: string]: unknown
+  }>>([])
+  const [periods, setPeriods] = useState<Array<{
+    id: string
+    periodYear: number
+    periodMonth: number
+    periodType: string
+    [key: string]: unknown
+  }>>([])
   const [selectedMatches, setSelectedMatches] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
@@ -116,7 +128,7 @@ export function BillMatchingDialog({
     }
   }
 
-  const formatPeriodLabel = (period: any) => {
+  const formatPeriodLabel = (period: { periodYear: number; periodMonth: number; periodType: string }) => {
     const monthNames = [
       "January",
       "February",
@@ -177,7 +189,7 @@ export function BillMatchingDialog({
                               <FileText className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium">{bill.fileName}</span>
                               <Badge variant="outline" className="text-xs capitalize">
-                                {bill.billType}
+                                {String(bill.billType || "")}
                               </Badge>
                               {bill.billingYear && bill.billingMonth && (
                                 <Badge variant="secondary" className="text-xs">

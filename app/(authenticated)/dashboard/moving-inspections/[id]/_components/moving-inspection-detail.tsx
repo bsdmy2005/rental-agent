@@ -53,7 +53,7 @@ interface MovingInspectionDetailProps {
     items: Array<{
       id: string
       name: string
-      condition: "good" | "fair" | "poor" | "defective"
+      condition: "good" | "requires_repair" | "requires_cleaning" | "requires_repair_and_cleaning" | null
       isPresent: boolean | null
       notes: string | null
       category: {

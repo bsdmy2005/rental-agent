@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getInspectionByInspectorTokenAction } from "@/actions/moving-inspections-actions"
+import type { SelectMovingInspection, SelectMovingInspectionItem, SelectMovingInspectionDefect, SelectProperty, SelectTenant, SelectLeaseAgreement } from "@/db/schema"
 import { InspectionItemRow } from "@/app/(authenticated)/dashboard/moving-inspections/_components/inspection-item-row"
 import { InspectionChecklist } from "@/app/(authenticated)/dashboard/moving-inspections/_components/inspection-checklist"
 import { SignaturePad } from "@/components/utility/signature-pad"
@@ -17,7 +18,15 @@ export default function InspectorInspectionPage() {
   const params = useParams()
   const token = params.token ? decodeURIComponent(params.token as string) : ""
 
-  const [inspection, setInspection] = useState<any>(null)
+  const [inspection, setInspection] = useState<(SelectMovingInspection & {
+    items: Array<SelectMovingInspectionItem & {
+      category: { name: string; displayOrder: number }
+      defects: SelectMovingInspectionDefect[]
+    }>
+    property: SelectProperty | null
+    tenant: SelectTenant | null
+    lease: SelectLeaseAgreement | null
+  }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -209,7 +218,7 @@ export default function InspectorInspectionPage() {
               isLocked={true} // Locked structure
               isReadOnly={inspection.signedByInspector || isFullySigned} // Read-only if inspector signed or fully signed
               inspectorToken={(inspection.signedByInspector || isFullySigned) ? undefined : token} // Only pass token if not signed (for editing)
-              items={inspection.items.map((item: any) => ({
+              items={inspection.items.map((item) => ({
                 ...item,
                 isPresent: null // Not used in new system
               }))}

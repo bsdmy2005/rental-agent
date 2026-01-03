@@ -19,10 +19,14 @@ export default function DuplicateTemplatePage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    isDefault: boolean
+    templateData: Record<string, unknown> | null
+  }>({
     name: "",
     isDefault: false,
-    templateData: null as any
+    templateData: null
   })
 
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function DuplicateTemplatePage() {
           setFormData({
             name: `${result.data.name} (Copy)`,
             isDefault: false,
-            templateData: result.data.templateData
+            templateData: (result.data.templateData as Record<string, unknown>) || null
           })
         } else {
           toast.error(result.message || "Failed to load template")

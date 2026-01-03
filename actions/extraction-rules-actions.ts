@@ -77,7 +77,7 @@ export async function checkRuleReferencedAction(ruleId: string): Promise<ActionS
     }
   } catch (error) {
     console.error("Error checking rule references:", error)
-    return { isSuccess: false, message: "Failed to check rule references", data: false }
+    return { isSuccess: false, message: "Failed to check rule references" }
   }
 }
 

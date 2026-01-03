@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getRfqComparisonAction } from "@/actions/service-providers-actions"
 import { RfqComparisonTable } from "@/components/rfq-comparison-table"
 import { Loader2 } from "lucide-react"
-import type { SelectQuoteRequest } from "@/db/schema"
+import type { SelectQuoteRequest, SelectQuote } from "@/db/schema"
 
 interface IncidentQuotesSectionProps {
   quoteRequests: SelectQuoteRequest[]
@@ -13,7 +13,12 @@ interface IncidentQuotesSectionProps {
 
 export function IncidentQuotesSection({ quoteRequests }: IncidentQuotesSectionProps) {
   const [loading, setLoading] = useState(true)
-  const [quotes, setQuotes] = useState<any[]>([])
+  const [quotes, setQuotes] = useState<Array<SelectQuote & {
+    providerName: string
+    providerBusinessName: string | null
+    submissionMethod: string
+    submissionCode: string | null
+  }>>([])
 
   useEffect(() => {
     async function loadQuotes() {

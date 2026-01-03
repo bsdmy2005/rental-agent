@@ -108,7 +108,7 @@ export default async function MovingInspectionsPage() {
         <TabsContent value="workflow">
           <InspectionWorkflowClient
             properties={properties}
-            movingInInspections={movingInInspections as any}
+            movingInInspections={movingInInspections}
           />
         </TabsContent>
 

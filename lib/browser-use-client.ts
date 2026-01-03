@@ -5,7 +5,7 @@
  * It handles task creation, file downloads, and session management.
  */
 
-import { BrowserUseClient } from "browser-use-sdk"
+import { BrowserUseClient, type BrowserUse } from "browser-use-sdk"
 import { config } from "dotenv"
 import { resolve } from "path"
 
@@ -97,7 +97,7 @@ export async function createTask(
   
   // Create task - handle schema separately if provided
   let task
-  const llmValue = (options?.llm || "browser-use-llm") as any // Browser Use SDK will validate
+  const llmValue = (options?.llm || "browser-use-llm") as BrowserUse.SupportedLlMs
   
   if (options?.schema) {
     // Use schema overload - Browser Use SDK expects JSON Schema
@@ -107,7 +107,7 @@ export async function createTask(
       llm: llmValue,
       sessionId: options.sessionId || undefined,
       structuredOutput: JSON.stringify(options.schema) // Pass JSON Schema as stringified JSON
-    } as any)
+    } as Parameters<typeof client.tasks.createTask>[0])
   } else {
     // No schema - use regular CreateTaskRequest
     task = await client.tasks.createTask({
@@ -133,7 +133,7 @@ export async function createTask(
       id: f.id,
       fileName: f.fileName
     })),
-    parsed: (result as any).parsed // Only available when schema is used
+    parsed: (result as { parsed?: unknown }).parsed // Only available when schema is used
   }
 }
 

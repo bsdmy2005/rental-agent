@@ -27,7 +27,7 @@ interface WizardRuleBuilderProps {
 
 export function WizardRuleBuilder({ billTemplate, onSave, onCancel }: WizardRuleBuilderProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<BillTemplateState["newRule"]>(() => {
+  const [formData, setFormData] = useState<NonNullable<BillTemplateState["newRule"]>>(() => {
     if (billTemplate.newRule) {
       return billTemplate.newRule
     }
@@ -310,7 +310,7 @@ export function WizardRuleBuilder({ billTemplate, onSave, onCancel }: WizardRule
               </Label>
               <Select
                 value={formData.channel}
-                onValueChange={(value: any) => setFormData({ ...formData, channel: value })}
+                onValueChange={(value: "email_forward" | "manual_upload" | "agentic") => setFormData({ ...formData, channel: value })}
                 required
               >
                 <SelectTrigger className="h-11">

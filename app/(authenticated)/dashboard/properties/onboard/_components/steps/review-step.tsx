@@ -10,7 +10,7 @@ import { CheckCircle2 } from "lucide-react"
 export function ReviewStep() {
   const { state } = useWizardState()
 
-  const getTenantDisplayData = (tenant: any) => {
+  const getTenantDisplayData = (tenant: { extractedData?: { name?: string; idNumber?: string; email?: string; rentalAmount?: number; startDate?: string; endDate?: string }; manualData?: { name?: string; idNumber?: string; email?: string; rentalAmount?: number; startDate?: string; endDate?: string } }) => {
     return tenant.extractedData || tenant.manualData
   }
 

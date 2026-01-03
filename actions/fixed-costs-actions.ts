@@ -82,12 +82,13 @@ export async function getActiveFixedCostsForTenantAction(
 
     // If period provided, check if fixed cost is active during that period
     if (periodStart) {
-      conditions.push(
-        or(
-          isNull(fixedCostsTable.endDate),
-          gte(fixedCostsTable.endDate, periodStart)
-        )
+      const periodCondition = or(
+        isNull(fixedCostsTable.endDate),
+        gte(fixedCostsTable.endDate, periodStart)
       )
+      if (periodCondition) {
+        conditions.push(periodCondition)
+      }
     }
 
     if (periodEnd) {

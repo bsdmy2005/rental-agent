@@ -27,7 +27,7 @@ export function PayableTemplatesStep() {
     updatePayableTemplates(state.payableTemplates.filter((_, i) => i !== index))
   }
 
-  const updatePayableTemplate = (index: number, field: keyof PayableTemplateState, value: any) => {
+  const updatePayableTemplate = (index: number, field: keyof PayableTemplateState, value: string | string[] | number | undefined) => {
     const updated = [...state.payableTemplates]
     updated[index] = { ...updated[index], [field]: value }
     updatePayableTemplates(updated)

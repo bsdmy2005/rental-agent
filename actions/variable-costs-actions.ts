@@ -225,6 +225,16 @@ export async function getVariableCostAllocationsForTenantAction(
   periodEnd?: Date
 ): Promise<ActionState<SelectVariableCostAllocation[]>> {
   try {
+    const conditions = [
+      eq(variableCostAllocationsTable.tenantId, tenantId)
+    ]
+    if (periodStart) {
+      conditions.push(lte(variableCostsTable.periodStart, periodEnd || new Date()))
+    }
+    if (periodEnd) {
+      conditions.push(gte(variableCostsTable.periodEnd, periodStart || new Date(0)))
+    }
+
     const allocations = await db
       .select({
         allocation: variableCostAllocationsTable,
@@ -235,15 +245,7 @@ export async function getVariableCostAllocationsForTenantAction(
         variableCostsTable,
         eq(variableCostAllocationsTable.variableCostId, variableCostsTable.id)
       )
-      .where(
-        and(
-          eq(variableCostAllocationsTable.tenantId, tenantId),
-          periodStart
-            ? lte(variableCostsTable.periodStart, periodEnd || new Date())
-            : undefined,
-          periodEnd ? gte(variableCostsTable.periodEnd, periodStart || new Date(0)) : undefined
-        )
-      )
+      .where(and(...conditions))
 
     return {
       isSuccess: true,

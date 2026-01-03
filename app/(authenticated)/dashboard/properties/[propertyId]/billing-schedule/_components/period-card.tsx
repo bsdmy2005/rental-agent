@@ -16,7 +16,13 @@ interface PeriodCardProps {
 
 export function PeriodCard({ period, periodType, propertyId }: PeriodCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const [matchedBills, setMatchedBills] = useState<any[]>([])
+  const [matchedBills, setMatchedBills] = useState<Array<{
+    id: string
+    fileName: string
+    billType: string
+    status: string
+    [key: string]: unknown
+  }>>([])
   const [loading, setLoading] = useState(false)
 
   const monthNames = [

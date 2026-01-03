@@ -199,7 +199,7 @@ export default async function RentalInvoiceDetailPage({
                   <div>
                     <p className="text-muted-foreground text-xs">Total Amount</p>
                     <p className="font-medium text-lg">
-                      R {parseFloat(invoiceData.totalAmount).toFixed(2)}
+                      R {invoiceData.totalAmount.toFixed(2)}
                     </p>
                   </div>
                 </>

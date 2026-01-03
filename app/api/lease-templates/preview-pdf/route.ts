@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { renderToStream } from "@react-pdf/renderer"
+import { renderToStream, type DocumentProps } from "@react-pdf/renderer"
 import React from "react"
 import { TemplateBasedPDF } from "@/lib/lease-pdf-component"
 import type { TemplateSection } from "@/lib/utils/template-helpers"
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const pdfDoc = React.createElement(TemplateBasedPDF, {
       data: sampleLeaseData,
       templateSections: sortedSections
-    })
+    }) as React.ReactElement<DocumentProps>
     
     const stream = await renderToStream(pdfDoc)
     

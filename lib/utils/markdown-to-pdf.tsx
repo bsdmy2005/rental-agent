@@ -4,22 +4,26 @@
  */
 
 import { remark } from "remark"
-import type { Root, List, ListItem } from "mdast"
+import type { Root, List, ListItem, Node, Paragraph, Text, Strong, Emphasis } from "mdast"
 import React from "react"
 import { View, Text as PdfText } from "@react-pdf/renderer"
 
+type PdfStyle = {
+  [key: string]: string | number | undefined
+}
+
 interface ListStyles {
-  container: any
-  item: any
-  bullet: any
-  content: any
-  nested: any
+  container: PdfStyle
+  item: PdfStyle
+  bullet: PdfStyle
+  content: PdfStyle
+  nested: PdfStyle
 }
 
 interface RenderOptions {
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   listStyles?: ListStyles
-  replaceVariables?: (text: string, data?: Record<string, any>) => string
+  replaceVariables?: (text: string, data?: Record<string, unknown>) => string
 }
 
 /**
@@ -37,14 +41,16 @@ export function renderMarkdownToPdf(
 
   const result: React.ReactNode[] = []
 
-  function renderNode(node: any, depth: number = 0): React.ReactNode[] {
+  function renderNode(node: Node, depth: number = 0): React.ReactNode[] {
     const nodes: React.ReactNode[] = []
 
     switch (node.type) {
       case "root":
-        node.children.forEach((child: any) => {
-          nodes.push(...renderNode(child, depth))
-        })
+        if ("children" in node && Array.isArray(node.children)) {
+          node.children.forEach((child) => {
+            nodes.push(...renderNode(child, depth))
+          })
+        }
         break
 
       case "paragraph":
@@ -77,19 +83,21 @@ export function renderMarkdownToPdf(
         break
 
       case "text":
-        const textContent = replaceVariables ? replaceVariables(node.value, data) : node.value
+        const textNode = node as Text
+        const textContent = replaceVariables ? replaceVariables(textNode.value, data) : textNode.value
         return [<React.Fragment key={`text-${Math.random()}`}>{textContent}</React.Fragment>]
 
       case "strong":
       case "emphasis":
-        const strongText = extractText(node)
+        const strongNode = node as Strong | Emphasis
+        const strongText = extractText(strongNode)
         const processedStrongText = replaceVariables ? replaceVariables(strongText, data) : strongText
         return [<React.Fragment key={`strong-${Math.random()}`}>{processedStrongText}</React.Fragment>]
 
       default:
         // For other node types, try to extract text
-        if (node.children) {
-          node.children.forEach((child: any) => {
+        if ("children" in node && Array.isArray(node.children)) {
+          node.children.forEach((child) => {
             nodes.push(...renderNode(child, depth))
           })
         }
@@ -144,13 +152,13 @@ function renderList(
   const styles = listStyles || defaultStyles
 
   return (
-    <View key={`list-${Math.random()}`} style={styles.container}>
+    <View key={`list-${Math.random()}`} style={styles.container as any}>
       {listNode.children.map((item: ListItem, index: number) => {
         // Separate paragraph content from nested lists
-        const paragraphs: any[] = []
-        const nestedLists: any[] = []
+        const paragraphs: Paragraph[] = []
+        const nestedLists: List[] = []
 
-        item.children.forEach((child: any) => {
+        item.children.forEach((child) => {
           if (child.type === "paragraph") {
             paragraphs.push(child)
           } else if (child.type === "list") {
@@ -164,11 +172,11 @@ function renderList(
 
         return (
           <View key={`item-${index}`}>
-            <View style={styles.item}>
-              <PdfText style={styles.bullet}>
+            <View style={styles.item as any}>
+              <PdfText style={styles.bullet as any}>
                 {isOrdered ? `${index + 1}.` : "•"}
               </PdfText>
-              <PdfText style={styles.content} wrap>
+              <PdfText style={styles.content as any} wrap>
                 {processedText}
               </PdfText>
             </View>
@@ -188,13 +196,13 @@ function renderList(
 /**
  * Extract plain text from a node
  */
-function extractText(node: any): string {
+function extractText(node: Node): string {
   if (node.type === "text") {
-    return node.value || ""
+    return (node as Text).value || ""
   }
 
-  if (node.children && Array.isArray(node.children)) {
-    return node.children.map((child: any) => extractText(child)).join("")
+  if ("children" in node && Array.isArray(node.children)) {
+    return node.children.map((child) => extractText(child)).join("")
   }
 
   return ""
@@ -206,13 +214,11 @@ function extractText(node: any): string {
 function extractTextFromListItem(item: ListItem): string {
   const textParts: string[] = []
 
-  item.children.forEach((child: any) => {
+  item.children.forEach((child) => {
     if (child.type === "paragraph") {
       textParts.push(extractText(child))
-    } else if (child.type === "text") {
-      textParts.push(child.value || "")
     }
-    // Skip nested lists - they'll be handled separately
+    // Skip nested lists and other block-level nodes - they'll be handled separately
   })
 
   return textParts.join(" ").trim()

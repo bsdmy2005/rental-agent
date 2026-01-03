@@ -81,14 +81,14 @@ export async function compareInspectionsAction(
           requires_repair_and_cleaning: 3
         }
 
-        const moveInSeverity = conditionSeverity[movingInItem.condition] ?? 0
-        const moveOutSeverity = conditionSeverity[movingOutItem.condition] ?? 0
+        const moveInSeverity = movingInItem.condition ? (conditionSeverity[movingInItem.condition] ?? 0) : 0
+        const moveOutSeverity = movingOutItem.condition ? (conditionSeverity[movingOutItem.condition] ?? 0) : 0
 
-        if (moveInItem.condition === moveOutItem.condition) {
+        if (movingInItem.condition === movingOutItem.condition) {
           conditionChange = "same"
         } else if (moveOutSeverity > moveInSeverity) {
           // Condition got worse
-          if (moveInItem.condition === "good" && moveOutSeverity > 0) {
+          if (movingInItem.condition === "good" && moveOutSeverity > 0) {
           conditionChange = "new_defect"
           } else {
           conditionChange = "deteriorated"

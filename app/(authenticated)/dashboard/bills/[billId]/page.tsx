@@ -120,13 +120,13 @@ export default async function BillDetailPage({
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              {billWithRules.invoiceExtractionData && (
+              {!!billWithRules.invoiceExtractionData && (
                 <p className="text-muted-foreground">
                   • <strong>Invoice data extracted:</strong> Review tenant-chargeable items and
                   generate invoices for tenants
                 </p>
               )}
-              {billWithRules.paymentExtractionData && (
+              {!!billWithRules.paymentExtractionData && (
                 <p className="text-muted-foreground">
                   • <strong>Payment data extracted:</strong> Review landlord-payable items and
                   create payment instructions

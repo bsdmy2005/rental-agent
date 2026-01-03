@@ -11,6 +11,7 @@ import {
   getRentalInvoiceInstancesByPropertyIdQuery,
   type InvoiceFilters
 } from "@/queries/rental-invoice-instances-queries"
+import type { SelectRentalInvoiceInstance } from "@/db/schema"
 import { RentalInvoicesTable } from "./rental-invoices-table"
 
 export async function RentalInvoicesList() {
@@ -26,7 +27,7 @@ export async function RentalInvoicesList() {
 
   let properties: Array<{ id: string; name: string }> = []
   let propertyIds: string[] = []
-  let allInvoices: any[] = []
+  let allInvoices: Array<SelectRentalInvoiceInstance & { propertyName: string }> = []
 
   if (userProfile.userType === "landlord") {
     const landlord = await getLandlordByUserProfileIdQuery(userProfile.id)
@@ -47,11 +48,11 @@ export async function RentalInvoicesList() {
       getRentalInvoiceInstancesByPropertyIdQuery(propertyId)
     )
     const invoiceArrays = await Promise.all(invoicePromises)
-    allInvoices = invoiceArrays.flat()
+    const rawInvoices = invoiceArrays.flat()
 
     // Enrich invoices with property and tenant names
     const propertyMap = new Map(properties.map((p) => [p.id, p.name]))
-    allInvoices = allInvoices.map((invoice) => ({
+    allInvoices = rawInvoices.map((invoice) => ({
       ...invoice,
       propertyName: propertyMap.get(invoice.propertyId) || "Unknown Property"
     }))

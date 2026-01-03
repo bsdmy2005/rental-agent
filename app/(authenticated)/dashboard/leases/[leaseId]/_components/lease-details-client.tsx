@@ -44,7 +44,7 @@ interface LeaseWithDetails {
   effectiveStartDate: Date
   effectiveEndDate: Date
   initiationMethod: "upload_existing" | "initiate_new"
-  initiationStatus: "draft" | "sent_to_tenant" | "tenant_signed" | "landlord_signed" | "fully_executed" | null
+  initiationStatus: "draft" | "sent_to_landlord" | "sent_to_tenant" | "tenant_signed" | "landlord_signed" | "fully_executed" | null
   lifecycleState: string
   signedByTenant: boolean
   signedByLandlord: boolean

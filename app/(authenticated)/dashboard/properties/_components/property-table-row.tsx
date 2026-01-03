@@ -22,8 +22,7 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
   const [formData, setFormData] = useState({
     name: property.name,
     address: property.address || "",
-    propertyType: property.propertyType || "",
-    rentalAmount: property.rentalAmount?.toString() || ""
+    propertyType: property.propertyType || ""
   })
 
   const handleUpdate = async () => {
@@ -33,8 +32,7 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
       const result = await updatePropertyAction(property.id, {
         name: formData.name,
         address: formData.address || undefined,
-        propertyType: formData.propertyType || undefined,
-        rentalAmount: formData.rentalAmount ? formData.rentalAmount : undefined
+        propertyType: formData.propertyType || undefined
       })
 
       if (result.isSuccess) {
@@ -76,8 +74,7 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
     setFormData({
       name: property.name,
       address: property.address || "",
-      propertyType: property.propertyType || "",
-      rentalAmount: property.rentalAmount?.toString() || ""
+      propertyType: property.propertyType || ""
     })
     setIsEditing(false)
   }
@@ -108,21 +105,6 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
             className="h-9"
             placeholder="e.g., Apartment, House"
           />
-        </td>
-        <td className="p-4">
-          <div className="relative">
-            <span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-xs">
-              ZAR
-            </span>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.rentalAmount}
-              onChange={(e) => setFormData({ ...formData, rentalAmount: e.target.value })}
-              className="h-9 pl-10"
-            />
-          </div>
         </td>
         <td className="p-4">
           <div className="flex justify-end gap-2">
@@ -166,9 +148,6 @@ export function PropertyTableRow({ property }: PropertyTableRowProps) {
         {property.address || "-"}
       </td>
       <td className="p-4 text-sm">{property.propertyType || "-"}</td>
-      <td className="p-4 text-sm font-medium">
-        {property.rentalAmount ? `R${property.rentalAmount}/month` : "-"}
-      </td>
       <td className="p-4">
         <div className="flex justify-end gap-2">
           <Button

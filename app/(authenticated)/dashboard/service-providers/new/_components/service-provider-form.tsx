@@ -178,7 +178,7 @@ export function ServiceProviderForm({ createdBy, onSuccess }: ServiceProviderFor
             <Label htmlFor="specialization">Specialization</Label>
             <Select
               value={formData.specialization}
-              onValueChange={(value: any) => setFormData({ ...formData, specialization: value })}
+              onValueChange={(value: "plumbing" | "electrical" | "hvac" | "general_maintenance" | "painting" | "carpentry" | "roofing" | "other") => setFormData({ ...formData, specialization: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select specialization" />

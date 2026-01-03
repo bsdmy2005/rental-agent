@@ -11,6 +11,7 @@ import { DefectForm } from "./defect-form"
 import { updateMovingInspectionItemAction } from "@/actions/moving-inspections-actions"
 import { getInspectionItemImagesAction, deleteInspectionItemImageAction } from "@/actions/inspection-attachments-actions"
 import { analyzeInspectionImageAction, analyzeInspectionImagesBatchAction } from "@/actions/inspection-ai-actions"
+import type { InspectionImageAnalysisResult, BatchInspectionImageAnalysisResult } from "@/lib/inspection-image-analysis"
 import { CameraCapture } from "@/components/utility/camera-capture"
 import { ImageGallery } from "@/components/utility/image-gallery"
 import { AIAnalysisDialog } from "./ai-analysis-dialog"
@@ -59,7 +60,7 @@ export function InspectionItemRow({
   const [showCamera, setShowCamera] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showAIDialog, setShowAIDialog] = useState(false)
-  const [aiAnalysisResult, setAIAnalysisResult] = useState<any>(null)
+  const [aiAnalysisResult, setAIAnalysisResult] = useState<InspectionImageAnalysisResult | BatchInspectionImageAnalysisResult | null>(null)
   const [aiAnalysisMode, setAIAnalysisMode] = useState<"single" | "batch">("single")
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzingImageUrls, setAnalyzingImageUrls] = useState<string[]>([])
@@ -589,7 +590,7 @@ export function InspectionItemRow({
         }}
         itemId={item.id}
         mode={aiAnalysisMode}
-        analysisResult={aiAnalysisResult}
+        analysisResult={aiAnalysisResult ?? undefined}
         loading={analyzing}
         imageUrls={analyzingImageUrls}
         onApplied={(condition, commentary) => {

@@ -101,7 +101,9 @@ function SortableSectionItem({
               {getIcon()}
               <span className="text-sm font-medium truncate">{section.title}</span>
               {section.pageBreakBefore && (
-                <SeparatorHorizontal className="h-3 w-3 text-primary flex-shrink-0" title="Starts on new page" />
+                <span title="Starts on new page">
+                  <SeparatorHorizontal className="h-3 w-3 text-primary flex-shrink-0" />
+                </span>
               )}
             </div>
             <div className="flex items-center gap-1">

@@ -43,6 +43,7 @@ interface MovingInInspection {
       name: string
     } | null
     property: {
+      id: string
       name: string
     } | null
   } | null
@@ -79,7 +80,7 @@ export function InspectionWorkflowClient({
     try {
       const result = await getActiveLeasesByPropertyAction(propertyId)
       if (result.isSuccess && result.data) {
-        setLeases(result.data as any)
+        setLeases(result.data as Lease[])
       } else {
         toast.error(result.message || "Failed to load leases")
       }

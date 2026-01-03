@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense } from "react"
 import { PublicIncidentSubmissionForm } from "./_components/public-incident-submission-form"
 
 export default function ReportIncidentPage() {
@@ -13,7 +13,9 @@ export default function ReportIncidentPage() {
             Submit a maintenance request or incident for your property
           </p>
         </div>
-        <PublicIncidentSubmissionForm />
+        <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+          <PublicIncidentSubmissionForm />
+        </Suspense>
       </div>
     </div>
   )

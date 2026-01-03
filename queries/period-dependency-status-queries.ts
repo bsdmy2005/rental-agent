@@ -69,13 +69,15 @@ export async function getPeriodDependencyStatusQuery(
     let template: { dependsOnBillTemplateIds: string[] | null } | null = null
 
     if (periodType === "invoice") {
-      template = await db.query.rentalInvoiceTemplates.findFirst({
+      const foundTemplate = await db.query.rentalInvoiceTemplates.findFirst({
         where: eq(rentalInvoiceTemplatesTable.id, templateId)
       })
+      template = foundTemplate ? { dependsOnBillTemplateIds: (foundTemplate.dependsOnBillTemplateIds as string[] | null) ?? null } : null
     } else {
-      template = await db.query.payableTemplates.findFirst({
+      const foundTemplate = await db.query.payableTemplates.findFirst({
         where: eq(payableTemplatesTable.id, templateId)
       })
+      template = foundTemplate ? { dependsOnBillTemplateIds: (foundTemplate.dependsOnBillTemplateIds as string[] | null) ?? null } : null
     }
 
     if (template && Array.isArray(template.dependsOnBillTemplateIds) && template.dependsOnBillTemplateIds.length > 0) {

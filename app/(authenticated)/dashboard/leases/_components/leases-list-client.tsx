@@ -32,7 +32,7 @@ interface LeaseWithDetails {
   effectiveStartDate: Date
   effectiveEndDate: Date
   initiationMethod: "upload_existing" | "initiate_new"
-  initiationStatus: "draft" | "sent_to_tenant" | "tenant_signed" | "landlord_signed" | "fully_executed" | null
+  initiationStatus: "draft" | "sent_to_landlord" | "landlord_signed" | "sent_to_tenant" | "tenant_signed" | "fully_executed" | null
   lifecycleState: "waiting" | "signed" | "moving_in_pending" | "active" | "escalation_due" | "moving_out_pending" | "completed"
   signedByTenant: boolean
   signedByLandlord: boolean
@@ -181,14 +181,14 @@ export function LeasesListClient({ leases }: LeasesListClientProps) {
     if (lease.signedByLandlord) {
       return "Landlord signed - Waiting for tenant"
     }
-    if (lease.initiationStatus === "sent_to_tenant") {
-      return "Awaiting tenant signature"
+    if (lease.initiationStatus === "sent_to_landlord") {
+      return "Awaiting landlord signature"
     }
     if (lease.initiationStatus === "landlord_signed") {
       return "Landlord signed - Awaiting tenant"
     }
-    if (lease.initiationStatus === "sent_to_landlord") {
-      return "Awaiting landlord signature"
+    if (lease.initiationStatus === "sent_to_tenant") {
+      return "Awaiting tenant signature"
     }
     return "Not signed"
   }

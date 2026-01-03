@@ -15,6 +15,7 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { createRentalAgentAction } from "@/actions/rental-agents-actions"
+import type { InsertRentalAgent } from "@/db/schema"
 import { completeOnboardingAction } from "@/actions/user-profiles-actions"
 import { getRentalAgenciesAction } from "@/actions/db/rental-agencies-actions"
 import { requestAgencyMembershipWithAuthAction } from "@/actions/db/agency-memberships-actions"
@@ -59,7 +60,7 @@ export function RentalAgentOnboarding({ userProfileId }: RentalAgentOnboardingPr
 
     try {
       // Create rental agent profile first
-      const agentData: any = {
+      const agentData: Omit<InsertRentalAgent, "userProfileId"> = {
         licenseNumber: formData.licenseNumber || null,
         contactEmail: formData.contactEmail || null,
         contactPhone: formData.contactPhone || null,

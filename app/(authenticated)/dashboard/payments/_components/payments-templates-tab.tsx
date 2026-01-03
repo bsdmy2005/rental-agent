@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Link as LinkIcon } from "lucide-react"
+import Link from "next/link"
 import { PayableTemplateLinkDialog } from "@/app/(authenticated)/dashboard/properties/[propertyId]/_components/payable-template-link-dialog"
 import {
   getPayableTemplatesWithReadyCountAction
@@ -92,9 +93,9 @@ export function PaymentsTemplatesTab({ properties }: PaymentsTemplatesTabProps) 
         <p>No payable templates found.</p>
         <p className="text-sm mt-2">
           Create templates from the{" "}
-          <a href="/dashboard/properties" className="text-primary underline">
+          <Link href="/dashboard/properties" className="text-primary underline">
             Properties
-          </a>{" "}
+          </Link>{" "}
           page.
         </p>
       </div>

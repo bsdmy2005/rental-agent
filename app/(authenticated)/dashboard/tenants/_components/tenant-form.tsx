@@ -27,7 +27,15 @@ export function TenantForm({ propertyId, onSuccess, userType }: TenantFormProps)
   const [loading, setLoading] = useState(false)
   const [leaseFile, setLeaseFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
-  const [extractedData, setExtractedData] = useState<any>(null)
+  const [extractedData, setExtractedData] = useState<{
+    tenantName?: string
+    tenantIdNumber?: string
+    tenantEmail?: string
+    tenantPhone?: string
+    rentalAmount?: number
+    startDate?: string
+    endDate?: string
+  } | null>(null)
   const [uploadingLease, setUploadingLease] = useState(false)
   const [markAsFullyExecuted, setMarkAsFullyExecuted] = useState(false)
   const [formData, setFormData] = useState({

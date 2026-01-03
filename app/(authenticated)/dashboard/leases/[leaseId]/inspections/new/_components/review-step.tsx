@@ -80,16 +80,16 @@ export function ReviewStep({
                 <span className="font-medium">{componentConfig.bedrooms}</span>
               </div>
             )}
-            {componentConfig.lounges && (
+            {componentConfig.lounge && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Lounges:</span>
-                <span className="font-medium">{componentConfig.lounges}</span>
+                <span className="text-muted-foreground">Lounge:</span>
+                <span className="font-medium">{componentConfig.lounge}</span>
               </div>
             )}
-            {componentConfig.livingAreas && (
+            {componentConfig.familyRoom && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Living Areas:</span>
-                <span className="font-medium">{componentConfig.livingAreas}</span>
+                <span className="text-muted-foreground">Family Room:</span>
+                <span className="font-medium">{componentConfig.familyRoom}</span>
               </div>
             )}
             {componentConfig.bathrooms && (
@@ -110,7 +110,7 @@ export function ReviewStep({
                 <Badge>Yes</Badge>
               </div>
             )}
-            {componentConfig.patio && (
+            {componentConfig.patioBalcony && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Patio / Balcony:</span>
                 <Badge>Yes</Badge>

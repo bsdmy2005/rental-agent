@@ -28,6 +28,11 @@ interface EditServiceProviderFormProps {
   onSuccess?: () => void
 }
 
+// Extended SelectedArea with id for tracking existing areas
+interface SelectedAreaWithId extends SelectedArea {
+  id?: string
+}
+
 export function EditServiceProviderForm({
   provider,
   onSuccess
@@ -35,7 +40,7 @@ export function EditServiceProviderForm({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [loadingAreas, setLoadingAreas] = useState(true)
-  const [selectedAreas, setSelectedAreas] = useState<SelectedArea[]>([])
+  const [selectedAreas, setSelectedAreas] = useState<SelectedAreaWithId[]>([])
 
   const [formData, setFormData] = useState({
     businessName: provider.businessName || "",
@@ -65,12 +70,11 @@ export function EditServiceProviderForm({
       try {
         const result = await getServiceProviderAreasAction(provider.id)
         if (result.isSuccess && result.data) {
-          const areas: SelectedArea[] = result.data.map((area) => ({
+          const areas: SelectedAreaWithId[] = result.data.map((area) => ({
             id: area.id,
             suburb: area.suburb || "",
             city: area.city || "",
-            province: area.province,
-            country: area.country || "South Africa"
+            province: area.province
           }))
           setSelectedAreas(areas)
         }
@@ -224,7 +228,7 @@ export function EditServiceProviderForm({
             <Label htmlFor="specialization">Specialization</Label>
             <Select
               value={formData.specialization}
-              onValueChange={(value: any) => setFormData({ ...formData, specialization: value })}
+              onValueChange={(value: "plumbing" | "electrical" | "hvac" | "general_maintenance" | "painting" | "carpentry" | "roofing" | "other") => setFormData({ ...formData, specialization: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select specialization" />

@@ -25,7 +25,7 @@ export async function migrateToLeaseDrivenSchedules() {
 
     let periodsGenerated = 0
     let billsMatched = 0
-    let errors: string[] = []
+    const errors: string[] = []
 
     for (const tenant of tenants) {
       try {

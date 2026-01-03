@@ -102,13 +102,7 @@ export async function testRuleAgainstSampleAction(
     console.error("Error testing rule against sample:", error)
     return {
       isSuccess: false,
-      message: "Failed to test rule",
-      data: {
-        invoiceData: null,
-        paymentData: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      }
+      message: error instanceof Error ? error.message : "Failed to test rule"
     }
   }
 }

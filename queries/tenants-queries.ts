@@ -57,6 +57,7 @@ export async function getTenantsWithPropertyQuery(tenantIds: string[]): Promise<
       rentalAmount: tenantsTable.rentalAmount,
       leaseStartDate: tenantsTable.leaseStartDate,
       leaseEndDate: tenantsTable.leaseEndDate,
+      leaseAgreementId: tenantsTable.leaseAgreementId,
       createdAt: tenantsTable.createdAt,
       updatedAt: tenantsTable.updatedAt,
       property: {

@@ -7,6 +7,7 @@ import { ActionState } from "@/types"
 import type { SelectQuoteRequest } from "@/db/schema"
 import { sendQuoteRequestViaBaileys } from "@/lib/whatsapp/baileys-rfq-service"
 import { processQuoteSubmissionFromWhatsApp } from "@/lib/whatsapp/quote-submission-handler"
+import { generateRfqCode } from "@/lib/whatsapp/rfq-code-generator"
 
 /**
  * Send quote request via WhatsApp using Baileys

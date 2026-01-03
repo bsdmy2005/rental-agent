@@ -7,8 +7,8 @@ import { getPayableTemplatesByPropertyIdAction } from "@/actions/payable-templat
 import { getRentalInvoiceTemplatesByPropertyIdAction } from "@/actions/rental-invoice-templates-actions"
 import { getPayableScheduleByTemplateIdAction } from "@/actions/payable-schedules-actions"
 import { getBillsByPropertyIdQuery } from "@/queries/bills-queries"
-import type { PaymentExtractionData } from "./pdf-processing"
-import type { SelectBill } from "@/db/schema"
+import type { PaymentExtractionData, LandlordPayableItem } from "./pdf-processing"
+import type { SelectBill, SelectPayableInstance, InsertPayableInstance } from "@/db/schema"
 import type { ActionState } from "@/types"
 
 /**
@@ -18,16 +18,7 @@ import type { ActionState } from "@/types"
 function aggregatePaymentDataFromBills(
   contributingBills: SelectBill[]
 ): PaymentExtractionData | null {
-  const allPayableItems: Array<{
-    type: string
-    amount: number
-    dueDate?: string
-    reference?: string
-    description?: string
-    beneficiaryName?: string
-    beneficiaryBankCode?: string
-    beneficiaryAccountNumber?: string
-  }> = []
+  const allPayableItems: LandlordPayableItem[] = []
   let totalAmount = 0
   let period: string | undefined
 
@@ -47,7 +38,7 @@ function aggregatePaymentDataFromBills(
       for (const item of paymentData.landlordPayableItems) {
         if (item.amount) {
           allPayableItems.push({
-            type: item.type || "other",
+            type: (item.type || "other") as "levy" | "body_corporate" | "municipality" | "other",
             amount: item.amount,
             dueDate: item.dueDate,
             reference: item.reference,
@@ -199,12 +190,12 @@ export async function updatePayableInstanceFromBills(
     // Update instance if we have data
     if (payableData) {
       const updateData: Partial<InsertPayableInstance> = {
-        payableData: payableData as any
+        payableData: payableData as unknown as Record<string, unknown>
       }
       
       // Update contributingBillIds if we re-discovered bills
       if (billsReDiscovered) {
-        updateData.contributingBillIds = contributingBills.map((b) => b.id) as any
+        updateData.contributingBillIds = contributingBills.map((b) => b.id) as string[]
       }
       
       const updateResult = await updatePayableInstanceAction(instanceId, updateData)
@@ -289,8 +280,8 @@ export async function checkAndGeneratePayables(
             periodYear,
             periodMonth,
             status: "ready",
-            contributingBillIds: contributingBills.map((b) => b.id) as any,
-            payableData: payableData as any
+            contributingBillIds: contributingBills.map((b) => b.id) as string[],
+            payableData: payableData as unknown as Record<string, unknown>
           })
 
           console.log(
@@ -368,7 +359,7 @@ export async function checkAndGenerateInvoices(
             periodYear,
             periodMonth,
             status: "ready",
-            contributingBillIds: contributingBills.map((b) => b.id) as any,
+            contributingBillIds: contributingBills.map((b) => b.id) as string[],
             invoiceData: null
           })
 
@@ -415,7 +406,7 @@ export async function manuallyCreateInvoiceInstanceAction(
     if (!dependencyResult.allMet) {
       return {
         isSuccess: false,
-        message: `Dependencies not met: ${dependencyResult.missingDependencies?.join(", ") || "Unknown"}`
+        message: `Dependencies not met: ${dependencyResult.missingBillTemplates.join(", ") || "Unknown"}`
       }
     }
 
@@ -461,7 +452,7 @@ export async function manuallyCreateInvoiceInstanceAction(
       periodYear,
       periodMonth,
       status: "ready",
-      contributingBillIds: contributingBills.map((b) => b.id) as any,
+      contributingBillIds: contributingBills.map((b) => b.id) as string[],
       invoiceData: null
     })
 

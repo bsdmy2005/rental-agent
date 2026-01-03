@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm"
 import { ActionState } from "@/types"
 import type { InvoiceData, BankingDetails } from "@/types"
 import React from "react"
-import { renderToStream } from "@react-pdf/renderer"
+import { renderToStream, type DocumentProps } from "@react-pdf/renderer"
 import {
   ClassicInvoicePDF,
   ModernInvoicePDF,
@@ -154,7 +154,7 @@ export async function generateInvoicePDFAction(
     }
 
     // Generate PDF buffer using renderToStream (more reliable than pdf().toBuffer())
-    const stream = await renderToStream(pdfDoc)
+    const stream = await renderToStream(pdfDoc as React.ReactElement<DocumentProps>)
     
     // Convert stream to buffer
     const chunks: Buffer[] = []

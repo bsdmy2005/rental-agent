@@ -2,6 +2,14 @@
 
 import { ActionState } from "@/types"
 import type { WizardState } from "./wizard-state"
+import { createExtractionRuleAction } from "@/actions/extraction-rules-actions"
+import { createBillTemplateAction } from "@/actions/bill-templates-actions"
+import { createTenantAction } from "@/actions/tenants-actions"
+import { createPayableTemplateAction } from "@/actions/payable-templates-actions"
+import { createRentalInvoiceTemplateAction } from "@/actions/rental-invoice-templates-actions"
+import { createBillArrivalScheduleAction } from "@/actions/bill-arrival-schedules-actions"
+import { createPayableScheduleAction } from "@/actions/payable-schedules-actions"
+import { generateInvoicePeriodsForLeaseAction } from "@/actions/billing-periods-actions"
 
 /**
  * Complete onboarding - at this point, all resources should already be saved
@@ -35,11 +43,21 @@ export async function completeOnboarding(
       }
     }
 
-    console.log("[Wizard Completion] ✓ All resources already saved, onboarding complete!")
-    return {
-      isSuccess: true,
-      message: "Property onboarding completed successfully",
-      data: wizardState.property.propertyId
+    const propertyId = wizardState.property.propertyId
+    if (!propertyId) {
+      return { isSuccess: false, message: "Property ID is required" }
+    }
+
+    // Get user profile for rule creation
+    const { auth } = await import("@clerk/nextjs/server")
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "Unauthorized" }
+    }
+    const { getUserProfileByClerkIdQuery } = await import("@/queries/user-profiles-queries")
+    const userProfile = await getUserProfileByClerkIdQuery(userId)
+    if (!userProfile) {
+      return { isSuccess: false, message: "User profile not found" }
     }
 
     // Step 2: Create bill templates + rules + schedules
@@ -55,7 +73,7 @@ export async function completeOnboarding(
         console.log(`[Wizard Completion] Creating extraction rule for bill template ${i + 1}...`)
         
         // Convert field mappings to extraction configs
-        const convertMappingsToConfig = (mappings: any[]): Record<string, unknown> => {
+        const convertMappingsToConfig = (mappings: Array<{ type: string; label: string; patterns: string[]; extractUsage?: boolean; extractBeneficiary?: boolean; extractAccountNumber?: boolean }>): Record<string, unknown> => {
           const fieldMappings: Record<string, unknown> = {}
           mappings.forEach((mapping) => {
             fieldMappings[mapping.type] = {
@@ -206,6 +224,9 @@ export async function completeOnboarding(
       }
 
       // Create tenant
+      const startDate = tenant.extractedData?.startDate || (tenant.manualData?.leaseStartDate ? tenant.manualData.leaseStartDate.toISOString() : null)
+      const endDate = tenant.extractedData?.endDate || (tenant.manualData?.leaseEndDate ? tenant.manualData.leaseEndDate.toISOString() : null)
+      
       const tenantResult = await createTenantAction({
         propertyId,
         name: displayData.name,
@@ -213,8 +234,8 @@ export async function completeOnboarding(
         email: displayData.email || null,
         phone: displayData.phone || null,
         rentalAmount: displayData.rentalAmount ? String(displayData.rentalAmount) : null,
-        leaseStartDate: displayData.startDate ? new Date(displayData.startDate) : null,
-        leaseEndDate: displayData.endDate ? new Date(displayData.endDate) : null
+        leaseStartDate: startDate ? new Date(startDate) : null,
+        leaseEndDate: endDate ? new Date(endDate) : null
       })
 
       if (!tenantResult.isSuccess || !tenantResult.data) {
@@ -230,14 +251,14 @@ export async function completeOnboarding(
       // Note: File objects are client-side only, so we'll handle lease uploads separately
       // For now, if extracted data has dates, we'll create a lease record without the file
       // The file can be uploaded later through the tenant detail page
-      if (displayData.startDate && displayData.endDate) {
+      if (startDate && endDate) {
         try {
           // Create a minimal lease record with dates
           // The actual PDF can be uploaded later through the tenant detail page
           const { db } = await import("@/db")
           const { leaseAgreementsTable } = await import("@/db/schema")
-          const startDate = new Date(displayData.startDate)
-          const endDate = new Date(displayData.endDate)
+          const leaseStartDate = new Date(startDate)
+          const leaseEndDate = new Date(endDate)
 
           const [lease] = await db
             .insert(leaseAgreementsTable)
@@ -246,12 +267,12 @@ export async function completeOnboarding(
               propertyId,
               fileName: "lease.pdf", // Placeholder
               fileUrl: "", // Will be updated when file is uploaded
-              extractedStartDate: startDate,
-              extractedEndDate: endDate,
+              extractedStartDate: leaseStartDate,
+              extractedEndDate: leaseEndDate,
               manualStartDate: null,
               manualEndDate: null,
-              effectiveStartDate: startDate,
-              effectiveEndDate: endDate,
+              effectiveStartDate: leaseStartDate,
+              effectiveEndDate: leaseEndDate,
               extractionData: tenant.extractedData ? (tenant.extractedData as unknown as Record<string, unknown>) : null,
               status: tenant.extractedData ? "processed" : "pending"
             })
@@ -318,19 +339,21 @@ export async function completeOnboarding(
       }
 
       // Generate invoice periods from lease dates
-      if (displayData.startDate && displayData.endDate) {
+      if (startDate && endDate) {
         try {
-          const leaseId = leaseIdMap[i] || null
-          const startDate = new Date(displayData.startDate)
-          const endDate = new Date(displayData.endDate)
+          const leaseId = leaseIdMap[i]
+          if (leaseId) {
+            const invoiceStartDate = new Date(startDate)
+            const invoiceEndDate = new Date(endDate)
 
-          await generateInvoicePeriodsForLeaseAction(
-            propertyId,
-            tenantId,
-            leaseId || undefined,
-            startDate,
-            endDate
-          )
+            await generateInvoicePeriodsForLeaseAction(
+              propertyId,
+              tenantId,
+              leaseId,
+              invoiceStartDate,
+              invoiceEndDate
+            )
+          }
           console.log(`[Wizard Completion] ✓ Invoice periods generated for tenant ${tenantId}`)
         } catch (periodError) {
           console.error(`[Wizard Completion] Error generating invoice periods:`, periodError)

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Plus, ArrowRight, Calendar } from "lucide-react"
 import { getScheduleStatusesForPropertiesAction } from "@/actions/billing-schedule-status-actions"
+import { type SelectBillingScheduleStatus } from "@/db/schema"
 
 export async function BillingSchedulesList() {
   const user = await currentUser()
@@ -108,7 +109,7 @@ export async function BillingSchedulesList() {
 
         // Count late/missed schedules
         const lateCount = statuses.filter(
-          (s) => s.status === "late" || s.status === "missed"
+          (s: SelectBillingScheduleStatus) => s.status === "late" || s.status === "missed"
         ).length
 
         return (
@@ -180,7 +181,7 @@ export async function BillingSchedulesList() {
                     <div className="divide-y">
                       {schedules.slice(0, 5).map((schedule) => {
                         const status = statuses.find(
-                          (s) =>
+                          (s: SelectBillingScheduleStatus) =>
                             s.scheduleId === schedule.id &&
                             s.periodYear === currentYear &&
                             s.periodMonth === currentMonth

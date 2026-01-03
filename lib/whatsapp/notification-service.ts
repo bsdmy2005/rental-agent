@@ -109,7 +109,7 @@ export async function getPropertyNotificationRecipients(
       notificationPreferencesTable,
       eq(notificationPreferencesTable.userProfileId, userProfilesTable.id)
     )
-    .where(eq(landlordsTable.id, landlordId))
+    .where(eq(landlordsTable.id, landlordId as string))
     .limit(1)
 
   if (landlordData.length > 0) {

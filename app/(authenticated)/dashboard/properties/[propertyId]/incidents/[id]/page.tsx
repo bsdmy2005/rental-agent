@@ -57,7 +57,14 @@ export default async function IncidentManagementPage({
   const quoteRequests = quoteRequestsResult.isSuccess && quoteRequestsResult.data ? quoteRequestsResult.data : []
 
   // Fetch timeline for incidents
-  let timelineItems: any[] = []
+  let timelineItems: Array<{
+    id: string
+    timestamp: Date
+    type: "message" | "status_change" | "photo_upload" | "assignment" | "quote_request" | "quote_approval" | "system_message" | "incident_created"
+    actor?: { type: "user" | "system" | "tenant"; name: string; id?: string }
+    content: string
+    metadata?: Record<string, unknown>
+  }> = []
   if (incident.submissionMethod === "whatsapp" && incident.submittedPhone) {
     try {
       // Find primary session for this user
@@ -217,7 +224,7 @@ export default async function IncidentManagementPage({
               incidentId={id}
               currentStatus={incident.status}
               hasApprovedQuotes={quotesResult.isSuccess && quotesResult.data
-                ? quotesResult.data.some((q) => q.status === "approved" || q.status === "completed")
+                ? quotesResult.data.some((q) => q.status === "approved")
                 : false}
               userProfileId={userProfile.id}
             />

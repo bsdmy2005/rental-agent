@@ -196,16 +196,9 @@ export function WhatsAppSetup({ userProfileId, onComplete, onSkip }: WhatsAppSet
               Continue
             </Button>
           ) : (
-            <>
-              <Button onClick={handleSkip} variant="outline" className="flex-1">
-                Skip for Now
-              </Button>
-              {connectionStatus === "connected" && (
-                <Button onClick={handleComplete} className="flex-1">
-                  Continue
-                </Button>
-              )}
-            </>
+            <Button onClick={handleSkip} variant="outline" className="flex-1">
+              Skip for Now
+            </Button>
           )}
         </div>
       </CardContent>

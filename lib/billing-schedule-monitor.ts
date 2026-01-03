@@ -24,7 +24,7 @@ export async function checkAllSchedulesForLateStatus(): Promise<{
     where: eq(billingSchedulesTable.isActive, true)
   })
 
-  let markedLate = 0
+  const markedLate = 0
   let markedMissed = 0
 
   for (const schedule of activeSchedules) {

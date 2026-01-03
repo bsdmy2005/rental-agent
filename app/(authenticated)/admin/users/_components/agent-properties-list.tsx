@@ -2,7 +2,7 @@
 
 import { getAgentPropertiesWithAssignmentsQuery } from "@/queries/agent-properties-queries"
 import { Badge } from "@/components/ui/badge"
-import { Link } from "next/link"
+import Link from "next/link"
 import { Building2, MapPin } from "lucide-react"
 
 interface AgentPropertiesListProps {

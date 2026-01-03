@@ -209,7 +209,7 @@ export function parseTwilioWebhook(formData: FormData): TwilioWebhookPayload | n
 
     for (const [key, value] of formData.entries()) {
       if (typeof value === "string") {
-        ;(payload as any)[key] = value
+        ;(payload as Record<string, string>)[key] = value
       }
     }
 

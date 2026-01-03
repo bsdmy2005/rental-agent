@@ -16,8 +16,7 @@ import {
   getAllProvinces,
   getCitiesByProvince,
   getSuburbsByCity,
-  searchSuburbs,
-  type City
+  searchSuburbs
 } from "@/lib/utils/south-africa-geography"
 import { cn } from "@/lib/utils"
 

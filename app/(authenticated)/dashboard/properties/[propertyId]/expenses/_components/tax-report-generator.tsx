@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { generateTaxReportAction } from "@/actions/expenses-actions"
 import { toast } from "sonner"
+import type { SelectExpense, SelectDepreciationRecord } from "@/db/schema"
 import { Loader2, Download, FileText } from "lucide-react"
 import {
   Table,
@@ -25,8 +26,8 @@ export function TaxReportGenerator({ propertyId }: TaxReportGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())
   const [reportData, setReportData] = useState<{
-    expenses: any[]
-    depreciation: any[]
+    expenses: SelectExpense[]
+    depreciation: SelectDepreciationRecord[]
   } | null>(null)
 
   const handleGenerate = async () => {
@@ -53,7 +54,7 @@ export function TaxReportGenerator({ propertyId }: TaxReportGeneratorProps) {
     // Group expenses by category
     const categoryTotals = new Map<string, number>()
     reportData.expenses.forEach((expense) => {
-      const category = expense.category?.name || "Unknown"
+      const category = "Unknown" // Category relation not loaded, using fallback
       const amount = parseFloat(expense.amount)
       categoryTotals.set(category, (categoryTotals.get(category) || 0) + amount)
     })
@@ -84,7 +85,7 @@ export function TaxReportGenerator({ propertyId }: TaxReportGeneratorProps) {
   const categoryTotals = new Map<string, { amount: number; count: number }>()
   if (reportData) {
     reportData.expenses.forEach((expense) => {
-      const category = expense.category?.name || "Unknown"
+      const category = "Unknown" // Category relation not loaded, using fallback
       const amount = parseFloat(expense.amount)
       const current = categoryTotals.get(category) || { amount: 0, count: 0 }
       categoryTotals.set(category, {

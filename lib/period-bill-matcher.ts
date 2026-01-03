@@ -1,7 +1,7 @@
 "use server"
 
 import { type SelectBill, billsTable, billingPeriodsTable } from "@/db/schema"
-import { findAllBillingPeriodsByYearMonthQuery } from "@/queries/billing-periods-queries"
+import { findAllBillingPeriodsByYearMonthQuery, findBillingPeriodByYearMonthQuery } from "@/queries/billing-periods-queries"
 import { db } from "@/db"
 import { periodBillMatchesTable, type InsertPeriodBillMatch } from "@/db/schema"
 import { and, eq } from "drizzle-orm"

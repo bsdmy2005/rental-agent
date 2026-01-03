@@ -85,7 +85,7 @@ export async function sendQuoteRequestWhatsApp(
   } = options
 
   // Format message
-  let message = `🔧 Quote Request: ${incidentTitle}
+    const message = `🔧 Quote Request: ${incidentTitle}
 
 Property: ${propertyName}
 Address: ${propertyAddress}

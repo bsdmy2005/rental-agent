@@ -374,8 +374,7 @@ export async function deleteServiceProviderAction(
           eq(quoteRequestsTable.serviceProviderId, providerId),
           or(
             eq(quoteRequestsTable.status, "requested"),
-            eq(quoteRequestsTable.status, "quoted"),
-            eq(quoteRequestsTable.status, "awaiting_approval")
+            eq(quoteRequestsTable.status, "quoted")
           )
         )
       )
@@ -1780,13 +1779,13 @@ export async function completeQuoteAction(
   quoteId: string
 ): Promise<ActionState<SelectQuote>> {
   try {
-    const [updatedQuote] = await db
-      .update(quotesTable)
-      .set({ status: "completed" })
+    const [quote] = await db
+      .select()
+      .from(quotesTable)
       .where(eq(quotesTable.id, quoteId))
-      .returning()
+      .limit(1)
 
-    if (!updatedQuote) {
+    if (!quote) {
       return { isSuccess: false, message: "Quote not found" }
     }
 
@@ -1794,7 +1793,7 @@ export async function completeQuoteAction(
     const [quoteRequest] = await db
       .select()
       .from(quoteRequestsTable)
-      .where(eq(quoteRequestsTable.id, updatedQuote.quoteRequestId))
+      .where(eq(quoteRequestsTable.id, quote.quoteRequestId))
       .limit(1)
 
     if (quoteRequest) {
@@ -1807,7 +1806,7 @@ export async function completeQuoteAction(
     return {
       isSuccess: true,
       message: "Quote marked as completed",
-      data: updatedQuote
+      data: quote
     }
   } catch (error) {
     console.error("Error completing quote:", error)
@@ -1845,7 +1844,7 @@ export async function getRfqComparisonAction(
     }
 
     // Find all quote requests with same RFQ code or incident
-    const conditions = []
+    const conditions: Array<ReturnType<typeof eq>> = []
     if (baseRfq.rfqCode) {
       conditions.push(eq(quoteRequestsTable.rfqCode, baseRfq.rfqCode))
     }

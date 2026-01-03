@@ -63,7 +63,7 @@ export function htmlToMarkdown(html: string): string {
           
           items.forEach((item: string, idx: number) => {
             // Extract content, removing li tags
-            let itemContent = item.replace(/<li[^>]*>|<\/li>/gi, "")
+            const itemContent = item.replace(/<li[^>]*>|<\/li>/gi, "")
             
             // Clean HTML and get text
             const textContent = cleanHtml(itemContent)

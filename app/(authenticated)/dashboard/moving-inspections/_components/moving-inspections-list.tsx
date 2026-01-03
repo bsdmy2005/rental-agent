@@ -67,25 +67,34 @@ export async function MovingInspectionsList() {
   const propertiesMap = new Map(properties.map((p) => [p.id, p]))
 
   // Map inspections with related data
-  const inspectionsWithDetails = inspections.map((inspection) => {
-    const lease = leaseAgreements.find((l) => l.id === inspection.leaseAgreementId)
-    if (!lease) {
-      return { ...inspection, leaseAgreement: null }
-    }
-
-    const tenant = tenantsMap.get(lease.tenantId) || null
-    const property = propertiesMap.get(lease.propertyId) || null
-
-    return {
-      ...inspection,
-      leaseAgreement: {
-        ...lease,
-        tenant,
-        property
+  const inspectionsWithDetails = inspections
+    .map((inspection) => {
+      const lease = leaseAgreements.find((l) => l.id === inspection.leaseAgreementId)
+      if (!lease) {
+        return null
       }
-    }
-  })
 
-  return <MovingInspectionsListClient inspections={inspectionsWithDetails as any} />
+      const tenant = tenantsMap.get(lease.tenantId)
+      const property = propertiesMap.get(lease.propertyId)
+
+      if (!tenant || !property) {
+        return null
+      }
+
+      return {
+        ...inspection,
+        leaseAgreement: {
+          tenant: {
+            name: tenant.name
+          },
+          property: {
+            name: property.name
+          }
+        }
+      }
+    })
+    .filter((inspection): inspection is NonNullable<typeof inspection> => inspection !== null)
+
+  return <MovingInspectionsListClient inspections={inspectionsWithDetails} />
 }
 

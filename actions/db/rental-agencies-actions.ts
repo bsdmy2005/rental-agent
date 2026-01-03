@@ -13,7 +13,7 @@ import { auth } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 
 export async function createRentalAgencyAction(
-  data: Omit<InsertRentalAgency, "id" | "createdAt" | "updatedAt">,
+  data: Omit<InsertRentalAgency, "id" | "createdAt" | "updatedAt" | "ownerUserProfileId">,
   ownerUserProfileId: string
 ): Promise<ActionState<SelectRentalAgency>> {
   try {

@@ -39,10 +39,11 @@ interface LeaseData {
   escalationPercentage?: number
   escalationFixedAmount?: number
   specialConditions?: string
+  templateFieldValues?: Record<string, string> // Custom template field values
   signedAtLocation?: string // Location where the lease will be signed
   isDraft?: boolean
-  tenantSignatureData?: any
-  landlordSignatureData?: any
+  tenantSignatureData?: { image: string; signedAt?: string } | string | null
+  landlordSignatureData?: { image: string; signedAt?: string } | string | null
 }
 
 const styles = StyleSheet.create({
@@ -484,7 +485,7 @@ export async function generateLeasePDFFromIdAction(
 
     // Check if landlord details were stored in extractionData during lease initiation
     if (lease.extractionData && typeof lease.extractionData === 'object' && 'landlordDetails' in lease.extractionData) {
-      const storedDetails = (lease.extractionData as any).landlordDetails
+      const storedDetails = (lease.extractionData as { landlordDetails?: { name?: string; idNumber?: string; address?: string; email?: string; phone?: string; bankDetails?: { bankName?: string; accountHolderName?: string; accountNumber?: string; branchCode?: string } } }).landlordDetails
       if (storedDetails) {
         landlordName = storedDetails.name || ""
         landlordIdNumber = storedDetails.idNumber || ""
@@ -549,20 +550,20 @@ export async function generateLeasePDFFromIdAction(
     }
 
     // Handle signature data - ensure it's in the correct format
-    let tenantSignatureData = undefined
+    let tenantSignatureData: { image: string; signedAt?: string } | string | null | undefined = undefined
     if (includeSignatures && lease.signedByTenant && lease.tenantSignatureData) {
       const sigData = lease.tenantSignatureData
       tenantSignatureData = typeof sigData === "string" 
         ? { image: sigData, signedAt: lease.tenantCompletedAt?.toISOString() || new Date().toISOString() }
-        : sigData
+        : (sigData as { image: string; signedAt?: string } | string)
     }
 
-    let landlordSignatureData = undefined
+    let landlordSignatureData: { image: string; signedAt?: string } | string | null | undefined = undefined
     if (includeSignatures && lease.signedByLandlord && lease.landlordSignatureData) {
       const sigData = lease.landlordSignatureData
       landlordSignatureData = typeof sigData === "string"
         ? { image: sigData, signedAt: lease.landlordCompletedAt?.toISOString() || new Date().toISOString() }
-        : sigData
+        : (sigData as { image: string; signedAt?: string } | string)
     }
 
     // Get tenant details - prioritize stored details from extractionData, then database
@@ -574,7 +575,7 @@ export async function generateLeasePDFFromIdAction(
 
     // Check if tenant details were stored in extractionData during lease initiation
     if (lease.extractionData && typeof lease.extractionData === 'object' && 'tenantDetails' in lease.extractionData) {
-      const storedTenantDetails = (lease.extractionData as any).tenantDetails
+      const storedTenantDetails = (lease.extractionData as { tenantDetails?: { name?: string; idNumber?: string; email?: string; phone?: string; address?: string } }).tenantDetails
       if (storedTenantDetails) {
         tenantName = storedTenantDetails.name || tenantName
         tenantIdNumber = storedTenantDetails.idNumber || tenantIdNumber
@@ -594,10 +595,10 @@ export async function generateLeasePDFFromIdAction(
     let signedAtLocation: string | undefined = undefined
     if (lease.extractionData && typeof lease.extractionData === 'object') {
       if ('templateFieldValues' in lease.extractionData) {
-        templateFieldValues = (lease.extractionData as any).templateFieldValues || undefined
+        templateFieldValues = (lease.extractionData as { templateFieldValues?: Record<string, string> }).templateFieldValues || undefined
       }
       if ('signedAtLocation' in lease.extractionData) {
-        signedAtLocation = (lease.extractionData as any).signedAtLocation || undefined
+        signedAtLocation = (lease.extractionData as { signedAtLocation?: string }).signedAtLocation || undefined
       }
     }
 
@@ -637,7 +638,7 @@ export async function generateLeasePDFFromIdAction(
 
     // Get templateId from extractionData if available
     const templateId = lease.extractionData && typeof lease.extractionData === 'object' && 'templateId' in lease.extractionData
-      ? (lease.extractionData as any).templateId
+      ? (lease.extractionData as { templateId?: string }).templateId
       : undefined
 
     // Use template-based generation

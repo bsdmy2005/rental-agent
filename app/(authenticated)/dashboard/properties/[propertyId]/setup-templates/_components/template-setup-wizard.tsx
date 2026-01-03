@@ -61,7 +61,7 @@ export function TemplateSetupWizard({ propertyId }: TemplateSetupWizardProps) {
     setBillTemplates(billTemplates.filter((_, i) => i !== index))
   }
 
-  const updateBillTemplate = (index: number, field: keyof BillTemplate, value: any) => {
+  const updateBillTemplate = (index: number, field: keyof BillTemplate, value: string | number | null) => {
     const updated = [...billTemplates]
     updated[index] = { ...updated[index], [field]: value }
     setBillTemplates(updated)
@@ -78,7 +78,7 @@ export function TemplateSetupWizard({ propertyId }: TemplateSetupWizardProps) {
     setPayableTemplates(payableTemplates.filter((_, i) => i !== index))
   }
 
-  const updatePayableTemplate = (index: number, field: keyof PayableTemplate, value: any) => {
+  const updatePayableTemplate = (index: number, field: keyof PayableTemplate, value: string | string[] | number | null) => {
     const updated = [...payableTemplates]
     updated[index] = { ...updated[index], [field]: value }
     setPayableTemplates(updated)
@@ -140,7 +140,7 @@ export function TemplateSetupWizard({ propertyId }: TemplateSetupWizardProps) {
           propertyId,
           name: template.name.trim(),
           description: null,
-          dependsOnBillTemplateIds: template.dependsOnBillTemplateIds as any,
+          dependsOnBillTemplateIds: template.dependsOnBillTemplateIds,
           isActive: true
         })
 
@@ -258,7 +258,7 @@ export function TemplateSetupWizard({ propertyId }: TemplateSetupWizardProps) {
                     <Label>Bill Type</Label>
                     <Select
                       value={template.billType}
-                      onValueChange={(value: any) =>
+                      onValueChange={(value: "municipality" | "levy" | "utility" | "other") =>
                         updateBillTemplate(index, "billType", value)
                       }
                     >

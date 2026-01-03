@@ -41,8 +41,8 @@ interface InspectionPDFData {
       isRepairable: boolean
     }>
   }>
-  tenantSignatureData?: any
-  landlordSignatureData?: any
+  tenantSignatureData?: { image: string; signedAt?: string } | string | null
+  landlordSignatureData?: { image: string; signedAt?: string } | string | null
   signedAt?: Date
 }
 
@@ -795,7 +795,7 @@ const MoveOutReportPDFTemplate: React.FC<{
                     key={comparison.itemId} 
                     style={[
                       styles.comparisonRow,
-                      hasChange && styles.changeHighlight
+                      ...(hasChange ? [styles.changeHighlight] : [])
                     ]}
                   >
                     <Text style={[styles.comparisonCell, { width: "30%" }]}>
@@ -954,7 +954,7 @@ async function getInspectionDataForPDF(inspectionId: string): Promise<ActionStat
         roomInstanceNumber: item.roomInstanceNumber,
         isPresent: item.isPresent,
         notes: item.notes,
-        condition: item.condition,
+        condition: item.condition || "",
         defects: item.defects.map(defect => ({
           id: defect.id,
           description: defect.description,
@@ -962,8 +962,12 @@ async function getInspectionDataForPDF(inspectionId: string): Promise<ActionStat
           isRepairable: defect.isRepairable
         }))
       })),
-      tenantSignatureData: inspection.tenantSignatureData?.image || inspection.tenantSignatureData,
-      landlordSignatureData: inspection.landlordSignatureData?.image || inspection.landlordSignatureData,
+      tenantSignatureData: (inspection.tenantSignatureData && typeof inspection.tenantSignatureData === 'object' && 'image' in inspection.tenantSignatureData
+        ? (inspection.tenantSignatureData as { image: string; signedAt?: string }).image
+        : inspection.tenantSignatureData) as string | { image: string; signedAt?: string } | null | undefined,
+      landlordSignatureData: (inspection.landlordSignatureData && typeof inspection.landlordSignatureData === 'object' && 'image' in inspection.landlordSignatureData
+        ? (inspection.landlordSignatureData as { image: string; signedAt?: string }).image
+        : inspection.landlordSignatureData) as string | { image: string; signedAt?: string } | null | undefined,
       signedAt: inspection.signedAt || undefined
     }
 

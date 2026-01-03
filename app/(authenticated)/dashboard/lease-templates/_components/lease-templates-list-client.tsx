@@ -25,7 +25,7 @@ import { useState } from "react"
 interface LeaseTemplate {
   id: string
   name: string
-  templateData: any
+  templateData: Record<string, unknown>
   isDefault: boolean
   createdAt: Date | string
   updatedAt: Date | string

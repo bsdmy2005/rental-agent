@@ -212,7 +212,11 @@ You must return a valid JSON object with the following structure:
     }
 
     // Parse the JSON response
-    let parsed: any
+    let parsed: {
+      condition: string
+      commentary: string
+      confidence: number
+    }
     try {
       parsed = JSON.parse(content)
       console.log(`[Inspection Image Analysis] ✓ Successfully parsed JSON response`)
@@ -361,7 +365,12 @@ You must return a valid JSON object with the following structure:
     }
 
     // Parse the JSON response
-    let parsed: any
+    let parsed: {
+      overallCondition: string
+      overallCommentary: string
+      overallConfidence: number
+      imageAnalyses: Array<{ imageIndex: number; condition: string; commentary: string; confidence: number }>
+    }
     try {
       parsed = JSON.parse(outputText)
       console.log(`[Inspection Image Analysis] ✓ Successfully parsed JSON response`)
@@ -375,7 +384,7 @@ You must return a valid JSON object with the following structure:
       overallCondition: parsed.overallCondition as ItemCondition,
       overallCommentary: parsed.overallCommentary,
       overallConfidence: parsed.overallConfidence,
-      imageAnalyses: parsed.imageAnalyses.map((analysis: any) => ({
+      imageAnalyses: parsed.imageAnalyses.map((analysis) => ({
         imageIndex: analysis.imageIndex,
         condition: analysis.condition as ItemCondition,
         commentary: analysis.commentary,

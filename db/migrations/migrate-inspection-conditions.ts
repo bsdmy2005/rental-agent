@@ -10,8 +10,8 @@
  * npx tsx db/migrations/migrate-inspection-conditions.ts
  */
 
-import { db } from "../db"
-import { movingInspectionItemsTable } from "../schema"
+import { db } from "@/db"
+import { movingInspectionItemsTable } from "@/db/schema"
 import { isNotNull, sql } from "drizzle-orm"
 
 async function migrateInspectionConditions() {

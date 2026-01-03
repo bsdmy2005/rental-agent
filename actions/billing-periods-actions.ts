@@ -121,7 +121,8 @@ function generatePayablePeriodsManually(
   propertyId: string,
   startDate: Date,
   durationMonths: number,
-  expectedBillTypes?: string[]
+  payableTemplateId: string,
+  scheduledDayOfMonth: number
 ): InsertBillingPeriod[] {
   console.log(
     `[Period Generator] Generating ${durationMonths} payable periods starting from ${startDate.toISOString()}`
@@ -144,12 +145,14 @@ function generatePayablePeriodsManually(
     propertyId,
     tenantId: null, // Payables don't have tenant
     leaseAgreementId: null, // Payables are independent of leases
+    payableTemplateId,
     periodType: "payable",
     periodYear: period.year,
     periodMonth: period.month,
     periodStartDate: period.periodStartDate,
     periodEndDate: period.periodEndDate,
-    expectedBillTypes: expectedBillTypes ? (expectedBillTypes as unknown as Record<string, unknown>) : null,
+    scheduledPaymentDay: scheduledDayOfMonth,
+    expectedBillTypes: null,
     generationSource: "manual",
     isActive: true
   }))

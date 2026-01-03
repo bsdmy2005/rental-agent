@@ -22,8 +22,7 @@ import { assignRentalAgentToPropertyAction } from "@/actions/property-management
 import { getAgencyPropertiesAction } from "@/actions/db/agency-properties-actions"
 import { getAgencyMembersAction } from "@/actions/db/agency-members-actions"
 import { toast } from "sonner"
-import type { SelectProperty } from "@/db/schema"
-import type { SelectRentalAgent } from "@/db/schema"
+import type { SelectProperty, SelectRentalAgent, SelectUserProfile } from "@/db/schema"
 
 interface AssignPropertyToAgentDialogProps {
   agencyId: string
@@ -33,15 +32,9 @@ export function AssignPropertyToAgentDialog({ agencyId }: AssignPropertyToAgentD
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [properties, setProperties] = useState<SelectProperty[]>([])
-  const [agents, setAgents] = useState<Array<SelectRentalAgent & { userProfile: any }>>([])
+  const [agents, setAgents] = useState<Array<SelectRentalAgent & { userProfile: SelectUserProfile }>>([])
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("")
   const [selectedAgentId, setSelectedAgentId] = useState<string>("")
-
-  useEffect(() => {
-    if (open) {
-      loadData()
-    }
-  }, [open, agencyId])
 
   const loadData = async () => {
     try {
@@ -68,6 +61,13 @@ export function AssignPropertyToAgentDialog({ agencyId }: AssignPropertyToAgentD
       toast.error("Failed to load data")
     }
   }
+
+  useEffect(() => {
+    if (open) {
+      loadData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agencyId])
 
   const handleSubmit = async () => {
     if (!selectedPropertyId || !selectedAgentId) {

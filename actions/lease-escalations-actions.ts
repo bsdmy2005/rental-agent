@@ -7,7 +7,7 @@ import {
   type SelectLeaseEscalation
 } from "@/db/schema"
 import { ActionState } from "@/types"
-import { eq, and, gte } from "drizzle-orm"
+import { eq, and, gte, lte } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
 
 export async function createLeaseEscalationAction(
@@ -74,7 +74,7 @@ export async function getUpcomingEscalationsAction(
     const escalations = await db.query.leaseEscalations.findMany({
       where: and(
         gte(leaseEscalationsTable.escalationDate, new Date()),
-        gte(cutoffDate, leaseEscalationsTable.escalationDate)
+        lte(leaseEscalationsTable.escalationDate, cutoffDate)
       ),
       orderBy: (escalations, { asc }) => [asc(escalations.escalationDate)]
     })

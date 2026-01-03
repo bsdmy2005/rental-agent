@@ -35,7 +35,7 @@ export function PayableTemplateLinkDialog({
   const router = useRouter()
   const [bankAccountId, setBankAccountId] = useState<string | null>(template.bankAccountId || null)
   const [beneficiaryId, setBeneficiaryId] = useState<string | null>(
-    (template as any).beneficiaryId || null
+    template.beneficiaryId || null
   )
   const [loading, setLoading] = useState(false)
 

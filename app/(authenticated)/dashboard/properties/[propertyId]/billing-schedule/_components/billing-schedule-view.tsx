@@ -179,7 +179,7 @@ export function BillingScheduleView({
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as any)}>
+              <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as "all" | "current" | "future" | "past")}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue />
                 </SelectTrigger>

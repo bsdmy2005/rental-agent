@@ -165,7 +165,7 @@ export function RuleTester({ ruleId, samples, onTestComplete }: RuleTesterProps)
 
                     {result.success && (
                       <div className="space-y-2">
-                        {result.invoiceData && (
+                        {!!result.invoiceData && (
                           <div className="rounded-md bg-green-50 p-2">
                             <p className="text-green-800 text-xs font-medium">
                               Invoice Extraction Data:
@@ -176,7 +176,7 @@ export function RuleTester({ ruleId, samples, onTestComplete }: RuleTesterProps)
                           </div>
                         )}
 
-                        {result.paymentData && (
+                        {!!result.paymentData && (
                           <div className="rounded-md bg-blue-50 p-2">
                             <p className="text-blue-800 text-xs font-medium">
                               Payment Extraction Data:

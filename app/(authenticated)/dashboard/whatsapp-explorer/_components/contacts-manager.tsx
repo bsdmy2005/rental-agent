@@ -12,9 +12,9 @@ import {
   createContactAction,
   getContactsAction,
   updateContactAction,
-  deleteContactAction,
-  type SelectWhatsappContact
+  deleteContactAction
 } from "@/actions/whatsapp-contacts-actions"
+import type { SelectWhatsappContact } from "@/db/schema"
 import { Loader2, Plus, Edit, Trash2, Star, StarOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"

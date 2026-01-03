@@ -622,13 +622,13 @@ export function BillsTable({ bills, properties }: BillsTableProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 flex-wrap">
-                            {bill.invoiceExtractionData && (
+                            {!!bill.invoiceExtractionData && (
                               <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                                 <FileText className="mr-1 h-3 w-3" />
                                 Invoice
                               </Badge>
                             )}
-                            {bill.paymentExtractionData && (
+                            {!!bill.paymentExtractionData && (
                               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
                                 <DollarSign className="mr-1 h-3 w-3" />
                                 Payment

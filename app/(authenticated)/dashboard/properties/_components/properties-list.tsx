@@ -9,6 +9,7 @@ import {
   type PropertyWithDetails
 } from "@/queries/properties-queries"
 import { getScheduleStatusesForPropertiesAction } from "@/actions/billing-schedule-status-actions"
+import { SelectBillingScheduleStatus } from "@/db/schema"
 import { PropertiesListClient } from "./properties-list-client"
 
 export async function PropertiesList() {
@@ -51,7 +52,7 @@ export async function PropertiesList() {
   const propertiesWithLateCounts = properties.map((property) => {
     const statuses = statusesByProperty.get(property.id) || []
     const lateCount = statuses.filter(
-      (s) => s.status === "late" || s.status === "missed"
+      (s: SelectBillingScheduleStatus) => s.status === "late" || s.status === "missed"
     ).length
 
     return {

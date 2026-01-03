@@ -271,7 +271,7 @@ export async function createInvoiceInstanceFromPeriodAction(
     if (!dependencyResult.allMet) {
       return {
         isSuccess: false,
-        message: `Dependencies not met: ${dependencyResult.missingDependencies?.join(", ") || "Unknown"}`
+        message: `Dependencies not met: ${dependencyResult.missingBillTemplates?.join(", ") || "Unknown"}`
       }
     }
 
@@ -380,7 +380,7 @@ export async function generateInvoiceDataAction(
       )
     })
 
-    if (propertyManagement) {
+    if (propertyManagement && propertyManagement.rentalAgentId) {
       const rentalAgent = await db.query.rentalAgents.findFirst({
         where: eq(rentalAgentsTable.id, propertyManagement.rentalAgentId)
       })
@@ -533,7 +533,7 @@ export async function generateInvoiceDataAction(
               ? `Electricity${item.usage ? ` (${item.usage} kWh)` : ""}`
               : item.type === "sewerage"
                 ? `Sewerage`
-                : `${item.type.charAt(0).toUpperCase() + item.type.slice(1)} Charge`
+                : `${(item.type as string).charAt(0).toUpperCase() + (item.type as string).slice(1)} Charge`
 
         lineItems.push({
           id: randomUUID(),

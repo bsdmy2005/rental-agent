@@ -115,7 +115,7 @@ export function BillExtractedDataDialog({
               <CardContent className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">File Name:</span>
-                  <span className="text-sm">{bill.fileName}</span>
+                  <span className="text-sm">{String(bill.fileName || "")}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Bill Type:</span>
@@ -161,120 +161,126 @@ export function BillExtractedDataDialog({
             </Card>
 
             {/* Invoice Extraction Data */}
-            {bill.invoiceExtractionData && (
+            {!!bill.invoiceExtractionData && (() => {
+              const invoiceData = bill.invoiceExtractionData as Record<string, unknown>
+              return (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Invoice Data</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {bill.invoiceExtractionData.invoiceNumber && (
+                    {!!invoiceData.invoiceNumber && (
                       <div>
                         <span className="font-medium">Invoice Number:</span>
-                        <p className="text-muted-foreground">{bill.invoiceExtractionData.invoiceNumber}</p>
+                        <p className="text-muted-foreground">{String(invoiceData.invoiceNumber)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.amount !== null && bill.invoiceExtractionData.amount !== undefined && (
+                    {invoiceData.amount !== null && invoiceData.amount !== undefined && (
                       <div>
                         <span className="font-medium">Amount:</span>
-                        <p className="text-muted-foreground">{formatCurrency(bill.invoiceExtractionData.amount)}</p>
+                        <p className="text-muted-foreground">{formatCurrency(invoiceData.amount as number)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.dueDate && (
+                    {!!invoiceData.dueDate && (
                       <div>
                         <span className="font-medium">Due Date:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.invoiceExtractionData.dueDate)}</p>
+                        <p className="text-muted-foreground">{formatDate(invoiceData.dueDate as string)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.period && (
+                    {!!invoiceData.period && (
                       <div>
                         <span className="font-medium">Period:</span>
-                        <p className="text-muted-foreground">{bill.invoiceExtractionData.period}</p>
+                        <p className="text-muted-foreground">{String(invoiceData.period)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.periodStart && (
+                    {!!invoiceData.periodStart && (
                       <div>
                         <span className="font-medium">Period Start:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.invoiceExtractionData.periodStart)}</p>
+                        <p className="text-muted-foreground">{formatDate(invoiceData.periodStart as string)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.periodEnd && (
+                    {!!invoiceData.periodEnd && (
                       <div>
                         <span className="font-medium">Period End:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.invoiceExtractionData.periodEnd)}</p>
+                        <p className="text-muted-foreground">{formatDate(invoiceData.periodEnd as string)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.accountNumber && (
+                    {!!invoiceData.accountNumber && (
                       <div>
                         <span className="font-medium">Account Number:</span>
-                        <p className="text-muted-foreground">{bill.invoiceExtractionData.accountNumber}</p>
+                        <p className="text-muted-foreground">{String(invoiceData.accountNumber)}</p>
                       </div>
                     )}
-                    {bill.invoiceExtractionData.reference && (
+                    {!!invoiceData.reference && (
                       <div>
                         <span className="font-medium">Reference:</span>
-                        <p className="text-muted-foreground">{bill.invoiceExtractionData.reference}</p>
+                        <p className="text-muted-foreground">{String(invoiceData.reference)}</p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
-            )}
+              )
+            })()}
 
             {/* Payment Extraction Data */}
-            {bill.paymentExtractionData && (
+            {!!bill.paymentExtractionData && (() => {
+              const paymentData = bill.paymentExtractionData as Record<string, unknown>
+              return (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Payment Data</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {bill.paymentExtractionData.amount !== null && bill.paymentExtractionData.amount !== undefined && (
+                    {paymentData.amount !== null && paymentData.amount !== undefined && (
                       <div>
                         <span className="font-medium">Amount:</span>
-                        <p className="text-muted-foreground">{formatCurrency(bill.paymentExtractionData.amount)}</p>
+                        <p className="text-muted-foreground">{formatCurrency(paymentData.amount as number)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.dueDate && (
+                    {!!paymentData.dueDate && (
                       <div>
                         <span className="font-medium">Due Date:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.paymentExtractionData.dueDate)}</p>
+                        <p className="text-muted-foreground">{formatDate(paymentData.dueDate as string)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.period && (
+                    {!!paymentData.period && (
                       <div>
                         <span className="font-medium">Period:</span>
-                        <p className="text-muted-foreground">{bill.paymentExtractionData.period}</p>
+                        <p className="text-muted-foreground">{String(paymentData.period)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.periodStart && (
+                    {!!paymentData.periodStart && (
                       <div>
                         <span className="font-medium">Period Start:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.paymentExtractionData.periodStart)}</p>
+                        <p className="text-muted-foreground">{formatDate(paymentData.periodStart as string)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.periodEnd && (
+                    {!!paymentData.periodEnd && (
                       <div>
                         <span className="font-medium">Period End:</span>
-                        <p className="text-muted-foreground">{formatDate(bill.paymentExtractionData.periodEnd)}</p>
+                        <p className="text-muted-foreground">{formatDate(paymentData.periodEnd as string)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.accountNumber && (
+                    {!!paymentData.accountNumber && (
                       <div>
                         <span className="font-medium">Account Number:</span>
-                        <p className="text-muted-foreground">{bill.paymentExtractionData.accountNumber}</p>
+                        <p className="text-muted-foreground">{String(paymentData.accountNumber)}</p>
                       </div>
                     )}
-                    {bill.paymentExtractionData.reference && (
+                    {!!paymentData.reference && (
                       <div>
                         <span className="font-medium">Reference:</span>
-                        <p className="text-muted-foreground">{bill.paymentExtractionData.reference}</p>
+                        <p className="text-muted-foreground">{String(paymentData.reference)}</p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
-            )}
+              )
+            })()}
 
             {!bill.invoiceExtractionData && !bill.paymentExtractionData && (
               <div className="text-center py-8 text-muted-foreground">

@@ -129,7 +129,7 @@ export default async function RuleDetailPage({
                     </pre>
                   </div>
                 )}
-                {rule.emailFilter && (
+                {!!rule.emailFilter && (
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Email Filter:</p>
                     <pre className="mt-1 overflow-auto rounded-md bg-muted p-2 text-xs">

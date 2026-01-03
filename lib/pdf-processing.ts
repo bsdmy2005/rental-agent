@@ -208,7 +208,7 @@ async function uploadPDFToOpenAI(fileBuffer: Buffer, fileName: string): Promise<
     console.log(`[PDF Upload] File object type: ${file.type}`)
 
     // Wait for file to be processed (OpenAI needs to process the file before it can be used)
-    let fileStatus = fileResponse.status
+    let fileStatus: string = fileResponse.status
     let attempts = 0
     const maxAttempts = 60 // Wait up to 60 seconds (PDFs can take longer to process)
 
@@ -400,21 +400,23 @@ async function extractWithStructuredOutputs(
     }
 
     // Parse the JSON response
-    let parsed: any
+    let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(outputText)
       console.log(`[PDF Extraction] ✓ Successfully parsed JSON response`)
       console.log(`[PDF Extraction] Parsed data keys:`, Object.keys(parsed))
       if (purpose === "invoice_generation" && "tenantChargeableItems" in parsed) {
-        console.log(`[PDF Extraction] Invoice data - tenantChargeableItems count: ${parsed.tenantChargeableItems?.length || 0}`)
-        if (parsed.tenantChargeableItems?.length > 0) {
-          console.log(`[PDF Extraction] First item:`, JSON.stringify(parsed.tenantChargeableItems[0], null, 2))
+        const items = parsed.tenantChargeableItems as unknown[] | undefined
+        console.log(`[PDF Extraction] Invoice data - tenantChargeableItems count: ${items?.length || 0}`)
+        if (items && items.length > 0) {
+          console.log(`[PDF Extraction] First item:`, JSON.stringify(items[0], null, 2))
         }
       }
       if (purpose === "payment_processing" && "landlordPayableItems" in parsed) {
-        console.log(`[PDF Extraction] Payment data - landlordPayableItems count: ${parsed.landlordPayableItems?.length || 0}`)
-        if (parsed.landlordPayableItems?.length > 0) {
-          console.log(`[PDF Extraction] First item:`, JSON.stringify(parsed.landlordPayableItems[0], null, 2))
+        const items = parsed.landlordPayableItems as unknown[] | undefined
+        console.log(`[PDF Extraction] Payment data - landlordPayableItems count: ${items?.length || 0}`)
+        if (items && items.length > 0) {
+          console.log(`[PDF Extraction] First item:`, JSON.stringify(items[0], null, 2))
         }
       }
     } catch (parseError) {
@@ -427,7 +429,7 @@ async function extractWithStructuredOutputs(
     // This is needed because OpenAI strict mode requires all properties to be in required array
     // but we make optional fields nullable, then convert null to undefined here
     if (purpose === "invoice_generation" && "tenantChargeableItems" in parsed) {
-      const invoiceData = parsed as InvoiceExtractionData
+      const invoiceData = parsed as unknown as InvoiceExtractionData
       // Clean up null values in tenantChargeableItems
       invoiceData.tenantChargeableItems = invoiceData.tenantChargeableItems.map(item => ({
         ...item,
@@ -452,7 +454,7 @@ async function extractWithStructuredOutputs(
       return invoiceData
     }
     
-    return parsed as InvoiceExtractionData | PaymentExtractionData
+    return parsed as unknown as InvoiceExtractionData | PaymentExtractionData
   } catch (error) {
     console.error(`Error extracting data for ${purpose} using Responses API:`, error)
     // Fallback to chat completions if Responses API fails

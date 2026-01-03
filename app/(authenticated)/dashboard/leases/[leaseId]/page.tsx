@@ -92,8 +92,22 @@ export default async function LeaseDetailsPage({ params }: LeaseDetailsPageProps
       <LeaseDetailsClient
         lease={{
           ...lease,
-          tenant: tenant || null,
-          property: property || null
+          tenant: tenant
+            ? {
+                id: tenant.id,
+                name: tenant.name,
+                email: tenant.email
+              }
+            : null,
+          property: property
+            ? {
+                id: property.id,
+                name: property.name,
+                streetAddress: property.streetAddress,
+                suburb: property.suburb,
+                province: property.province
+              }
+            : null
         }}
         moveInInspection={moveInInspection ? {
           id: moveInInspection.id,
