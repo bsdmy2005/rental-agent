@@ -1,5 +1,3 @@
-"use server"
-
 import { HeaderWrapper } from "./(unauthenticated)/(marketing)/_components/header-wrapper"
 import { Footer } from "./(unauthenticated)/(marketing)/_components/footer"
 import { SiteBanner } from "./(unauthenticated)/(marketing)/_components/site-banner"
