@@ -337,6 +337,13 @@
       "when": 1767341972694,
       "tag": "0047_wet_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1767445407102,
+      "tag": "0048_brown_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

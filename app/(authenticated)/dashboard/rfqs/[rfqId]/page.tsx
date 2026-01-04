@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, Copy, CheckCircle } from "lucide-react"
+import { ArrowLeft, Copy, CheckCircle, Users, FileText } from "lucide-react"
 import { RfqComparisonTable } from "@/components/rfq-comparison-table"
 import { getRfqComparisonAction } from "@/actions/service-providers-actions"
+import { getRfqsInGroupQuery } from "@/queries/rfqs-queries"
 import { format } from "date-fns"
 import { RfqCodeManagement } from "./_components/rfq-code-management"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 async function getRfqDetails(rfqId: string) {
   const [rfq] = await db
@@ -79,9 +81,17 @@ export default async function RfqDetailPage({
     return <div>Property not found for this RFQ</div>
   }
 
-  // Get quotes for comparison
+  // Get quotes for comparison (aggregated from all RFQs in the group)
   const quotesResult = await getRfqComparisonAction(rfqId)
-  const quotes = quotesResult.isSuccess && quotesResult.data ? quotesResult.data : []
+  const comparisonData = quotesResult.isSuccess && quotesResult.data ? quotesResult.data : {
+    quotes: [],
+    cheapestQuoteId: null,
+    totalQuotes: 0,
+    totalProviders: 0
+  }
+
+  // Get all RFQs in the same group
+  const rfqsInGroup = await getRfqsInGroupQuery(rfqId)
 
   function getStatusBadge(status: string) {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -119,10 +129,46 @@ export default async function RfqDetailPage({
               </span>
             )}
             Created {format(new Date(rfq.requestedAt), "MMM dd, yyyy")}
+            {rfqsInGroup.length > 1 && (
+              <span className="ml-2">
+                • {rfqsInGroup.length} provider{rfqsInGroup.length !== 1 ? "s" : ""} in this group
+              </span>
+            )}
           </p>
         </div>
         {getStatusBadge(rfq.status)}
       </div>
+
+      {/* Quote Comparison Table - Prominently displayed at the top */}
+      {comparisonData.quotes.length > 0 && (
+        <Card className="border-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">Quote Comparison</CardTitle>
+                <CardDescription className="mt-2">
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      {comparisonData.totalProviders} provider{comparisonData.totalProviders !== 1 ? "s" : ""}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      {comparisonData.totalQuotes} quote{comparisonData.totalQuotes !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RfqComparisonTable
+              quotes={comparisonData.quotes}
+              cheapestQuoteId={comparisonData.cheapestQuoteId}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -191,82 +237,69 @@ export default async function RfqDetailPage({
         </Card>
       </div>
 
-      {quotes.length > 0 && (
+      {/* RFQ Group Information - Collapsible */}
+      {rfqsInGroup.length > 1 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Received Quotes</CardTitle>
-            <CardDescription>
-              {quotes.length} quote{quotes.length !== 1 ? "s" : ""} received for this RFQ
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {quotes.map((quote) => (
-                <div
-                  key={quote.id}
-                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg">
-                          {quote.providerBusinessName || quote.providerName}
-                        </h3>
-                        {getStatusBadge(quote.status)}
-                        <Badge variant="outline">
-                          {quote.submissionMethod === "web_form" ? "Web Portal" : "Email"}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Amount</p>
-                          <p className="font-semibold">{quote.amount}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Completion Date</p>
-                          <p>
-                            {quote.estimatedCompletionDate
-                              ? format(new Date(quote.estimatedCompletionDate), "MMM dd, yyyy")
-                              : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Submission Code</p>
-                          <p className="font-mono text-xs">{quote.submissionCode || "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Submitted</p>
-                          <p>{format(new Date(quote.submittedAt), "MMM dd, yyyy")}</p>
-                        </div>
-                      </div>
-                      {quote.description && (
-                        <div className="mt-3">
-                          <p className="text-sm text-muted-foreground">Description</p>
-                          <p className="text-sm">{quote.description}</p>
-                        </div>
-                      )}
-                    </div>
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>RFQ Group</CardTitle>
+                    <CardDescription>
+                      {rfqsInGroup.length} RFQ{rfqsInGroup.length !== 1 ? "s" : ""} in this group
+                    </CardDescription>
                   </div>
+                  <Button variant="ghost" size="sm">
+                    View All
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-2">
+                  {rfqsInGroup.map((rfqWithRelations) => (
+                    <Link
+                      key={rfqWithRelations.rfq.id}
+                      href={`/dashboard/rfqs/${rfqWithRelations.rfq.id}`}
+                    >
+                      <div
+                        className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors ${
+                          rfqWithRelations.rfq.id === rfqId ? "bg-muted border-primary" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-sm">
+                                {rfqWithRelations.rfq.rfqCode || "-"}
+                              </span>
+                              {rfqWithRelations.rfq.id === rfqId && (
+                                <Badge variant="outline">Current</Badge>
+                              )}
+                              {getStatusBadge(rfqWithRelations.rfq.status)}
+                            </div>
+                            {rfqWithRelations.serviceProvider && (
+                              <p className="text-sm text-muted-foreground">
+                                {rfqWithRelations.serviceProvider.businessName ||
+                                  rfqWithRelations.serviceProvider.contactName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {format(new Date(rfqWithRelations.rfq.requestedAt), "MMM dd, yyyy")}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quotes Comparison</CardTitle>
-          <CardDescription>
-            {quotes.length === 0
-              ? "No quotes received yet"
-              : `Comparing ${quotes.length} quote${quotes.length === 1 ? "" : "s"}`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RfqComparisonTable quotes={quotes} />
-        </CardContent>
-      </Card>
     </div>
   )
 }

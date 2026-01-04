@@ -246,7 +246,17 @@ export async function sendQuoteRequestEmailAction(
       : process.env.POSTMARK_FROM_EMAIL?.split("@")[1] || "yourdomain.com"
     
     // Get app URL for submission links
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${emailDomain}`
+    // Use HTTP for localhost, HTTPS for production
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl) {
+      // Default to HTTP for localhost, HTTPS for other domains
+      const isLocalhost = emailDomain.includes("localhost") || emailDomain.includes("127.0.0.1")
+      appUrl = isLocalhost ? `http://${emailDomain}` : `https://${emailDomain}`
+    }
+    // Ensure localhost always uses HTTP
+    if (appUrl.includes("localhost") || appUrl.includes("127.0.0.1")) {
+      appUrl = appUrl.replace(/^https:\/\//, "http://")
+    }
     
     // Extract just the domain name (without protocol) for display
     const domainName = appUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")

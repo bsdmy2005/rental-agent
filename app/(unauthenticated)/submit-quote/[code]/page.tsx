@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,7 +36,7 @@ interface RfqDetails {
   } | null
 }
 
-export default function SubmitQuotePage() {
+function SubmitQuotePageContent() {
   const params = useParams()
   const code = params.code as string
 
@@ -331,6 +331,21 @@ export default function SubmitQuotePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function SubmitQuotePage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-12 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    }>
+      <SubmitQuotePageContent />
+    </Suspense>
   )
 }
 

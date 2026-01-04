@@ -237,7 +237,12 @@ export async function sendQuoteRequestViaBaileys(
     }
 
     // Build online submission URL if RFQ code exists
-    const domain = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
+    // Use HTTP for localhost, HTTPS for production
+    let domain = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
+    // Ensure localhost always uses HTTP
+    if (domain.includes("localhost") || domain.includes("127.0.0.1")) {
+      domain = domain.replace(/^https:\/\//, "http://")
+    }
     const onlineSubmissionUrl = quoteRequest.rfqCode 
       ? `${domain}/submit-quote/${quoteRequest.rfqCode}`
       : undefined

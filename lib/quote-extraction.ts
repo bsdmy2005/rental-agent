@@ -83,14 +83,28 @@ const QUOTE_EXTRACTION_SCHEMA = {
  * Upload image or PDF to OpenAI Files API
  * Uses the same pattern as expense-extraction.ts with "user_data" purpose
  */
-async function uploadFileToOpenAI(fileBuffer: Buffer, fileName: string): Promise<string> {
+async function uploadFileToOpenAI(fileBuffer: Buffer | Array<number> | Uint8Array | unknown, fileName: string): Promise<string> {
   try {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not set")
     }
 
+    // Ensure fileBuffer is a proper Buffer (it might be serialized when passed through server actions)
+    let buffer: Buffer
+    if (Buffer.isBuffer(fileBuffer)) {
+      buffer = fileBuffer
+    } else if (Array.isArray(fileBuffer)) {
+      // If it was serialized as an array, convert back to Buffer
+      buffer = Buffer.from(fileBuffer)
+    } else if (fileBuffer instanceof Uint8Array) {
+      buffer = Buffer.from(fileBuffer)
+    } else {
+      // Try to convert from any object that might have data
+      buffer = Buffer.from(fileBuffer as any)
+    }
+
     // Validate file buffer
-    if (!fileBuffer || fileBuffer.length === 0) {
+    if (!buffer || buffer.length === 0) {
       throw new Error("File buffer is empty")
     }
 
@@ -104,7 +118,7 @@ async function uploadFileToOpenAI(fileBuffer: Buffer, fileName: string): Promise
 
     // For PDFs, validate magic bytes
     if (isPDF) {
-      const pdfMagicBytes = fileBuffer.slice(0, 4).toString("ascii")
+      const pdfMagicBytes = buffer.slice(0, 4).toString("ascii")
       if (pdfMagicBytes !== "%PDF") {
         throw new Error(`File is not a valid PDF. Magic bytes: ${pdfMagicBytes}`)
       }
@@ -118,10 +132,10 @@ async function uploadFileToOpenAI(fileBuffer: Buffer, fileName: string): Promise
       console.log(`[Quote Extraction] ⚠ Filename missing .pdf extension, renamed: ${fileName} → ${finalFileName}`)
     }
 
-    console.log(`[Quote Extraction] Uploading file to OpenAI: ${finalFileName} (${fileBuffer.length} bytes)`)
+    console.log(`[Quote Extraction] Uploading file to OpenAI: ${finalFileName} (${buffer.length} bytes)`)
 
     // Convert Buffer to Uint8Array for File constructor
-    const uint8Array = new Uint8Array(fileBuffer)
+    const uint8Array = new Uint8Array(buffer)
     const file = new File([uint8Array], finalFileName, {
       type: isPDF ? "application/pdf" : "image/jpeg"
     })

@@ -20,8 +20,25 @@ import {
   type SelectQuote
 } from "@/db/schema"
 import { ActionState } from "@/types"
-import { eq, and, or, ilike, inArray, isNull, desc } from "drizzle-orm"
+import { eq, and, or, ilike, inArray, isNull, desc, gte, lte } from "drizzle-orm"
 import type { QuoteExtractionData } from "@/lib/quote-extraction"
+
+/**
+ * Parse currency string to numeric value for database storage
+ * Handles formats like "R 4,250.00", "$1,500", "4250.00", etc.
+ */
+function parseAmountToNumeric(amount: string | number): string {
+  if (typeof amount === "number") {
+    return amount.toString()
+  }
+  // Remove currency symbols (R, $, €, £, etc.), spaces, and commas
+  const cleaned = amount.toString().replace(/[R$€£¥\s,]/g, "").trim()
+  const numericValue = parseFloat(cleaned)
+  if (isNaN(numericValue)) {
+    throw new Error(`Invalid amount format: ${amount}`)
+  }
+  return numericValue.toString()
+}
 
 // Service Provider CRUD Operations
 
@@ -896,12 +913,15 @@ export async function processQuoteEmailReplyAction(
       amount: quoteData.amount
     })
 
+    // Parse amount to numeric value (database expects numeric, not formatted string)
+    const parsedAmount = parseAmountToNumeric(quoteData.amount)
+
     // Create quote record - automatically linked to the service provider via quoteRequest.serviceProviderId
     const [newQuote] = await db
       .insert(quotesTable)
       .values({
         quoteRequestId: quoteRequest.id, // This links to quoteRequest which has serviceProviderId
-        amount: quoteData.amount,
+        amount: parsedAmount,
         description: quoteData.description,
         estimatedCompletionDate: quoteData.estimatedCompletionDate,
         status: "quoted",
@@ -1092,6 +1112,13 @@ export async function createBulkRfqAction(
       return { isSuccess: false, message: "Failed to create first quote request" }
     }
 
+    // Set bulkRfqGroupId to firstQuoteRequest.id (self-reference for parent)
+    // This makes the first RFQ the "parent" of the group
+    await db
+      .update(quoteRequestsTable)
+      .set({ bulkRfqGroupId: firstQuoteRequest.id })
+      .where(eq(quoteRequestsTable.id, firstQuoteRequest.id))
+
     // Generate unique RFQ code for first provider
     let firstRfqCode: string | null = null
     try {
@@ -1220,6 +1247,7 @@ export async function createBulkRfqAction(
             status: "requested",
             uniqueEmailAddress: uniqueEmail,
             rfqCode: null, // Only first quote request has the rfqCode due to unique constraint
+            bulkRfqGroupId: firstQuoteRequest.id, // Link to parent RFQ group
             sentCount: 0,
             receivedCount: 0
           })
@@ -1556,8 +1584,21 @@ export async function submitQuoteByCodeAction(
 
     if (quoteData.pdfBuffer && quoteData.fileName) {
       try {
+        // Ensure pdfBuffer is a proper Buffer (it might be serialized when passed through server action)
+        let pdfBuffer: Buffer
+        const bufferData = quoteData.pdfBuffer
+        if (Buffer.isBuffer(bufferData)) {
+          pdfBuffer = bufferData
+        } else if (Array.isArray(bufferData)) {
+          // If it was serialized as an array, convert back to Buffer
+          pdfBuffer = Buffer.from(bufferData)
+        } else {
+          // Try to convert from any object that might have data (Uint8Array, plain object, etc.)
+          pdfBuffer = Buffer.from(bufferData as any)
+        }
+        
         const { extractQuoteFromPDF } = await import("@/lib/quote-extraction")
-        const pdfExtracted = await extractQuoteFromPDF(quoteData.pdfBuffer, quoteData.fileName)
+        const pdfExtracted = await extractQuoteFromPDF(pdfBuffer, quoteData.fileName)
         extractedData = {
           amount: pdfExtracted.amount,
           description: pdfExtracted.description,
@@ -1584,12 +1625,15 @@ export async function submitQuoteByCodeAction(
       }
     }
 
+    // Parse amount to numeric value (database expects numeric, not formatted string)
+    const parsedAmount = parseAmountToNumeric(extractedData.amount)
+
     // Create quote record - automatically linked to the service provider via quoteRequest.serviceProviderId
     const [newQuote] = await db
       .insert(quotesTable)
       .values({
         quoteRequestId: quoteRequest.id, // This links to quoteRequest which has serviceProviderId
-        amount: extractedData.amount,
+        amount: parsedAmount,
         description: extractedData.description,
         estimatedCompletionDate: extractedData.estimatedCompletionDate,
         status: "quoted",
@@ -1688,7 +1732,50 @@ export async function acceptQuoteAction(
       return { isSuccess: false, message: "Quote request not found" }
     }
 
-    // Update quote status
+    // Find all RFQs in the same group
+    let groupRfqIds: string[] = [quoteRequest.id]
+
+    if (quoteRequest.bulkRfqGroupId) {
+      // Get all RFQs with the same bulkRfqGroupId (including the parent)
+      const groupRfqs = await db
+        .select({ id: quoteRequestsTable.id })
+        .from(quoteRequestsTable)
+        .where(
+          or(
+            eq(quoteRequestsTable.bulkRfqGroupId, quoteRequest.bulkRfqGroupId),
+            eq(quoteRequestsTable.id, quoteRequest.bulkRfqGroupId) // Include the parent RFQ
+          )
+        )
+      groupRfqIds = groupRfqs.map((r) => r.id)
+    } else {
+      // Fallback: use incidentId + propertyId + requestedAt (within 5 min window) for backward compatibility
+      if (quoteRequest.incidentId && quoteRequest.propertyId) {
+        const requestedAt = new Date(quoteRequest.requestedAt)
+        const windowStart = new Date(requestedAt.getTime() - 5 * 60 * 1000)
+        const windowEnd = new Date(requestedAt.getTime() + 5 * 60 * 1000)
+
+        const groupRfqs = await db
+          .select({ id: quoteRequestsTable.id })
+          .from(quoteRequestsTable)
+          .where(
+            and(
+              eq(quoteRequestsTable.incidentId, quoteRequest.incidentId),
+              eq(quoteRequestsTable.propertyId, quoteRequest.propertyId),
+              gte(quoteRequestsTable.requestedAt, windowStart),
+              lte(quoteRequestsTable.requestedAt, windowEnd)
+            )!
+          )
+        groupRfqIds = groupRfqs.map((r) => r.id)
+      }
+    }
+
+    // Get all quotes for all RFQs in the group
+    const allQuotesInGroup = await db
+      .select()
+      .from(quotesTable)
+      .where(inArray(quotesTable.quoteRequestId, groupRfqIds))
+
+    // Update quote status (approve the selected quote)
     const [updatedQuote] = await db
       .update(quotesTable)
       .set({ status: "approved" })
@@ -1699,11 +1786,23 @@ export async function acceptQuoteAction(
       return { isSuccess: false, message: "Failed to update quote" }
     }
 
-    // Update quote request status
+    // Reject all other quotes in the group
+    const otherQuoteIds = allQuotesInGroup
+      .filter((q) => q.id !== quoteId && q.status !== "rejected")
+      .map((q) => q.id)
+
+    if (otherQuoteIds.length > 0) {
+      await db
+        .update(quotesTable)
+        .set({ status: "rejected" })
+        .where(inArray(quotesTable.id, otherQuoteIds))
+    }
+
+    // Update all RFQ statuses in the group
     await db
       .update(quoteRequestsTable)
       .set({ status: "approved" })
-      .where(eq(quoteRequestsTable.id, quoteRequest.id))
+      .where(inArray(quoteRequestsTable.id, groupRfqIds))
 
     // Update incident status if linked
     if (quoteRequest.incidentId) {
@@ -1717,7 +1816,7 @@ export async function acceptQuoteAction(
         incidentId: quoteRequest.incidentId,
         status: "in_progress",
         changedBy: quoteRequest.requestedBy,
-        notes: `Quote approved: ${quote.amount}`
+        notes: `Quote approved: ${quote.amount} (${otherQuoteIds.length} other quote${otherQuoteIds.length !== 1 ? "s" : ""} rejected)`
       })
     }
 
@@ -1734,7 +1833,7 @@ export async function acceptQuoteAction(
 
     return {
       isSuccess: true,
-      message: "Quote accepted successfully",
+      message: `Quote accepted successfully${otherQuoteIds.length > 0 ? ` (${otherQuoteIds.length} other quote${otherQuoteIds.length !== 1 ? "s" : ""} rejected)` : ""}`,
       data: updatedQuote
     }
   } catch (error) {
@@ -1815,13 +1914,14 @@ export async function completeQuoteAction(
 }
 
 /**
- * Get all quotes for an RFQ for comparison
+ * Get all quotes for an RFQ group for comparison
+ * Aggregates quotes from all RFQs in the same bulk group, including quotes from all submission methods
  */
 export async function getRfqComparisonAction(
   rfqId: string
 ): Promise<
-  ActionState<
-    Array<
+  ActionState<{
+    quotes: Array<
       SelectQuote & {
         providerName: string
         providerBusinessName: string | null
@@ -1829,10 +1929,13 @@ export async function getRfqComparisonAction(
         submissionCode: string | null
       }
     >
-  >
+    cheapestQuoteId: string | null
+    totalQuotes: number
+    totalProviders: number
+  }>
 > {
   try {
-    // Get all quote requests with the same RFQ code or incident
+    // Get the base RFQ
     const [baseRfq] = await db
       .select()
       .from(quoteRequestsTable)
@@ -1843,51 +1946,95 @@ export async function getRfqComparisonAction(
       return { isSuccess: false, message: "RFQ not found" }
     }
 
-    // Find all quote requests with same RFQ code or incident
-    const conditions: Array<ReturnType<typeof eq>> = []
-    if (baseRfq.rfqCode) {
-      conditions.push(eq(quoteRequestsTable.rfqCode, baseRfq.rfqCode))
-    }
-    if (baseRfq.incidentId) {
-      conditions.push(eq(quoteRequestsTable.incidentId, baseRfq.incidentId))
+    // Primary grouping: Use bulkRfqGroupId to find all RFQs in the same bulk request
+    let matchingRequests: SelectQuoteRequest[] = []
+
+    if (baseRfq.bulkRfqGroupId) {
+      // Find all RFQs with the same bulkRfqGroupId (including the parent)
+      const groupId = baseRfq.bulkRfqGroupId
+      matchingRequests = await db
+        .select()
+        .from(quoteRequestsTable)
+        .where(
+          or(
+            eq(quoteRequestsTable.bulkRfqGroupId, groupId),
+            eq(quoteRequestsTable.id, groupId) // Include the parent RFQ
+          )
+        )
+    } else {
+      // Fallback grouping: Use incidentId + propertyId + requestedAt (within 5 min window) for backward compatibility
+      const conditions: Array<ReturnType<typeof eq | typeof and>> = []
+
+      if (baseRfq.incidentId && baseRfq.propertyId) {
+        // Group by incidentId + propertyId + requestedAt (within 5 min window)
+        const requestedAt = new Date(baseRfq.requestedAt)
+        const windowStart = new Date(requestedAt.getTime() - 5 * 60 * 1000) // 5 minutes before
+        const windowEnd = new Date(requestedAt.getTime() + 5 * 60 * 1000) // 5 minutes after
+
+        conditions.push(
+          and(
+            eq(quoteRequestsTable.incidentId, baseRfq.incidentId),
+            eq(quoteRequestsTable.propertyId, baseRfq.propertyId),
+            gte(quoteRequestsTable.requestedAt, windowStart),
+            lte(quoteRequestsTable.requestedAt, windowEnd)
+          )!
+        )
+      } else if (baseRfq.rfqCode) {
+        // Fallback: use RFQ code (legacy behavior)
+        conditions.push(eq(quoteRequestsTable.rfqCode, baseRfq.rfqCode))
+      }
+
+      if (conditions.length === 0) {
+        // No grouping possible, just return quotes for this single RFQ
+        matchingRequests = [baseRfq]
+      } else {
+        matchingRequests = await db
+          .select()
+          .from(quoteRequestsTable)
+          .where(or(...conditions))
+      }
     }
 
-    if (conditions.length === 0) {
+    if (matchingRequests.length === 0) {
       return { isSuccess: false, message: "No matching quote requests found" }
     }
 
-    const matchingRequests = await db
-      .select()
-      .from(quoteRequestsTable)
-      .where(or(...conditions))
-
     const requestIds = matchingRequests.map((r) => r.id)
 
-    // Get all quotes for these requests
+    // Get all quotes for these requests (includes quotes from all submission methods: email, WhatsApp, web)
     const quotes = await db
       .select()
       .from(quotesTable)
       .where(inArray(quotesTable.quoteRequestId, requestIds))
 
-    // Get provider details for each quote
-    const quotesWithProviders = await Promise.all(
-      quotes.map(async (quote) => {
-        const request = matchingRequests.find((r) => r.id === quote.quoteRequestId)
-        if (!request) {
-          return {
-            ...quote,
-            providerName: "Unknown",
-            providerBusinessName: null,
-            submissionMethod: quote.submittedVia || "unknown",
-            submissionCode: quote.submissionCode || null
-          }
+    if (quotes.length === 0) {
+      return {
+        isSuccess: true,
+        message: "No quotes found for this RFQ group",
+        data: {
+          quotes: [],
+          cheapestQuoteId: null,
+          totalQuotes: 0,
+          totalProviders: matchingRequests.length
         }
+      }
+    }
 
-        const [provider] = await db
-          .select()
-          .from(serviceProvidersTable)
-          .where(eq(serviceProvidersTable.id, request.serviceProviderId))
-          .limit(1)
+    // Get provider details for each quote
+    const uniqueProviderIds = [...new Set(matchingRequests.map((r) => r.serviceProviderId))]
+    const providers = await db
+      .select()
+      .from(serviceProvidersTable)
+      .where(inArray(serviceProvidersTable.id, uniqueProviderIds))
+
+    const providerMap = new Map(providers.map((p) => [p.id, p]))
+    const requestMap = new Map(matchingRequests.map((r) => [r.id, r]))
+
+    // Build quotes with provider info and sort by amount (cheapest first)
+    const quotesWithProviders = quotes
+      .map((quote) => {
+        const request = requestMap.get(quote.quoteRequestId)
+        const provider = request ? providerMap.get(request.serviceProviderId) : null
 
         return {
           ...quote,
@@ -1897,12 +2044,32 @@ export async function getRfqComparisonAction(
           submissionCode: quote.submissionCode || null
         }
       })
+      .sort((a, b) => {
+        const amountA = parseFloat(a.amount)
+        const amountB = parseFloat(b.amount)
+        return amountA - amountB // Sort ascending (cheapest first)
+      })
+
+    // Find cheapest quote (first one after sorting)
+    const cheapestQuoteId = quotesWithProviders.length > 0 ? quotesWithProviders[0].id : null
+
+    // Get unique provider count
+    const uniqueProvidersInQuotes = new Set(
+      quotesWithProviders.map((q) => {
+        const request = requestMap.get(q.quoteRequestId)
+        return request?.serviceProviderId
+      }).filter(Boolean)
     )
 
     return {
       isSuccess: true,
       message: "Quotes retrieved successfully",
-      data: quotesWithProviders
+      data: {
+        quotes: quotesWithProviders,
+        cheapestQuoteId,
+        totalQuotes: quotesWithProviders.length,
+        totalProviders: uniqueProvidersInQuotes.size
+      }
     }
   } catch (error) {
     console.error("Error getting RFQ comparison:", error)

@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { acceptQuoteAction, rejectQuoteAction } from "@/actions/service-providers-actions"
 import { toast } from "sonner"
-import { Loader2, Check, X, ArrowUpDown } from "lucide-react"
+import { Loader2, Check, X, ArrowUpDown, Mail, MessageCircle, Globe, Trophy } from "lucide-react"
 import { format } from "date-fns"
 
 interface QuoteWithProvider {
@@ -31,6 +31,7 @@ interface QuoteWithProvider {
 
 interface RfqComparisonTableProps {
   quotes: QuoteWithProvider[]
+  cheapestQuoteId?: string | null
   onQuoteAccepted?: (quoteId: string) => void
   onQuoteRejected?: (quoteId: string) => void
 }
@@ -40,12 +41,14 @@ type SortDirection = "asc" | "desc"
 
 export function RfqComparisonTable({
   quotes,
+  cheapestQuoteId,
   onQuoteAccepted,
   onQuoteRejected
 }: RfqComparisonTableProps) {
   const [sortField, setSortField] = useState<SortField>("amount")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [filterMethod, setFilterMethod] = useState<string | null>(null)
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -56,7 +59,12 @@ export function RfqComparisonTable({
     }
   }
 
-  const sortedQuotes = [...quotes].sort((a, b) => {
+  // Filter by submission method
+  const filteredQuotes = filterMethod
+    ? quotes.filter((q) => q.submissionMethod === filterMethod)
+    : quotes
+
+  const sortedQuotes = [...filteredQuotes].sort((a, b) => {
     let comparison = 0
 
     switch (sortField) {
@@ -77,6 +85,35 @@ export function RfqComparisonTable({
 
     return sortDirection === "asc" ? comparison : -comparison
   })
+
+  function getSubmissionMethodIcon(method?: string) {
+    switch (method) {
+      case "email":
+        return <Mail className="h-3 w-3" />
+      case "whatsapp":
+        return <MessageCircle className="h-3 w-3" />
+      case "web_form":
+        return <Globe className="h-3 w-3" />
+      default:
+        return null
+    }
+  }
+
+  function getSubmissionMethodLabel(method?: string) {
+    switch (method) {
+      case "email":
+        return "Email"
+      case "whatsapp":
+        return "WhatsApp"
+      case "web_form":
+        return "Web Portal"
+      default:
+        return "Unknown"
+    }
+  }
+
+  // Get unique submission methods for filter
+  const submissionMethods = [...new Set(quotes.map((q) => q.submissionMethod).filter(Boolean))]
 
   async function handleAccept(quoteId: string) {
     setProcessingId(quoteId)
@@ -136,8 +173,38 @@ export function RfqComparisonTable({
   }
 
   return (
-    <div className="border rounded-md">
-      <Table>
+    <div className="space-y-4">
+      {/* Filter by submission method */}
+      {submissionMethods.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Filter by:</span>
+          <Button
+            variant={filterMethod === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterMethod(null)}
+          >
+            All ({quotes.length})
+          </Button>
+          {submissionMethods.map((method) => {
+            const count = quotes.filter((q) => q.submissionMethod === method).length
+            return (
+              <Button
+                key={method}
+                variant={filterMethod === method ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterMethod(method || null)}
+                className="flex items-center gap-2"
+              >
+                {getSubmissionMethodIcon(method)}
+                {getSubmissionMethodLabel(method)} ({count})
+              </Button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="border rounded-md">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>
@@ -181,70 +248,102 @@ export function RfqComparisonTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedQuotes.map((quote) => (
-            <TableRow
-              key={quote.id}
-              className={quote.status === "approved" ? "bg-green-50" : ""}
-            >
-              <TableCell className="font-medium">
-                {quote.providerBusinessName || quote.providerName}
-              </TableCell>
-              <TableCell className="font-semibold">{quote.amount}</TableCell>
-              <TableCell className="max-w-md truncate">
-                {quote.description || "-"}
-              </TableCell>
-              <TableCell>
-                {quote.estimatedCompletionDate
-                  ? format(new Date(quote.estimatedCompletionDate), "MMM dd, yyyy")
-                  : "-"}
-              </TableCell>
-              <TableCell>{getStatusBadge(quote.status)}</TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {quote.submissionMethod === "web_form" ? "Web Portal" : "Email"}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-mono text-sm">
-                {quote.submissionCode || "-"}
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-2">
-                  {quote.status === "quoted" && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleAccept(quote.id)}
-                        disabled={processingId === quote.id}
-                      >
-                        {processingId === quote.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4 mr-1" />
-                        )}
-                        Accept
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleReject(quote.id)}
-                        disabled={processingId === quote.id}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {quote.status === "approved" && (
-                    <Badge variant="secondary">Accepted</Badge>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+          {sortedQuotes.map((quote) => {
+            const isCheapest = quote.id === cheapestQuoteId
+            const isApproved = quote.status === "approved"
+
+            return (
+              <TableRow
+                key={quote.id}
+                className={`${
+                  isCheapest
+                    ? "bg-green-50 dark:bg-green-950 border-2 border-green-500"
+                    : isApproved
+                      ? "bg-green-50 dark:bg-green-950"
+                      : ""
+                }`}
+              >
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {quote.providerBusinessName || quote.providerName}
+                    {isCheapest && (
+                      <Badge variant="default" className="bg-green-600 text-white">
+                        <Trophy className="h-3 w-3 mr-1" />
+                        Cheapest
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="font-semibold">
+                  <div className="flex items-center gap-2">
+                    {quote.amount}
+                    {isCheapest && (
+                      <Check className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-md truncate">
+                  {quote.description || "-"}
+                </TableCell>
+                <TableCell>
+                  {quote.estimatedCompletionDate
+                    ? format(new Date(quote.estimatedCompletionDate), "MMM dd, yyyy")
+                    : "-"}
+                </TableCell>
+                <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                    {getSubmissionMethodIcon(quote.submissionMethod)}
+                    {getSubmissionMethodLabel(quote.submissionMethod)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {quote.submissionCode || "-"}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    {quote.status === "quoted" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleAccept(quote.id)}
+                          disabled={processingId === quote.id}
+                          className={isCheapest ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {processingId === quote.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReject(quote.id)}
+                          disabled={processingId === quote.id}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {quote.status === "approved" && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Approved
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>
+  </div>
   )
 }
 

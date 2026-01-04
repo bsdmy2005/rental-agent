@@ -19,6 +19,7 @@ export function IncidentQuotesSection({ quoteRequests }: IncidentQuotesSectionPr
     submissionMethod: string
     submissionCode: string | null
   }>>([])
+  const [cheapestQuoteId, setCheapestQuoteId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadQuotes() {
@@ -31,7 +32,8 @@ export function IncidentQuotesSection({ quoteRequests }: IncidentQuotesSectionPr
         // Get quotes for the first quote request (they should all share the same RFQ code or incident)
         const result = await getRfqComparisonAction(quoteRequests[0].id)
         if (result.isSuccess && result.data) {
-          setQuotes(result.data)
+          setQuotes(result.data.quotes)
+          setCheapestQuoteId(result.data.cheapestQuoteId)
         }
       } catch (error) {
         console.error("Error loading quotes:", error)
@@ -63,7 +65,7 @@ export function IncidentQuotesSection({ quoteRequests }: IncidentQuotesSectionPr
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <RfqComparisonTable quotes={quotes} />
+          <RfqComparisonTable quotes={quotes} cheapestQuoteId={cheapestQuoteId} />
         )}
       </CardContent>
     </Card>

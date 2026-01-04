@@ -1,87 +1,47 @@
-"use server"
-
 import { currentUser } from "@clerk/nextjs/server"
 import { getUserProfileByClerkIdQuery } from "@/queries/user-profiles-queries"
 import { db } from "@/db"
-import { quoteRequestsTable, propertiesTable, incidentsTable, serviceProvidersTable } from "@/db/schema"
-import { eq, and, or, desc, isNull, inArray } from "drizzle-orm"
+import { propertiesTable } from "@/db/schema"
+import { eq } from "drizzle-orm"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { RfqsList } from "./_components/rfqs-list"
+import { getRfqGroupsQuery } from "@/queries/rfqs-queries"
 
 async function getRfqsForUser(userProfileId: string, userType: string) {
-  // Get property IDs based on user type
-  let propertyIds: string[] = []
+  try {
+    // Get property IDs based on user type
+    let propertyIds: string[] = []
 
-  if (userType === "landlord") {
-    const { getLandlordByUserProfileIdQuery } = await import("@/queries/landlords-queries")
-    const landlord = await getLandlordByUserProfileIdQuery(userProfileId)
-    if (landlord) {
-      const properties = await db
-        .select({ id: propertiesTable.id })
-        .from(propertiesTable)
-        .where(eq(propertiesTable.landlordId, landlord.id))
+    if (userType === "landlord") {
+      const { getLandlordByUserProfileIdQuery } = await import("@/queries/landlords-queries")
+      const landlord = await getLandlordByUserProfileIdQuery(userProfileId)
+      if (landlord) {
+        const properties = await db
+          .select({ id: propertiesTable.id })
+          .from(propertiesTable)
+          .where(eq(propertiesTable.landlordId, landlord.id))
+        propertyIds = properties.map((p) => p.id)
+      }
+    } else if (userType === "rental_agent") {
+      const { getPropertiesForUserQuery } = await import("@/queries/properties-queries")
+      const properties = await getPropertiesForUserQuery(userProfileId, userType)
       propertyIds = properties.map((p) => p.id)
     }
-  } else if (userType === "rental_agent") {
-    const { getPropertiesForUserQuery } = await import("@/queries/properties-queries")
-    const properties = await getPropertiesForUserQuery(userProfileId, userType)
-    propertyIds = properties.map((p) => p.id)
-  }
 
-  if (propertyIds.length === 0) {
+    if (propertyIds.length === 0) {
+      return []
+    }
+
+    // Get grouped RFQs
+    const result = await getRfqGroupsQuery(propertyIds)
+    return result || []
+  } catch (error) {
+    console.error("Error fetching RFQs:", error)
     return []
   }
-
-  // Get all RFQs for these properties
-  const rfqs = await db
-    .select()
-    .from(quoteRequestsTable)
-    .where(or(...propertyIds.map((id) => eq(quoteRequestsTable.propertyId, id))))
-    .orderBy(desc(quoteRequestsTable.requestedAt))
-
-  // Get unique property and service provider IDs
-  const uniquePropertyIds = [...new Set(rfqs.map((r) => r.propertyId).filter(Boolean) as string[])]
-  const uniqueProviderIds = [...new Set(rfqs.map((r) => r.serviceProviderId))]
-
-  // Fetch properties and service providers
-  const properties =
-    uniquePropertyIds.length > 0
-      ? await db
-          .select({
-            id: propertiesTable.id,
-            name: propertiesTable.name,
-            suburb: propertiesTable.suburb,
-            province: propertiesTable.province
-          })
-          .from(propertiesTable)
-          .where(inArray(propertiesTable.id, uniquePropertyIds))
-      : []
-
-  const serviceProviders =
-    uniqueProviderIds.length > 0
-      ? await db
-          .select({
-            id: serviceProvidersTable.id,
-            businessName: serviceProvidersTable.businessName,
-            contactName: serviceProvidersTable.contactName
-          })
-          .from(serviceProvidersTable)
-          .where(inArray(serviceProvidersTable.id, uniqueProviderIds))
-      : []
-
-  // Create maps for quick lookup
-  const propertyMap = new Map(properties.map((p) => [p.id, p]))
-  const providerMap = new Map(serviceProviders.map((p) => [p.id, p]))
-
-  // Combine data
-  return rfqs.map((rfq) => ({
-    rfq,
-    property: rfq.propertyId ? propertyMap.get(rfq.propertyId) || null : null,
-    serviceProvider: providerMap.get(rfq.serviceProviderId) || null
-  }))
 }
 
 export default async function RfqsPage() {
@@ -101,6 +61,7 @@ export default async function RfqsPage() {
   }
 
   const rfqs = await getRfqsForUser(userProfile.id, userProfile.userType)
+  const rfqGroups = rfqs || []
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -121,13 +82,13 @@ export default async function RfqsPage() {
         <CardHeader>
           <CardTitle>All RFQs</CardTitle>
           <CardDescription>
-            {rfqs.length === 0
+            {rfqGroups.length === 0
               ? "No RFQs found"
-              : `Showing ${rfqs.length} RFQ${rfqs.length === 1 ? "" : "s"}`}
+              : `Showing ${rfqGroups.length} RFQ group${rfqGroups.length === 1 ? "" : "s"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RfqsList rfqs={rfqs} />
+          <RfqsList rfqGroups={rfqGroups} />
         </CardContent>
       </Card>
     </div>

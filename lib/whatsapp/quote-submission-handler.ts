@@ -9,6 +9,23 @@ import { ActionState } from "@/types"
 import type { SelectQuote, SelectQuoteRequest } from "@/db/schema"
 
 /**
+ * Parse currency string to numeric value for database storage
+ * Handles formats like "R 4,250.00", "$1,500", "4250.00", etc.
+ */
+function parseAmountToNumeric(amount: string | number): string {
+  if (typeof amount === "number") {
+    return amount.toString()
+  }
+  // Remove currency symbols (R, $, €, £, etc.), spaces, and commas
+  const cleaned = amount.toString().replace(/[R$€£¥\s,]/g, "").trim()
+  const numericValue = parseFloat(cleaned)
+  if (isNaN(numericValue)) {
+    throw new Error(`Invalid amount format: ${amount}`)
+  }
+  return numericValue.toString()
+}
+
+/**
  * Process quote submission from WhatsApp message
  */
 export async function processQuoteSubmissionFromWhatsApp(
@@ -104,15 +121,23 @@ export async function processQuoteSubmissionFromWhatsApp(
       }
     }
 
+    // Parse amount to numeric value (database expects numeric, not formatted string)
+    if (!parsed.amount) {
+      throw new Error("Amount is required")
+    }
+    const parsedAmount = parseAmountToNumeric(parsed.amount)
+
     // Create quote record
     const [newQuote] = await db
       .insert(quotesTable)
       .values({
         quoteRequestId: quoteRequest.id,
-        amount: parsed.amount,
+        amount: parsedAmount,
         description: parsed.description || null,
         estimatedCompletionDate: parsed.completionDate || null,
         status: "quoted",
+        submittedVia: "whatsapp",
+        submissionCode: parsed.rfqCode,
         whatsappReplyId: fromPhoneNumber // Store phone number for reference
       })
       .returning()
