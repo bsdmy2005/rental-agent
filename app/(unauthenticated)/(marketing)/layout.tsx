@@ -4,7 +4,7 @@ import { ScrollIndicator } from "./_components/scroll-indicator"
 import { SiteBanner } from "./_components/site-banner"
 import { StickyCTA } from "./_components/sticky-cta"
 
-export default async function MarketingLayout({
+export default function MarketingLayout({
   children
 }: {
   children: React.ReactNode
