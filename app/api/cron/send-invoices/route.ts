@@ -7,6 +7,10 @@ import {
 import { eq, and } from "drizzle-orm"
 import { sendInvoiceEmailAction } from "@/lib/email/invoice-email-service"
 
+// Mark this route as dynamic to prevent static generation
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 /**
  * Cron job endpoint to automatically send invoices on scheduled dates
  * Runs daily
