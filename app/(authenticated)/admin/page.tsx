@@ -1,8 +1,9 @@
-"use server"
-
 import { Suspense } from "react"
 import { AdminStats } from "./_components/admin-stats"
 import { AdminStatsSkeleton } from "./_components/admin-stats-skeleton"
+
+// Prevent static generation - this page requires database access
+export const dynamic = "force-dynamic"
 
 export default async function AdminPage() {
   return (

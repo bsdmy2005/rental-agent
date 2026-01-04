@@ -5,6 +5,9 @@ import { redirect } from "next/navigation"
 import type React from "react"
 import DashboardClientLayout from "./_components/layout-client"
 
+// Prevent static generation - inherited from parent but explicit for clarity
+export const dynamic = "force-dynamic"
+
 export default async function DashboardLayout({
   children
 }: {
