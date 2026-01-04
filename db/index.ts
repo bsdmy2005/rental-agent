@@ -64,7 +64,11 @@ import {
   notificationPreferencesTable
 } from "./schema"
 
-config({ path: ".env.local" })
+// Only load .env.local in development (file might not exist in production)
+// In production (Render), environment variables are set directly
+if (process.env.NODE_ENV !== "production") {
+  config({ path: ".env.local" })
+}
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -142,7 +146,7 @@ function initializeDb(url: string) {
   const client = postgres(url, {
     prepare: false,
     max: 10, // Maximum number of connections in the pool (reduced for Render)
-    idle_timeout: 20, // Close idle connections after 20 seconds
+    idle_timeout: 30, // Close idle connections after 20 seconds
     connect_timeout: 30, // Connection timeout in seconds (increased for Render cold starts)
     max_lifetime: 60 * 30, // Maximum lifetime of a connection (30 minutes)
     onnotice: () => {}, // Suppress notices
