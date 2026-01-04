@@ -138,21 +138,23 @@ const dbSchema = {
 
 function initializeDb(url: string) {
   // Configure connection pool to prevent exhaustion
+  // Increased timeout for Render cold starts and network latency
   const client = postgres(url, {
     prepare: false,
-    max: 15, // Maximum number of connections in the pool
-    idle_timeout: 10, // Close idle connections after 10 seconds
-    connect_timeout: 5, // Connection timeout in seconds
-    max_lifetime: 60 * 10, // Maximum lifetime of a connection (10 minutes)
+    max: 10, // Maximum number of connections in the pool (reduced for Render)
+    idle_timeout: 20, // Close idle connections after 20 seconds
+    connect_timeout: 30, // Connection timeout in seconds (increased for Render cold starts)
+    max_lifetime: 60 * 30, // Maximum lifetime of a connection (30 minutes)
     onnotice: () => {}, // Suppress notices
     transform: {
       undefined: null, // Transform undefined to null
     },
   })
   
-  // Handle connection errors gracefully
+  // Handle connection errors gracefully - prevent unhandled rejections
   client.listen('error', (err) => {
     console.error('[DB] Connection error:', err)
+    // Errors are logged but not thrown to prevent unhandled rejections
   })
   
   return drizzlePostgres(client, { schema: dbSchema })
