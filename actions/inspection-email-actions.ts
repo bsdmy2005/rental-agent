@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
 import { getMovingInspectionAction } from "./moving-inspections-actions"
 import crypto from "crypto"
+import { getAppUrl } from "@/lib/utils/get-app-url"
 
 export async function generateTenantAccessTokenAction(
   inspectionId: string
@@ -34,7 +35,7 @@ export async function generateTenantAccessTokenAction(
       return { isSuccess: false, message: "Inspection not found" }
     }
 
-    const accessUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/inspection/${token}`
+    const accessUrl = `${getAppUrl()}/inspection/${token}`
 
     return {
       isSuccess: true,
@@ -108,7 +109,7 @@ export async function generateInspectorAccessTokenAction(
       return { isSuccess: false, message: "Inspection not found" }
     }
 
-    const accessUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/inspector/${token}`
+    const accessUrl = `${getAppUrl()}/inspector/${token}`
 
     return {
       isSuccess: true,

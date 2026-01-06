@@ -10,6 +10,7 @@ import {
 import { db } from "@/db"
 import { incidentsTable, propertiesTable, incidentAttachmentsTable } from "@/db/schema"
 import { eq } from "drizzle-orm"
+import { getWhatsAppServerUrl } from "@/lib/utils/get-app-url"
 
 /**
  * Get Postmark client instance
@@ -113,7 +114,7 @@ export async function sendIncidentNotificationsAction(
           const whatsappContent = formatIncidentWhatsAppNotification(notificationData)
 
           // Send via Baileys server API
-          const baileysUrl = process.env.BAILEYS_SERVER_URL || "http://localhost:3001"
+          const baileysUrl = getWhatsAppServerUrl()
           const response = await fetch(`${baileysUrl}/api/send-message`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

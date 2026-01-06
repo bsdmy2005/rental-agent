@@ -1,6 +1,7 @@
 "use server"
 
 import { ActionState } from "@/types"
+import { getWhatsAppServerUrl } from "@/lib/utils/get-app-url"
 
 /**
  * Lightweight health status response from WhatsApp server
@@ -56,7 +57,7 @@ export async function getWhatsAppHealthAction(): Promise<
 
   try {
     const serverUrl =
-      process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+      getWhatsAppServerUrl()
 
     const response = await fetch(`${serverUrl}/health`, {
       cache: "no-store",
@@ -127,7 +128,7 @@ export async function getWhatsAppDeepHealthAction(): Promise<
 
   try {
     const serverUrl =
-      process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+      getWhatsAppServerUrl()
 
     const response = await fetch(`${serverUrl}/health/deep`, {
       headers: {
@@ -186,7 +187,7 @@ export async function reconnectWhatsAppSessionAction(
 
   try {
     const serverUrl =
-      process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+      getWhatsAppServerUrl()
 
     const response = await fetch(
       `${serverUrl}/sessions/${sessionId}/reconnect`,

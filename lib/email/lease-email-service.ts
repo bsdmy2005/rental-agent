@@ -16,6 +16,7 @@ import { generateLeasePDFFromIdAction } from "@/lib/lease-pdf-generator"
 import { generateLeasePDFWithTemplateAction } from "@/lib/lease-pdf-generator-template"
 import { uploadPDFToSupabase } from "@/lib/storage/supabase-storage"
 import { randomBytes } from "crypto"
+import { getAppUrl } from "@/lib/utils/get-app-url"
 
 function getPostmarkClient(): ServerClient {
   const apiKey = process.env.POSTMARK_API_KEY || process.env.POSTMARK_SERVER_API_TOKEN
@@ -143,7 +144,7 @@ export async function sendLeaseToLandlordAction(
     const pdfUrl = await uploadPDFToSupabase(pdfResult.data, storagePath)
 
     // Create signing link - URL encode the token to handle special characters
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const appUrl = getAppUrl()
     const signingLink = `${appUrl}/lease/sign/landlord/${encodeURIComponent(signingToken)}`
 
     // Update lease with signing info
@@ -335,7 +336,7 @@ export async function sendLeaseToTenantAction(
     const pdfUrl = await uploadPDFToSupabase(pdfResult.data, storagePath)
 
     // Create signing link - URL encode the token to handle special characters
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const appUrl = getAppUrl()
     const signingLink = `${appUrl}/lease/sign/${encodeURIComponent(signingToken)}`
 
     // Update lease with signing info
@@ -521,7 +522,7 @@ export async function notifyLandlordTenantSignedAction(
           </div>
           <p>Please review and sign the lease agreement to complete the process.</p>
           <p style="margin-top: 15px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/leases/${leaseId}/sign" style="background-color: #4caf50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            <a href="${getAppUrl()}/dashboard/leases/${leaseId}/sign" style="background-color: #4caf50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
               Sign Lease Agreement
             </a>
           </p>
@@ -539,7 +540,7 @@ Address: ${property.streetAddress}, ${property.suburb}, ${property.province}
 
 Please review and sign the lease agreement to complete the process.
 
-Sign Lease Agreement: ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/leases/${leaseId}/sign
+Sign Lease Agreement: ${getAppUrl()}/dashboard/leases/${leaseId}/sign
     `.trim()
 
     await postmarkClient.sendEmail({

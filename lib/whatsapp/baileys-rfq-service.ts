@@ -6,6 +6,7 @@ import { eq, and, isNotNull } from "drizzle-orm"
 import { createWhatsAppBaileysClientFromEnv } from "@/lib/whatsapp-baileys-client"
 import { formatRfqMessageForWhatsApp } from "./message-formatter"
 import { ensurePrimarySessionConnectedAction, isWhatsAppEnabledAction } from "@/actions/whatsapp-primary-session-actions"
+import { getAppUrl, getWhatsAppServerUrl } from "@/lib/utils/get-app-url"
 
 /**
  * Format phone number for message sending (Baileys format: 27...)
@@ -237,12 +238,7 @@ export async function sendQuoteRequestViaBaileys(
     }
 
     // Build online submission URL if RFQ code exists
-    // Use HTTP for localhost, HTTPS for production
-    let domain = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
-    // Ensure localhost always uses HTTP
-    if (domain.includes("localhost") || domain.includes("127.0.0.1")) {
-      domain = domain.replace(/^https:\/\//, "http://")
-    }
+    const domain = getAppUrl()
     const onlineSubmissionUrl = quoteRequest.rfqCode 
       ? `${domain}/submit-quote/${quoteRequest.rfqCode}`
       : undefined
@@ -284,7 +280,7 @@ export async function sendQuoteRequestViaBaileys(
 
     // Send message via Baileys (using same client creation as Explorer)
     console.log(`[RFQ WhatsApp] Step 7: Preparing to send message via Baileys...`)
-    const serverUrl = process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+    const serverUrl = getWhatsAppServerUrl()
     const apiKey = process.env.WHATSAPP_SERVER_API_KEY || ""
     
     console.log(`[RFQ WhatsApp] Server configuration:`, {

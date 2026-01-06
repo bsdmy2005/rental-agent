@@ -284,7 +284,10 @@ export function createWhatsAppBaileysClient(config: BaileysServerConfig): WhatsA
  * Create a client with environment variables
  */
 export function createWhatsAppBaileysClientFromEnv(): WhatsAppBaileysClient {
-  const serverUrl = process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+  // Use dynamic import to avoid circular dependencies
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getWhatsAppServerUrl } = require("@/lib/utils/get-app-url")
+  const serverUrl = getWhatsAppServerUrl()
   const apiKey = process.env.WHATSAPP_SERVER_API_KEY || ""
 
   return new WhatsAppBaileysClient({ serverUrl, apiKey })

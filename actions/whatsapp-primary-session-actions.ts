@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server"
 import { eq, and } from "drizzle-orm"
 import { createWhatsAppBaileysClientFromEnv } from "@/lib/whatsapp-baileys-client"
 import { ActionState } from "@/types"
+import { getWhatsAppServerUrl } from "@/lib/utils/get-app-url"
 
 /**
  * Get or create primary WhatsApp session for a user profile
@@ -96,7 +97,7 @@ export async function getPrimarySessionStatusAction(
     }
 
     const sessionId = sessionResult.data.sessionId
-    const serverUrl = process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+    const serverUrl = getWhatsAppServerUrl()
     const apiKey = process.env.WHATSAPP_SERVER_API_KEY || ""
 
     if (!apiKey) {
@@ -172,7 +173,7 @@ export async function setPrimaryWhatsAppNumberAction(
     }
 
     const sessionId = sessionResult.data.sessionId
-    const serverUrl = process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+    const serverUrl = getWhatsAppServerUrl()
     const apiKey = process.env.WHATSAPP_SERVER_API_KEY || ""
 
     if (!apiKey) {
@@ -241,7 +242,7 @@ export async function forceDisconnectPrimarySessionAction(
     }
 
     const sessionId = sessionResult.data.sessionId
-    const serverUrl = process.env.WHATSAPP_SERVER_URL || "http://localhost:3001"
+    const serverUrl = getWhatsAppServerUrl()
     const apiKey = process.env.WHATSAPP_SERVER_API_KEY || ""
 
     // Helper to check if error is a connection error (server unreachable)

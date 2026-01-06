@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm"
 import { ActionState } from "@/types"
 import { generateFilledInspectionPDFAction } from "@/lib/moving-inspection-pdf-generator"
 import { generateMoveOutReportPDFAction } from "@/lib/moving-inspection-pdf-generator"
+import { getAppUrl } from "@/lib/utils/get-app-url"
 
 function getPostmarkClient(): ServerClient {
   const apiKey = process.env.POSTMARK_API_KEY || process.env.POSTMARK_SERVER_API_TOKEN
@@ -89,7 +90,7 @@ export async function sendInspectionToTenantAction(
         .where(eq(movingInspectionsTable.id, inspectionId))
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const appUrl = getAppUrl()
     const accessLink = `${appUrl}/inspection/${accessToken}`
 
     // Prepare email content
@@ -538,7 +539,7 @@ export async function sendInspectionToInspectorAction(
         .where(eq(movingInspectionsTable.id, inspectionId))
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const appUrl = getAppUrl()
     const accessLink = `${appUrl}/inspector/${accessToken}`
 
     // Prepare email content
@@ -705,7 +706,7 @@ export async function sendInspectionToTenantAfterInspectorAction(
         .where(eq(movingInspectionsTable.id, inspectionId))
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const appUrl = getAppUrl()
     const accessLink = `${appUrl}/inspection/${accessToken}`
 
     // Generate filled PDF
